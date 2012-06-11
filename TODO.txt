@@ -1,0 +1,182 @@
+20120606
+	今天做了一下地图移动阴影和移动的设计和实现。
+		大概是首先用泛洪法得到所有可移动的格子
+		然后在每个格子上记录它的路径
+		如果这个格子被作为目标进行移动的时候
+		路径自然就有了，一个一个拿出来移动即可
+
+		素材得赶紧做，感觉这块不做工作有点进行不下去了。
+		这个周末搞定
+
+20120604
+	今天主要看了arctic.js的动画实现。
+		似乎都是打到anim.Timeline中进行统一调度的。
+		update函数很关键。
+	最好尽快开始地图和基本人物动画的制作，否则后续工作很难开始。
+	为此需要尽快学会资源提取器的使用并且提取出资源。
+
+
+20120531
+	看了一下JSX和Arctic.js都不甚理想，于是还是想要先用GameQuery实现，然后在移植。
+	JSX用了Google Closure Compiler实现一个静态类的javascript编译。将原来的javascript编译成更快的代码。
+	Arctic.js是一个基于手机的html5引擎。
+		编程的风格看上去还行。
+		对浏览器的支持不很好。
+		后续版本有可能会变得很厉害，所以稳妥起见不采用。
+	所以如何将游戏逻辑的描画和UI与主逻辑分开，是非常重要的事情。
+	
+	但是jQuery/gameQuery/的描画效率实在太低了，在ip4上卡的很。所以准备看一下arctic.js
+	arctic.js 的Animation类只能实现对于一个对象的变形和移动。不支持帧动画？！
+	帧动画用movieClip类实现
+
+	arctic的好处是封装了loader ajax等等类，可以很好的保护资源与代码
+	参照教程，成功用arctic做出一个帧动画。(aqua的鱼图片为例)
+		arctic中做帧动画的方法是先切图片。到一个个的SheetMovieClip。
+		因为Sheet只能切成一行行的。所以5帧的图片切了4帧共两行。
+		每行播两帧，这样就可以了。
+		arctic中也可以用关键帧，实现插着播放的效果。
+		总之，解决了这个问题，人物动作的实现就指日可待了。
+
+20120530
+	仔细研究了一下gameQuery.js (v0.6.2)
+	这个库主要包括
+		游戏主循环
+			sprite动画（刷新）
+			tile动画（刷新）
+		简单的音乐音效处理
+		一些简单的几何函数
+			图形图像变换等等
+			碰撞检测
+	1k多行，应该算是可以彻底hack掉的类型。
+	因为这个库实现的部分正好都是我需要的内容（人物动画，地图），所以决定先从学习这个库开始。
+
+20120529
+	调研了一下已有的html5引擎。觉得gameQuery不错，它是基于jQuery的一个插件。
+	里头有地图编辑器正好可以用。
+	http://gameQueryjs.com
+
+20120526
+	在可视范围之外将GIF动画做成图片单独下载从而强迫其在Canvas之内的相同GIF播放的方法只有在Chrome中好使。在firefox中就不好用了。
+	以后迟早要改成帧动画。需要单独写动画播放器类。
+
+	今天构思了一下剧情。
+	战役多而且史料丰富的故事。
+	觉得以《项羽传》为主题不错。
+	故事可以基本参考《史记》《汉书》。
+	最后增加项羽渡江，趁刘邦诛杀功臣之际举兵反攻的剧情。
+	感觉会挺不错的。
+	故事的主题突出“成长”：即人都有过错，但是如果可以痛定思痛，吸取教训，仍然可以成功。
+	以项羽为主人公非常合适。
+	以后游戏设定与剧本更新到单独的文件上
+
+	封装了lib.js，学习了一些基本的类的写法。
+	编写了GameObject, Unit, Grid, Attr这几个类
+	
+	继承关系如下:
+	Class
+	|
+	|
+	-------------------
+	|     |     |     |
+	Point Size  Rect  Attr
+                |
+				GameObject
+				|
+				-------
+				|     |
+				Unit　Grid
+
+	尝试用grid画map作图，不过貌似效率非常低。
+	所以还是改用绘制一整张图片作为map的做法。具体grid再切uv好了。
+
+20120524
+	想要编写地图的基础类。
+		不过变量的声明周期和作用域的知识不是很清楚。进展不大。明天继续
+
+
+20120523
+	编写了一个简单的走动的效果。
+		即设定目标节点(x, y)。如果不达到条件就一直运动每次刷新时，x, y各更新 speedX, speedY。
+		问题：走动时gif的速度是无法调控的，达不到曹操传的效果。所以作为成品肯定要做成帧动画。
+	稍微该把代码稍微整理一下了
+
+20120522
+	如果画面中出现了同一个图像的gif动画，则canvas中的gif也变成动画
+	DOM元素的show() 和 hide()等函数是jQuery提供的效果
+	w3school有jQuery的所有方法和属性手册，可以参考
+
+20120521
+	HTML5canvas无法播放一个gif动画
+		需要将gif动画分解成序列帧格式，然后用javascript控制播放
+
+
+20120520
+	Hacked  tutorial for basic game framework, includes:
+		gameloop
+		manipulate canvas mousemove show/hide DOM elements
+		fps
+
+	Edk5 SE added
+
+	Future works:
+		a basic map
+		character unit
+		character status UI
+		battle order menu
+		basic animations
+			move
+			attack
+			hurt
+			die
+		basic calculations
+
+	resource load is case sensitive, need to be care about this.
+
+20120518
+	
+	系统基本框架调研 (HTML5 + CSS3 + Javascript)
+		
+		modernizr
+	http://modernizr.com/
+			
+			内嵌了 yepenope
+			
+		sizzle
+		http://sizzlejs.com/
+			内嵌了 jQuery
+	
+	游戏架构调研
+		
+		战斗场景
+			
+			地图
+			
+			人物gif
+				
+				静态
+				
+				走动（四个朝向）
+				
+				攻击
+				
+				防御
+				
+				受伤
+				
+				濒死
+			
+				控制菜单
+			
+				音乐
+			
+				音效
+			
+				基本逻辑
+			
+				敌人AI
+		
+	收集基本素材
+		
+	编写基本逻辑
+		
+	先出prototype，再优化，最后嵌入到框架中
