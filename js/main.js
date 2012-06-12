@@ -3,11 +3,19 @@ var system;
 var GameMain = arc.Class.create(arc.Game, {
 	initialize: function(params) {
 		console.log("GameMain initialize! " + "params.hp : " + params.hp);
-		//var sp = new arc.display.Sprite(system.getImage('img/unit/Unit_mov_1.png'));
+/*
+		var target = new arc.display.Sprite(system.getImage('img/unit/Unit_mov_1.png'));
+		var anim = new arc.anim.Animation(
+			target,
+			{x: 0, y: 0, time: 500},
+			{x: 100, y: 0, time: 1000}
+		);
+
 		//sp.setX(10);
 		//sp.setY(10);
-		//this.addChild(sp);
-/*
+		this.addChild(target);
+
+		anim.play();
 		this.mc = new arc.display.MovieClip(6, true); 
 
 		var mc1 = new arc.display.SheetMovieClip(
@@ -34,7 +42,14 @@ var GameMain = arc.Class.create(arc.Game, {
 		
 		this._d = 0;
 		this.unit = new UnitAnim();
+
+		//var anim = new arc.anim.Animation(
+		//	this.unit,
+		//	{x: 100, y: 0, time: 500}
+		//);
+		//anim.play();
 		this.addChild(this.unit);
+		
 		//this.removeChild(mc);
 		//mc.play(true);
 		//mc.stop(true);
@@ -48,7 +63,6 @@ var GameMain = arc.Class.create(arc.Game, {
 window.addEventListener('DOMContentLoaded', function(e){
 	system = new arc.System(320, 416, 'canvas');
 	system.setGameClass(GameMain, {hp:100, mp:100});
-	//system.setGameClass(UnitAnim, {hp:100, mp:100});
 
 	system.addEventListener(arc.Event.PROGRESS, function(e){
 		console.log(e.loaded + ", " + e.total);
@@ -66,14 +80,14 @@ window.addEventListener('DOMContentLoaded', function(e){
 }, false);
 
 
-var UnitAnim = arc.Class.create(arc.Game, {
+var UnitAnim = arc.Class.create(arc.display.DisplayObjectContainer, {
 	_name: "UnitAnim",
 	_stat: "normal",
 	_direction: "left",
 
 	initialize: function() {
 		// laod resoruce according unit type
-		this.anim_mov = new arc.display.MovieClip(2, true, true); 
+		this.anim_mov = new arc.display.MovieClip(10, true, true); 
 
 		this._move = [];
 		for (var i = 0; i < 3; ++i) {
@@ -82,17 +96,19 @@ var UnitAnim = arc.Class.create(arc.Game, {
 					'img/unit/Unit_mov_1.png', 
 					[48, i * 48, 96, 48]
 				), 
-				48, 2
+				48, 10
 			);
 		}
+
 		this._d = 0;
 		this.anim_mov.addChild(
-			this._move[0], 
+			this._move[2], 
 			{
-				1: {scaleX: 1, scaleY: 1, rotatation: 90}, 
-				2: {scaleX: 1, scaleY: 1}, 
+				1: {}, 
+				2: {}, 
 			}
 		);
+
 		this.addChild(this.anim_mov);
 		this.addEventListener(arc.Event.TOUCH_END, arc.util.bind(this._onClick, this));
 	},
@@ -103,6 +119,14 @@ var UnitAnim = arc.Class.create(arc.Game, {
 	move: function(direction) {
 		this._removeAllChild();
 		this.anim_mov.addChild(this._move[direction], {1:{}, 2:{}});
+
+		var anim = new arc.anim.Animation(
+			this.anim_mov,
+			//{x: 0, y: 0},
+			{x: 100, y: 0, time: 1000}
+		);
+		anim.play();
+
 		this.addChild(this.anim_mov);
 	},
 	stand: function(direction) {
