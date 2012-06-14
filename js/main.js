@@ -41,7 +41,7 @@ var GameMain = arc.Class.create(arc.Game, {
 */
 		
 		this._d = 0;
-		this.unit = new UnitAnim();
+		this.unit = new Unit();
 
 		//var anim = new arc.anim.Animation(
 		//	this.unit,
@@ -80,10 +80,142 @@ window.addEventListener('DOMContentLoaded', function(e){
 }, false);
 
 
-var UnitAnim = arc.Class.create(arc.display.DisplayObjectContainer, {
-	_name: "UnitAnim",
+
+var Matrix = arc.Class.create({
+	_x: 0,
+	_y: 0,
+	_name: "Matrix",
+	_array: [],
+
+	initialize: function(x, y) {
+		this._x = x;
+		this._y = y;
+	},
+	getIndex: function(x, y) {
+		return y * this._y + x + 1;
+	},
+	getXY: function(index) {
+		var y = parseInt(index / this._y);
+		var x = index - y * this._y - 1;
+		return [x, y];
+	},
+	isValidGrid: function(x, y, terrain, unit) {
+		if (x < 0 || x > this._x || y < 0 || y > this._y) {
+			return false;
+		}
+		if (terrain) {
+			// judge terrain
+		}
+		if (unit) {
+			// judge other unit
+		}
+		return true;
+	},
+	setX: function(x) {
+		this._x = x;
+	},
+	setY: function(y) {
+		this._y = y;
+	},
+	getX: function() {
+		return x;
+	},
+	getY: function() {
+		return y;
+	},
+	load: function(matrix) {
+		this._array = matrix;
+	},
+	getNeighbor_4: function(x, y) {
+		var arr = [];
+		if (isValidGrid(x - 1, y)) {
+			arr.push(this.getIndex(x - 1, y));
+		}
+		if (isValidGrid(x + 1, y)) {
+			arr.push(this.getIndex(x + 1, y));
+		}
+		if (isValidGrid(x, y - 1)) {
+			arr.push(this.getIndex(x, y - 1));
+		}
+		if (isValidGrid(x, y + 1)) {
+			arr.push(this.getIndex(x, y + 1));
+		}
+		return arr;
+	},
+	getNeighbor_8: function(x, y) {
+		var arr = [];
+		if (isValidGrid(x - 1, y -1)) {
+			arr.push(this.getIndex(x - 1, y - 1));
+		}
+		if (isValidGrid(x + 1, y + 1)) {
+			arr.push(this.getIndex(x + 1, y + 1));
+		}
+		if (isValidGrid(x - 1, y + 1)) {
+			arr.push(this.getIndex(x - 1, y + 1));
+		}
+		if (isValidGrid(x + 1, y - 1)) {
+			arr.push(this.getIndex(x + 1, y - 1));
+		}
+		return arr;
+	},
+});
+
+var Map = arc.Class.create(arc.display.DisplayObjectContainer, {
+	_name: "Map",
+	_stat: 0,
+	_scroll: 0,
+
+	initialize: function() {
+		// load map
+
+		// regist event listener
+		this.addEventListener(
+			arc.Event.TOUCH_START, 
+			arc.util.bind(this._onTouchStart, this)
+		);
+		this.addEventListener(
+			arc.Event.TOUCH_MOVE, 
+			arc.util.bind(this._onTouchMove, this)
+		);
+		this.addEventListener(
+			arc.Event.TOUCH_END, 
+			arc.util.bind(this._onTouchEnd, this)
+		);
+	},
+
+	this._onTouchStart(e) {
+		this._stat = 1;
+		// do nothing
+	},
+	this._onTouchMove(e) {
+		if (this._stat == 1) {
+			// scroll
+			this._scroll = 1;
+		}
+	},
+	this._onTouchEnd(e) {
+		// if is not from TOUCH_MOVE
+		if (this._scroll == 1) {
+			// scroll end
+			this._scroll = 0;
+		} else {
+			// get target grid info
+		}
+		
+		//
+		this._stat = 0;
+	},
+
+	scroll: function() {
+	},
+});
+
+
+var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
+	_name: "Unit",
 	_stat: "normal",
 	_direction: "left",
+	_map: null,
 
 	initialize: function() {
 		// laod resoruce according unit type
@@ -139,7 +271,6 @@ var UnitAnim = arc.Class.create(arc.display.DisplayObjectContainer, {
 	},
 	power_up: function() {
 	},
-	
 	
 	_onClick: function() {
 		this._d = (this._d + 1) % 3;
