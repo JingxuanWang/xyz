@@ -40,7 +40,6 @@ var GameMain = arc.Class.create(arc.Game, {
 
 		this.mc.addEventListener(arc.Event.TOUCH_END, arc.util.bind(this._onClick, this));
 */
-
 	
 		this._d = 0;
 		this.map = new Map();
@@ -61,6 +60,7 @@ var GameMain = arc.Class.create(arc.Game, {
 	_onClick: function() {
 	},
 	update: function() {
+		//console.log(system.getFps());
 	},
 });
 
@@ -79,16 +79,22 @@ window.addEventListener('DOMContentLoaded', function(e){
 		'img/unit/Unit_atk_1.png',
 		'img/unit/Unit_spc_1.png',
 		'img/map/HM_1.png',
+		'img/pie8.png',
 	]);
 }, false);
 
-var Grid = arc.Class.create({
+var Grid = arc.Class.create(arc.display.DisplayObjectContainer, {
 	_i: 0,
 	_j: 0,
+	_name: "Grid",
 
 	initialize: function(i, j) {
 		this._i = i;
 		this._j = j;
+		this.setX(i * SIZE);
+		this.setY(j * SIZE);
+		//this.setHeight(SIZE);
+		//this.setWidth(SIZE);
 	},
 	set: function(i, j) {
 		this._i = i;
@@ -183,69 +189,64 @@ var Matrix = arc.Class.create({
 	},
 	getAvailGrids: function(x, y, mov) {
 		var grid = new Grid(x, y);
-		grid.mov = 3;
+		grid.mov = mov;
 		grid.stack = [];
 
 		var queue = [];
 		queue.push(grid);
 		
 		var visited = [];
+		visited[grid._j * this.getX() + grid._i] = 1;
 		var movableGrids = [];
 		while(queue.length > 0) {
 			var t = queue.shift();
-			//var tg = new Grid();
-			
-			// remember where we come from
-			//tg.stack = t.stack;
-			//tg.stack.push(t);
-	
+
 			if (t.mov > 0) {
-				// up
-				var tg = new Grid(t._i, t._j - 1);
-				if (this.isValidGrid(tg) && !visited[tg.j * this.getX() + tg.x]) {
-					tg.mov = t.mov - 1;
-					visited[tg.j * this.getX() + tg.x] = 1;
-					queue.push(tg);
-					movableGrids.push(tg);
-					tg.stack = t.stack;
-					tg.stack.push(t);
-					//movableGrids[tg.i][tg.j] = tg;
-					// change color of that tile
+				var gr = [];
+				gr[0] = new Grid(t._i, t._j + 1);
+				gr[1] = new Grid(t._i, t._j - 1);
+				gr[2] = new Grid(t._i - 1, t._j);
+				gr[3] = new Grid(t._i + 1, t._j);
+
+				for (var a = 0; a <= 3; ++a) {
+					var tg = gr[a];
+					if (this.isValidGrid(tg) && !visited[tg._j * this.getX() + tg._i]) {
+						tg.mov = t.mov - 1;
+						visited[tg._j * this.getX() + tg._i] = 1;
+						tg.stack = [];
+						//tg.stack.concat(t.stack);
+						//tg.stack.push(t.stack.slice(0, t.stack.length));
+						for (var b = 0; b < t.stack.length; ++b) {
+							var tmp = new Grid(t.stack[b]._i, t.stack[b]._j);
+							tmp.d = t.stack[b].d;
+							tmp.l = t.stack[b].l;
+							tg.stack.push(tmp);
+						}
+						
+						var len = tg.stack.length;
+						if (len > 0 && tg.stack[len - 1].d == a) {
+							++tg.stack[len - 1].l;
+						} else {
+							var tmp = new Grid(t._i, t._j);
+							tmp.d = a;
+							tmp.l = 1;
+							tg.stack.push(tmp);
+						}
+					
+						/*
+						var tmp = new Grid(t._i, t._j);
+						tmp.d = a;
+						tmp.l = 1;
+						tg.stack.push(tmp);
+						*/
+						//console.log("Grid: "+tg._i+" : "+tg._j+" : "+t.d+" : "+t.l+" | "+t._i+" : "+t._j);
+						//console.log(t.stack);
+						//console.log(tg.stack);
+						queue.push(tg);
+						movableGrids.push(tg);
+					}
 				}
-				// down
-				var tg = new Grid(t._i, t._j + 1);
-				if (this.isValidGrid(tg) && !visited[tg.j * this.getX() + tg.x]) {
-					tg.mov = t.mov - 1;
-					visited[tg.j * this.getX() + tg.x] = 1;
-					queue.push(tg);
-					movableGrids.push(tg);
-					tg.stack = t.stack;
-					tg.stack.push(t);
-					//movableGrids[tg.i][tg.j] = tg;
-				}
-				// left
-				var tg = new Grid(t._i - 1, t._j);
-				if (this.isValidGrid(tg) && !visited[tg.j * this.getX() + tg.x]) {
-					tg.mov = t.mov - 1;
-					visited[tg.j * this.getX() + tg.x] = 1;
-					queue.push(tg);
-					movableGrids.push(tg);
-					tg.stack = t.stack;
-					tg.stack.push(t);
-					//movableGrids[tg.i][tg.j] = tg;
-				}
-				// right
-				var tg = new Grid(t._i + 1, t._j);
-				if (this.isValidGrid(tg) && !visited[tg.j * this.getX() + tg.x]) {
-					tg.mov = t.mov - 1;
-					visited[tg.j * this.getX() + tg.x] = 1;
-					queue.push(tg);
-					movableGrids.push(tg);
-					tg.stack = t.stack;
-					tg.stack.push(t);
-					//movableGrids[tg.i][tg.j] = tg;
-				}
-			}
+			}	
 		}
 		return movableGrids;
 	},
@@ -321,6 +322,7 @@ var Map = arc.Class.create(arc.display.DisplayObjectContainer, {
 	},
 	showAvailGrids: function(unit) {
 		// get avail grids
+		this.avail_grids = [];
 		var avail_grids = this._matrix.getAvailGrids(
 			parseInt(unit.getX() / SIZE), 
 			parseInt(unit.getY() / SIZE),
@@ -328,15 +330,40 @@ var Map = arc.Class.create(arc.display.DisplayObjectContainer, {
 		);
 
 		// add shader click listener
+		for (var i = 0; i < avail_grids.length; ++i) {
+			var shader = new arc.display.Sprite(
+				system.getImage('img/pie8.png')
+			);
+			var grid = avail_grids[i];
+			//console.log(grid.stack);
+			//shader.setX(grid._i * SIZE);
+			//shader.setY(grid._j * SIZE);
+			grid.addChild(shader);
+			grid.addEventListener(
+				arc.Event.TOUCH_END, 
+				arc.util.bind(unit._onMoveStart, unit)
+			);
+			this.addChild(grid);
+			this.avail_grids.push(grid);
+		}
+
+		//console.log(avail_grids);
+
 		// add grid shader 
 		this._ct_unit = unit;
+	},
+	clearAvailGrids: function() {
+		for (var i = 0; i < this.avail_grids.length; ++i) {
+			this.removeChild(this.avail_grids[i]);
+		}
+		this.avail_grids = [];
 	},
 });
 
 var Attr = arc.Class.create({
 	_name: "Attr",
 	initialize: function() {
-		console.log("attr initialized");
+		//console.log("attr initialized");
 	},
 });
 
@@ -350,17 +377,29 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 	initialize: function(map, i, j, d) {
 		// for future use
 		this._attr = new Attr();
+		this._moveStack = [];
 
 		this._map = map
 		this._d = d;
 		this.setX(i * SIZE);
 		this.setY(j * SIZE);
 		// laod resoruce according unit type
-		this.anim_mov = new arc.display.MovieClip(2, true, true); 
+		this.anim_mov = new arc.display.MovieClip(4, true, true); 
+		this.anim_stand = new arc.display.MovieClip(2, true, true); 
 
+		this._stand = [];
 		this._move = [];
 		for (var i = 0; i <= 3; ++i) {
 			this._move[i] = new arc.display.SheetMovieClip(
+				system.getImage(
+					'img/unit/Unit_mov_1.png', 
+					[48, i * 48, 96, 48]
+				), 
+				48, 4
+			);
+		}
+		for (var i = 0; i <= 3; ++i) {
+			this._stand[i] = new arc.display.SheetMovieClip(
 				system.getImage(
 					'img/unit/Unit_mov_1.png', 
 					[48, i * 48, 96, 48]
@@ -369,24 +408,33 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 			);
 		}
 
-		this.anim_mov.addChild(
-			this._move[this._d], 
+		this.anim_stand.addChild(
+			this._stand[this._d], 
 			{
 				1: {}, 
-				2: {}, 
+				2: {},
 			}
 		);
-		this.addChild(this.anim_mov);
+
+		this.addChild(this.anim_stand);
 		this.addEventListener(arc.Event.TOUCH_END, arc.util.bind(this._onClick, this));
 	},
 
 	// animations with direction
 	attack: function(direction) {
 	},
-	move: function(direction, length) {
+	stand: function() {
 		this._removeAllChild();
+		this.anim_stand.addChild(this._stand[this._d], {1:{}, 2:{}});
+		this.addChild(this.anim_stand);
+	},
+	move: function(direction, length) {
+		console.log("move ("+direction+","+length+")");
+		this._removeAllChild();
+		//this.anim_mov.addChild(this._move[direction], {1:{}, 2:{}, 3:{}, 4:{}});
 		this.anim_mov.addChild(this._move[direction], {1:{}, 2:{}});
-		
+		this._d = direction;
+
 		var cx = this.getX();
 		var cy = this.getY();
 	
@@ -406,7 +454,7 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 		var anim = new arc.anim.Animation(
 			this.anim_mov,
 			//{x: tx - cx, y: ty - cy},
-			{x: tx - cx, y: ty - cy, time: 1000}
+			{x: tx - cx, y: ty - cy, time: 500 * length}
 		);
 		
 		this.tx = tx;
@@ -420,15 +468,32 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 		this.addChild(this.anim_mov);
 	},
 
+	_onMoveStart: function(e) {
+		var stack = e.target.stack;
+		//console.log(stack);
+		this._moveStack = stack;
+		this.nextMove();
+	},
 	_onMoveComplete: function() {
 		this.setX(this.tx);
 		this.setY(this.ty);
 		this.anim_mov.setX(0);
 		this.anim_mov.setY(0);
-		console.log(this.tx + " : " + this.ty);
+		//console.log(this.tx + " : " + this.ty);
+		this.nextMove();	
 	},
 
-	stand: function(direction) {
+	nextMove: function() {
+		//console.log("nextMove called");
+		if (this._moveStack.length > 0) {
+			var next_move = this._moveStack.shift();
+			//console.log(next_move);
+			this.move(next_move.d, next_move.l);
+		} else {
+			this.stand();
+			this._map.clearAvailGrids();
+			//this.showMenu();
+		}
 	},
 
 	// animations without direction
@@ -441,7 +506,7 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 	
 	_onClick: function() {
 		this._d = (this._d + 1) % 4;
-		this.move(this._d, 3);
+		//this.move(this._d, 3);
 		this._map.showAvailGrids(this);
 	},
 	getMap: function() {
