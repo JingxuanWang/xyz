@@ -80,6 +80,8 @@ window.addEventListener('DOMContentLoaded', function(e){
 		'img/unit/Unit_spc_1.png',
 		'img/map/HM_1.png',
 		'img/pie8.png',
+		'img/atk.png',
+		'img/mov.png',
 	]);
 }, false);
 
@@ -104,6 +106,23 @@ var Grid = arc.Class.create(arc.display.DisplayObjectContainer, {
 		return [this._i, this._j];
 	}
 });
+
+// UI
+var Button = arc.Class.create(arc.display.DisplayObjectContainer, {
+	_name: "Button",
+	_map: null,
+	initialize: function(x, y, map, sprite) {
+		this.setX(x);
+		this.setY(y);
+		this._map = map;
+		this.addChild(sprite);
+		this._map.addChild(this);
+	},
+	_onClick: function() {
+		console.log("Button._onClick called");	
+	},
+});
+
 
 var Matrix = arc.Class.create({
 	_x: 0,
@@ -258,6 +277,7 @@ var Map = arc.Class.create(arc.display.DisplayObjectContainer, {
 	_stat: 0,
 	_scroll: 0,
 	_units: [],
+	_buttons: [],
 	_matrix: null,
 	_ct_unit: null,
 
@@ -358,6 +378,12 @@ var Map = arc.Class.create(arc.display.DisplayObjectContainer, {
 		}
 		this.avail_grids = [];
 	},
+	clearMenu: function() {
+		for (var i = 0; i < this._buttons.length; ++i) {
+			this.removeChild(this._buttons[i]);
+		}
+		this._buttons = [];
+	},
 });
 
 var Attr = arc.Class.create({
@@ -369,8 +395,8 @@ var Attr = arc.Class.create({
 
 var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 	_name: "Unit",
-	_stat: "normal",
-	_direction: "left",
+	_stat: 0,
+	_d: 0,
 	_map: null,
 	_attr: null,
 
@@ -386,9 +412,11 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 		// laod resoruce according unit type
 		this.anim_mov = new arc.display.MovieClip(4, true, true); 
 		this.anim_stand = new arc.display.MovieClip(2, true, true); 
+		this.anim_attack = new arc.display.MovieClip(4, false, false);
 
 		this._stand = [];
 		this._move = [];
+		this._attack = [];
 		for (var i = 0; i <= 3; ++i) {
 			this._move[i] = new arc.display.SheetMovieClip(
 				system.getImage(
@@ -407,6 +435,16 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 				48, 2
 			);
 		}
+		for (var i = 0; i <= 3; ++i) {
+			this._attack[i] = new arc.display.SheetMovieClip(
+				system.getImage(
+					'img/unit/Unit_atk_1.png', 
+					[0, i * 64, 256, 64]
+				), 
+				64, 8
+			);
+		}
+
 
 		this.anim_stand.addChild(
 			this._stand[this._d], 
@@ -421,7 +459,23 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 	},
 
 	// animations with direction
-	attack: function(direction) {
+	attack: function() {
+		this._removeAllChild();
+		this.anim_attack.addChild(
+			this._attack[this._d],
+			{
+				1: {},
+				2: {},
+				3: {},
+				4: {},
+			}
+		);
+		this.addChild(this.anim_attack);
+		this._attack[this._d].addEventListener(
+			arc.Event.COMPLETE,
+			arc.util.bind(this.stand, this)
+		);
+		this.anim_attack.gotoAndPlay(1);
 	},
 	stand: function() {
 		this._removeAllChild();
@@ -469,6 +523,10 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 	},
 
 	_onMoveStart: function(e) {
+		if (this._stat > 200) {
+			return;
+		}
+		this._stat = 201;
 		var stack = e.target.stack;
 		//console.log(stack);
 		this._moveStack = stack;
@@ -492,8 +550,23 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 		} else {
 			this.stand();
 			this._map.clearAvailGrids();
+			this._stat = 0;
 			//this.showMenu();
 		}
+	},
+
+	prepareMove: function() {
+		if (this._stat != 100) {
+			return;
+		}
+		this._map.clearMenu();
+		this._map.showAvailGrids(this);
+		this._stat = 200;
+	},
+	prepareAttack: function() {
+		this._map.clearMenu();
+		this.attack();
+		this._stat = 0;
 	},
 
 	// animations without direction
@@ -505,9 +578,35 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 	},
 	
 	_onClick: function() {
-		this._d = (this._d + 1) % 4;
+		if (this._stat > 0) {
+			return;
+		}
+		
+		//this._d = (this._d + 1) % 4;
 		//this.move(this._d, 3);
-		this._map.showAvailGrids(this);
+		var button_atk = new Button(
+			this.getX() - 30, this.getY(),
+			this._map,
+			new arc.display.Sprite(system.getImage('img/atk.png'))
+		);
+		var button_mov = new Button(
+			this.getX() + 50, this.getY(),
+			this._map,
+			new arc.display.Sprite(system.getImage('img/mov.png'))
+		);
+		button_mov.addEventListener(
+			arc.Event.TOUCH_END, 
+			arc.util.bind(this.prepareMove, this)
+		);
+		button_atk.addEventListener(
+			arc.Event.TOUCH_END, 
+			arc.util.bind(this.prepareAttack, this)
+		);
+		this._map._buttons.push(button_mov);
+		this._map._buttons.push(button_atk);
+		
+		// be selected
+		this._stat = 100;
 	},
 	getMap: function() {
 		return this._map;
