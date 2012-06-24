@@ -412,11 +412,13 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 		// laod resoruce according unit type
 		this.anim_mov = new arc.display.MovieClip(4, true, true); 
 		this.anim_stand = new arc.display.MovieClip(2, true, true); 
-		this.anim_attack = new arc.display.MovieClip(4, false, false);
+		//this.anim_preAttack = new arc.display.MovieClip(2, false, false);
+		this.anim_attack = new arc.display.MovieClip(8, false, false);
 
 		this._stand = [];
 		this._move = [];
 		this._attack = [];
+		this._pattack = [];
 		for (var i = 0; i <= 3; ++i) {
 			this._move[i] = new arc.display.SheetMovieClip(
 				system.getImage(
@@ -444,6 +446,15 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 				64, 8
 			);
 		}
+		for (var i = 0; i <= 3; ++i) {
+			this._pattack[i] = new arc.display.SheetMovieClip(
+				system.getImage(
+					'img/unit/Unit_atk_1.png', 
+					[0, i * 64, 64, 64]
+				), 
+				64, 8, false, true
+			);
+		}
 
 
 		this.anim_stand.addChild(
@@ -460,14 +471,24 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 
 	// animations with direction
 	attack: function() {
+		this.anim_attack._removeAllChild();
 		this._removeAllChild();
+		this._attack[this._d].gotoAndStop(1);
+		this._pattack[this._d].gotoAndStop(1);
+		this.anim_attack.addChild(
+			this._pattack[this._d],
+			{
+				1: {visible: true},
+				5: {visible: false},
+			}
+		);
 		this.anim_attack.addChild(
 			this._attack[this._d],
 			{
-				1: {},
-				2: {},
-				3: {},
-				4: {},
+				5: {},
+				6: {},
+				7: {},
+				8: {},
 			}
 		);
 		this.addChild(this.anim_attack);
