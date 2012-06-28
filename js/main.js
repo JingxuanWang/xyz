@@ -496,6 +496,8 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 			arc.Event.COMPLETE,
 			arc.util.bind(this.stand, this)
 		);
+		this.anim_attack.setX(-8);
+		this.anim_attack.setY(-8);
 		this.anim_attack.gotoAndPlay(1);
 	},
 	stand: function() {
