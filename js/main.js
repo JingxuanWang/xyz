@@ -1,88 +1,33 @@
 var system;
-var SIZE = 48;
-var MERGIN = 8;
+var CONFIG;
 
 var GameMain = arc.Class.create(arc.Game, {
 	initialize: function(params) {
-/*
-		var target = new arc.display.Sprite(system.getImage('img/unit/Unit_mov_1.png'));
-		var anim = new arc.anim.Animation(
-			target,
-			{x: 0, y: 0, time: 500},
-			{x: 100, y: 0, time: 1000}
-		);
 
-		//sp.setX(10);
-		//sp.setY(10);
-		this.addChild(target);
-
-		anim.play();
-		this.mc = new arc.display.MovieClip(6, true); 
-
-		var mc1 = new arc.display.SheetMovieClip(
-			this._system.getImage('../../output/Unit_mov_1.png', [48, 0, 96, 48]), 
-			48, 2
-		);
-		var mc2 = new arc.display.SheetMovieClip(
-			this._system.getImage('../../output/Unit_atk_1.png', [0, 0, 256, 64]), 
-			64, 4
-		);
-		this.mc.addChild(mc1, {
-			5 : {x:8, y:8, scaleX: 1, scaleY: 1},
-			6 : {x:8, y:8, scaleX: 1, scaleY: 1},
-		});
-		this.mc.addChild(mc2, {
-			1 : {x:0, y:0, scaleX: 1, scaleY: 1},
-			2 : {x:0, y:0, scaleX: 1, scaleY: 1},
-			3 : {x:0, y:0, scaleX: 1, scaleY: 1},
-			4 : {x:0, y:0, scaleX: 1, scaleY: 1},
-		});
-
-		this.mc.addEventListener(arc.Event.TOUCH_END, arc.util.bind(this._onClick, this));
-*/
-	
-		this._d = 0;
 		this.map = new Map();
-		//this.unit = new Unit();
-
-		//var anim = new arc.anim.Animation(
-		//	this.unit,
-		//	{x: 100, y: 0, time: 500}
-		//);
-		//anim.play();
 		this.addChild(this.map);
-		//this.addChild(this.unit);
-		
-		//this.removeChild(mc);
-		//mc.play(true);
-		//mc.stop(true);
 	},
-	_onClick: function() {
-	},
+
 	update: function() {
 		//console.log(system.getFps());
 	},
 });
 
 window.addEventListener('DOMContentLoaded', function(e){
-	system = new arc.System(960, 960, 'canvas');
-	system.setGameClass(GameMain, {hp:100, mp:100});
-
-	system.addEventListener(arc.Event.PROGRESS, function(e){
+	var ajax = new arc.Ajax();
+	ajax.addEventListener(arc.Event.COMPLETE, function() {
+		CONFIG = ajax.getResponseJSON();
+		system = new arc.System(
+			CONFIG.const.system.width, 
+			CONFIG.const.system.height, 
+			'canvas'
+		);
+		system.setGameClass(GameMain);
+		system.addEventListener(arc.Event.PROGRESS, function(e){});
+		system.addEventListener(arc.Event.COMPLETE, function(e){});
+		system.load(CONFIG.image);
 	});
-	
-	system.addEventListener(arc.Event.COMPLETE, function(e){
-	});
-	
-	system.load([
-		'img/unit/Unit_mov_1.png',
-		'img/unit/Unit_atk_1.png',
-		'img/unit/Unit_spc_1.png',
-		'img/map/HM_1.png',
-		'img/pie8.png',
-		'img/atk.png',
-		'img/mov.png',
-	]);
+	ajax.load('js/data.json');
 }, false);
 
 var Grid = arc.Class.create(arc.display.DisplayObjectContainer, {
@@ -93,10 +38,10 @@ var Grid = arc.Class.create(arc.display.DisplayObjectContainer, {
 	initialize: function(i, j) {
 		this._i = i;
 		this._j = j;
-		this.setX(i * SIZE);
-		this.setY(j * SIZE);
-		//this.setHeight(SIZE);
-		//this.setWidth(SIZE);
+		this.setX(i * CONFIG.const.SIZE);
+		this.setY(j * CONFIG.const.SIZE);
+		//this.setHeight(CONFIG.const.SIZE);
+		//this.setWidth(CONFIG.const.SIZE);
 	},
 	set: function(i, j) {
 		this._i = i;
@@ -122,7 +67,6 @@ var Button = arc.Class.create(arc.display.DisplayObjectContainer, {
 		console.log("Button._onClick called");	
 	},
 });
-
 
 var Matrix = arc.Class.create({
 	_x: 0,
@@ -283,17 +227,18 @@ var Map = arc.Class.create(arc.display.DisplayObjectContainer, {
 
 	initialize: function() {
 		// load map
-		this._matrix = new Matrix(this, 15, 15);
+		this._matrix = new Matrix(this, CONFIG.map.width, CONFIG.map.height);
 		
 		var _map = new arc.display.Sprite(system.getImage('img/map/HM_1.png'));
 		this.addChild(_map);
 
-
-		// assign units
-		var unit = new Unit(this, 9, 9, 0);
-		this.addChild(unit);
-		this._units.push(unit);
-		
+		for (var i = 0; i < CONFIG.map.unit.length; ++i) {
+			var unit_conf = CONFIG.map.unit[i];
+			// assign units
+			var unit = new Unit(this, unit_conf);
+			this.addChild(unit);
+			this._units.push(unit);
+		}
 
 		// regist event listener
 		this.addEventListener(
@@ -344,8 +289,8 @@ var Map = arc.Class.create(arc.display.DisplayObjectContainer, {
 		// get avail grids
 		this.avail_grids = [];
 		var avail_grids = this._matrix.getAvailGrids(
-			parseInt(unit.getX() / SIZE), 
-			parseInt(unit.getY() / SIZE),
+			parseInt(unit.getX() / CONFIG.const.SIZE), 
+			parseInt(unit.getY() / CONFIG.const.SIZE),
 			unit.getMov()
 		);
 
@@ -356,8 +301,8 @@ var Map = arc.Class.create(arc.display.DisplayObjectContainer, {
 			);
 			var grid = avail_grids[i];
 			//console.log(grid.stack);
-			//shader.setX(grid._i * SIZE);
-			//shader.setY(grid._j * SIZE);
+			//shader.setX(grid._i * CONFIG.const.SIZE);
+			//shader.setY(grid._j * CONFIG.const.SIZE);
 			grid.addChild(shader);
 			grid.addEventListener(
 				arc.Event.TOUCH_END, 
@@ -400,15 +345,15 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 	_map: null,
 	_attr: null,
 
-	initialize: function(map, i, j, d) {
+	initialize: function(map, unit_conf) {
 		// for future use
 		this._attr = new Attr();
 		this._moveStack = [];
 
 		this._map = map
-		this._d = d;
-		this.setX(i * SIZE);
-		this.setY(j * SIZE);
+		this._d = unit_conf.d;
+		this.setX(unit_conf.i * CONFIG.const.SIZE);
+		this.setY(unit_conf.j * CONFIG.const.SIZE);
 		// laod resoruce according unit type
 		this.anim_mov = new arc.display.MovieClip(4, true, true); 
 		this.anim_stand = new arc.display.MovieClip(2, true, true); 
@@ -422,7 +367,7 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 		for (var i = 0; i <= 3; ++i) {
 			this._move[i] = new arc.display.SheetMovieClip(
 				system.getImage(
-					'img/unit/Unit_mov_1.png', 
+					unit_conf.img_mov, 
 					[48, i * 48, 96, 48]
 				), 
 				48, 4
@@ -431,7 +376,7 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 		for (var i = 0; i <= 3; ++i) {
 			this._stand[i] = new arc.display.SheetMovieClip(
 				system.getImage(
-					'img/unit/Unit_mov_1.png', 
+					unit_conf.img_mov, 
 					[48, i * 48, 96, 48]
 				), 
 				48, 2
@@ -440,7 +385,7 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 		for (var i = 0; i <= 3; ++i) {
 			this._attack[i] = new arc.display.SheetMovieClip(
 				system.getImage(
-					'img/unit/Unit_atk_1.png', 
+					unit_conf.img_atk, 
 					[0, i * 64, 256, 64]
 				), 
 				64, 8
@@ -449,13 +394,12 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 		for (var i = 0; i <= 3; ++i) {
 			this._pattack[i] = new arc.display.SheetMovieClip(
 				system.getImage(
-					'img/unit/Unit_atk_1.png', 
+					unit_conf.img_atk, 
 					[0, i * 64, 64, 64]
 				), 
 				64, 8, false, true
 			);
 		}
-
 
 		this.anim_stand.addChild(
 			this._stand[this._d], 
@@ -496,8 +440,8 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 			arc.Event.COMPLETE,
 			arc.util.bind(this.stand, this)
 		);
-		this.anim_attack.setX(-8);
-		this.anim_attack.setY(-8);
+		this.anim_attack.setX(-1 * CONFIG.const.MERGIN);
+		this.anim_attack.setY(-1 * CONFIG.const.MERGIN);
 		this.anim_attack.gotoAndPlay(1);
 	},
 	stand: function() {
@@ -519,13 +463,13 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 		var ty = cy;
 
 		if (direction == 0) {
-			ty += length * SIZE;
+			ty += length * CONFIG.const.SIZE;
 		} else if (direction == 1) {
-			ty -= length * SIZE;
+			ty -= length * CONFIG.const.SIZE;
 		} else if (direction == 2) {
-			tx -= length * SIZE;
+			tx -= length * CONFIG.const.SIZE;
 		} else if (direction == 3) {
-			tx += length * SIZE;
+			tx += length * CONFIG.const.SIZE;
 		}
 
 		var anim = new arc.anim.Animation(

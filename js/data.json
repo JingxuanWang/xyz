@@ -1,0 +1,49 @@
+{
+    "const" : {
+		"SIZE" : 48,
+		"MERGIN" : 8,
+		"system" : {
+			"width" : 960,
+			"height" : 960
+		}
+	},
+    "map" : {
+		"width" : 20,
+		"height" : 20,
+		"image" : "img/map/HM_1.png",
+		"unit" : [
+			{
+				"i" : 9,
+				"j" : 9,
+				"d" : 0,
+				"img_atk" : "img/unit/Unit_atk_1.png",	
+				"img_mov" : "img/unit/Unit_mov_1.png",	
+				"img_spc" : "img/unit/Unit_spc_1.png"
+			},
+			{
+				"i" : 10,
+				"j" : 10,
+				"d" : 3,
+				"img_atk" : "img/unit/Unit_atk_11.png",	
+				"img_mov" : "img/unit/Unit_mov_11.png",	
+				"img_spc" : "img/unit/Unit_spc_11.png"
+			}
+		]
+	},
+	"ui" : {
+		"img_menu_atk" : "img/atk.png",
+		"img_menu_mov" : "img/mov.png"
+	},
+	"image" : [
+		"img/unit/Unit_mov_1.png",
+		"img/unit/Unit_atk_1.png",
+		"img/unit/Unit_spc_1.png",
+		"img/unit/Unit_mov_11.png",
+		"img/unit/Unit_atk_11.png",
+		"img/unit/Unit_spc_11.png",
+		"img/map/HM_1.png",
+		"img/pie8.png",
+		"img/atk.png",
+		"img/mov.png"
+	]
+}
