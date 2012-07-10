@@ -317,6 +317,36 @@ var Map = arc.Class.create(arc.display.DisplayObjectContainer, {
 		// add grid shader 
 		this._ct_unit = unit;
 	},
+	showAttackRange: function(unit) {
+		// get avail grids
+		this.avail_grids = [];
+
+		// TODO: this will be changed
+		var avail_grids = this._matrix.getAvailGrids(
+			parseInt(unit.getX() / CONFIG.const.SIZE), 
+			parseInt(unit.getY() / CONFIG.const.SIZE),
+			unit.getAtkRng()
+		);
+
+		// add shader click listener
+		for (var i = 0; i < avail_grids.length; ++i) {
+			var shader = new arc.display.Sprite(
+				system.getImage('img/pie8.png')
+			);
+			var grid = avail_grids[i];
+			grid.addChild(shader);
+			grid.addEventListener(
+				arc.Event.TOUCH_END, 
+				arc.util.bind(unit._onAttackStart, unit)
+			);
+			this.addChild(grid);
+			this.avail_grids.push(grid);
+		}
+
+		// add grid shader 
+		this._ct_unit = unit;
+	},
+
 	clearAvailGrids: function() {
 		for (var i = 0; i < this.avail_grids.length; ++i) {
 			this.removeChild(this.avail_grids[i]);
@@ -333,8 +363,27 @@ var Map = arc.Class.create(arc.display.DisplayObjectContainer, {
 
 var Attr = arc.Class.create({
 	_name: "Attr",
-	initialize: function() {
+	hp: 0,
+	mp: 0,
+	atk: 0,
+	def: 0,
+	intl: 0,
+	dex: 0,
+	mor: 0,
+	mov: 0,
+	rng: 0,
+	
+	initialize: function(attr) {
 		//console.log("attr initialized");
+		this.hp = attr.hp;
+		this.mp = attr.mp;
+		this.atk = attr.atk;
+		this.def = attr.def;
+		this.intl = attr.intl;
+		this.dex = attr.dex;
+		this.mor = attr.mor;
+		this.mov = attr.mov;
+		this.rng = attr.rng;
 	},
 });
 
@@ -346,14 +395,18 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 	_attr: null,
 
 	initialize: function(map, unit_conf) {
+		var attr = unit_conf.attr;
+		var position = unit_conf.position;
+		var resource = unit_conf.resource;
+		
 		// for future use
-		this._attr = new Attr();
+		this._attr = new Attr(attr);
 		this._moveStack = [];
 
-		this._map = map
-		this._d = unit_conf.d;
-		this.setX(unit_conf.i * CONFIG.const.SIZE);
-		this.setY(unit_conf.j * CONFIG.const.SIZE);
+		this._map = map;
+		this._d = position.d;
+		this.setX(position.i * CONFIG.const.SIZE);
+		this.setY(position.j * CONFIG.const.SIZE);
 		// laod resoruce according unit type
 		this.anim_mov = new arc.display.MovieClip(4, true, true); 
 		this.anim_stand = new arc.display.MovieClip(2, true, true); 
@@ -367,7 +420,7 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 		for (var i = 0; i <= 3; ++i) {
 			this._move[i] = new arc.display.SheetMovieClip(
 				system.getImage(
-					unit_conf.img_mov, 
+					resource.img_mov, 
 					[48, i * 48, 96, 48]
 				), 
 				48, 4
@@ -376,7 +429,7 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 		for (var i = 0; i <= 3; ++i) {
 			this._stand[i] = new arc.display.SheetMovieClip(
 				system.getImage(
-					unit_conf.img_mov, 
+					resource.img_mov, 
 					[48, i * 48, 96, 48]
 				), 
 				48, 2
@@ -385,7 +438,7 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 		for (var i = 0; i <= 3; ++i) {
 			this._attack[i] = new arc.display.SheetMovieClip(
 				system.getImage(
-					unit_conf.img_atk, 
+					resource.img_atk, 
 					[0, i * 64, 256, 64]
 				), 
 				64, 8
@@ -394,7 +447,7 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 		for (var i = 0; i <= 3; ++i) {
 			this._pattack[i] = new arc.display.SheetMovieClip(
 				system.getImage(
-					unit_conf.img_atk, 
+					resource.img_atk, 
 					[0, i * 64, 64, 64]
 				), 
 				64, 8, false, true
@@ -413,41 +466,78 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 		this.addEventListener(arc.Event.TOUCH_END, arc.util.bind(this._onClick, this));
 	},
 
-	// animations with direction
-	attack: function() {
-		this.anim_attack._removeAllChild();
-		this._removeAllChild();
-		this._attack[this._d].gotoAndStop(1);
-		this._pattack[this._d].gotoAndStop(1);
-		this.anim_attack.addChild(
-			this._pattack[this._d],
-			{
-				1: {visible: true},
-				5: {visible: false},
-			}
+	// while unit is clicked 
+	// show menu
+	_onClick: function() {
+		if (this._stat > 0) {
+			return;
+		}
+		
+		//this._d = (this._d + 1) % 4;
+		//this.move(this._d, 3);
+		var button_atk = new Button(
+			this.getX() - 30, this.getY(),
+			this._map,
+			new arc.display.Sprite(system.getImage('img/atk.png'))
 		);
-		this.anim_attack.addChild(
-			this._attack[this._d],
-			{
-				5: {},
-				6: {},
-				7: {},
-				8: {},
-			}
+		var button_mov = new Button(
+			this.getX() + 50, this.getY(),
+			this._map,
+			new arc.display.Sprite(system.getImage('img/mov.png'))
 		);
-		this.addChild(this.anim_attack);
-		this._attack[this._d].addEventListener(
-			arc.Event.COMPLETE,
-			arc.util.bind(this.stand, this)
+		button_mov.addEventListener(
+			arc.Event.TOUCH_END, 
+			arc.util.bind(this.prepareMove, this)
 		);
-		this.anim_attack.setX(-1 * CONFIG.const.MERGIN);
-		this.anim_attack.setY(-1 * CONFIG.const.MERGIN);
-		this.anim_attack.gotoAndPlay(1);
+		button_atk.addEventListener(
+			arc.Event.TOUCH_END, 
+			arc.util.bind(this.prepareAttack, this)
+		);
+		this._map._buttons.push(button_mov);
+		this._map._buttons.push(button_atk);
+		
+		// be selected
+		this._stat = 100;
 	},
-	stand: function() {
-		this._removeAllChild();
-		this.anim_stand.addChild(this._stand[this._d], {1:{}, 2:{}});
-		this.addChild(this.anim_stand);
+
+
+	// ------------------
+	// move functions
+	// ------------------
+
+	// prepare to move
+	// this is the entrance of UNIT MOVE
+	prepareMove: function() {
+		if (this._stat != 100) {
+			return;
+		}
+		this._map.clearMenu();
+		this._map.showAvailGrids(this);
+		this._stat = 200;
+	},
+
+	_onMoveStart: function(e) {
+		if (this._stat > 200) {
+			return;
+		}
+		this._stat = 201;
+		var stack = e.target.stack;
+		//console.log(stack);
+		this._moveStack = stack;
+		this.nextMove();
+	},
+	nextMove: function() {
+		//console.log("nextMove called");
+		if (this._moveStack.length > 0) {
+			var next_move = this._moveStack.shift();
+			//console.log(next_move);
+			this.move(next_move.d, next_move.l);
+		} else {
+			this.stand();
+			this._map.clearAvailGrids();
+			this._stat = 0;
+			//this.showMenu();
+		}
 	},
 	move: function(direction, length) {
 		console.log("move ("+direction+","+length+")");
@@ -488,17 +578,6 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 		);
 		this.addChild(this.anim_mov);
 	},
-
-	_onMoveStart: function(e) {
-		if (this._stat > 200) {
-			return;
-		}
-		this._stat = 201;
-		var stack = e.target.stack;
-		//console.log(stack);
-		this._moveStack = stack;
-		this.nextMove();
-	},
 	_onMoveComplete: function() {
 		this.setX(this.tx);
 		this.setY(this.ty);
@@ -508,33 +587,90 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 		this.nextMove();	
 	},
 
-	nextMove: function() {
-		//console.log("nextMove called");
-		if (this._moveStack.length > 0) {
-			var next_move = this._moveStack.shift();
-			//console.log(next_move);
-			this.move(next_move.d, next_move.l);
-		} else {
-			this.stand();
-			this._map.clearAvailGrids();
-			this._stat = 0;
-			//this.showMenu();
-		}
-	},
 
-	prepareMove: function() {
-		if (this._stat != 100) {
-			return;
-		}
-		this._map.clearMenu();
-		this._map.showAvailGrids(this);
-		this._stat = 200;
-	},
+	// -------------------------
+	// attack functions
+	// -------------------------
+
+	// prepare to attack
+	// this is the entrance of UNIT ATTACK
 	prepareAttack: function() {
 		this._map.clearMenu();
-		this.attack();
+		this._map.showAttackRange(this);
 		this._stat = 0;
 	},
+	_onAttackStart: function(e) {
+		if (this._stat > 200) {
+			return;
+		}
+		this._stat = 201;
+		
+		var t = e.target;
+		var d = 0;
+		
+		if (t.getX() > this.getX()) {
+			d = 3;
+		} 
+		else if (t.getX() < this.getX()) {
+			d = 2;
+		}
+		else if (t.getY() < this.getY()) {
+			d = 1;
+		}
+		this._map.clearAvailGrids();
+		this.attack(d);
+	},
+
+
+	attack: function(direction) {
+		this._d = direction;
+
+		this.anim_attack._removeAllChild();
+		this._removeAllChild();
+		this._attack[this._d].gotoAndStop(1);
+		this._pattack[this._d].gotoAndStop(1);
+		this.anim_attack.addChild(
+			this._pattack[this._d],
+			{
+				1: {visible: true},
+				5: {visible: false},
+			}
+		);
+		this.anim_attack.addChild(
+			this._attack[this._d],
+			{
+				5: {},
+				6: {},
+				7: {},
+				8: {},
+			}
+		);
+		this.addChild(this.anim_attack);
+		this._attack[this._d].addEventListener(
+			arc.Event.COMPLETE,
+			//arc.util.bind(this.stand, this)
+			arc.util.bind(this._onAttackComplete, this)
+		);
+		this.anim_attack.setX(-1 * CONFIG.const.MERGIN);
+		this.anim_attack.setY(-1 * CONFIG.const.MERGIN);
+		this.anim_attack.gotoAndPlay(1);
+	},
+	_onAttackComplete: function() {
+		// enemy hurt animation
+		// ...callback
+		// enemy hp/mp change animation
+		// ...callback
+		this.stand();	
+	},
+
+
+	stand: function() {
+		this._removeAllChild();
+		this.anim_stand.addChild(this._stand[this._d], {1:{}, 2:{}});
+		this.addChild(this.anim_stand);
+	},
+
+
 
 	// animations without direction
 	hurt: function() {
@@ -544,37 +680,6 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 	power_up: function() {
 	},
 	
-	_onClick: function() {
-		if (this._stat > 0) {
-			return;
-		}
-		
-		//this._d = (this._d + 1) % 4;
-		//this.move(this._d, 3);
-		var button_atk = new Button(
-			this.getX() - 30, this.getY(),
-			this._map,
-			new arc.display.Sprite(system.getImage('img/atk.png'))
-		);
-		var button_mov = new Button(
-			this.getX() + 50, this.getY(),
-			this._map,
-			new arc.display.Sprite(system.getImage('img/mov.png'))
-		);
-		button_mov.addEventListener(
-			arc.Event.TOUCH_END, 
-			arc.util.bind(this.prepareMove, this)
-		);
-		button_atk.addEventListener(
-			arc.Event.TOUCH_END, 
-			arc.util.bind(this.prepareAttack, this)
-		);
-		this._map._buttons.push(button_mov);
-		this._map._buttons.push(button_atk);
-		
-		// be selected
-		this._stat = 100;
-	},
 	getMap: function() {
 		return this._map;
 	},
@@ -583,7 +688,10 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 	getNeighbor_8: function() {
 	},
 	getMov: function() {
-		return 3;
+		return this._attr.mov;
 	},
+	getAtkRng: function() {
+		return this._attr.rng;
+	}
 });
 
