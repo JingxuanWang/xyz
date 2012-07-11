@@ -1,5 +1,12 @@
+// system that manipulate canvas
 var system;
+
+// configuration
 var CONFIG;
+
+// game status
+// avoid unit action at the same time
+var STAT = 0;
 
 var GameMain = arc.Class.create(arc.Game, {
 	initialize: function(params) {
@@ -224,6 +231,7 @@ var Map = arc.Class.create(arc.display.DisplayObjectContainer, {
 	_buttons: [],
 	_matrix: null,
 	_ct_unit: null,
+	avail_grids: [],
 
 	initialize: function() {
 		// load map
@@ -256,34 +264,23 @@ var Map = arc.Class.create(arc.display.DisplayObjectContainer, {
 	},
 
 	_onTouchStart: function(e) {
-		this._stat = 1;
-		// do nothing
 	},
 	_onTouchMove: function(e) {
-		if (this._stat == 1) {
-			// scroll
-			this._scroll = 1;
-		}
 	},
 	_onTouchEnd: function(e) {
-		// if is not from TOUCH_MOVE
-		if (this._scroll == 1) {
-			// scroll end
-			this._scroll = 0;
-		} else {
-			// get target grid info
-		}
-		
-		//
-		this._stat = 0;
 	},
 
 	scroll: function() {
 	},
 
-	getUnit: function(i, j) {
-		var index = this._matrix.getIndex(i, j);
-		return this._unit[index];
+	getUnit: function(x, y) {
+		for (var i = 0; i < this._units.length; ++i) {
+			if (this._units[i].getX() == x 
+			&&  this._units[i].getY() == y) {
+				return this._units[i];
+			}
+		}
+		return null;
 	},
 	showAvailGrids: function(unit) {
 		// get avail grids
@@ -363,6 +360,9 @@ var Map = arc.Class.create(arc.display.DisplayObjectContainer, {
 
 var Attr = arc.Class.create({
 	_name: "Attr",
+	name: null,
+	lv: 0,
+	school: null,
 	hp: 0,
 	mp: 0,
 	atk: 0,
@@ -374,7 +374,9 @@ var Attr = arc.Class.create({
 	rng: 0,
 	
 	initialize: function(attr) {
-		//console.log("attr initialized");
+		this.name = attr.name;
+		this.lv = attr.lv;
+		this.school = attr.school;
 		this.hp = attr.hp;
 		this.mp = attr.mp;
 		this.atk = attr.atk;
@@ -463,43 +465,55 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 		);
 
 		this.addChild(this.anim_stand);
-		this.addEventListener(arc.Event.TOUCH_END, arc.util.bind(this._onClick, this));
+		this.addEventListener(
+			arc.Event.TOUCH_END, 
+			arc.util.bind(this._onClick, this)
+		);
 	},
 
 	// while unit is clicked 
 	// show menu
 	_onClick: function() {
-		if (this._stat > 0) {
+		if (STAT == 300 || STAT == 200) {
+			this.restore();
 			return;
 		}
 		
-		//this._d = (this._d + 1) % 4;
-		//this.move(this._d, 3);
+		if (STAT >= 100) {
+			return;
+		}
+		
+		this.showMenu();		
+		// be selected
+		STAT = 100;
+	},
+	showMenu: function() {
+		// show attack button
 		var button_atk = new Button(
 			this.getX() - 30, this.getY(),
 			this._map,
 			new arc.display.Sprite(system.getImage('img/atk.png'))
 		);
-		var button_mov = new Button(
-			this.getX() + 50, this.getY(),
-			this._map,
-			new arc.display.Sprite(system.getImage('img/mov.png'))
-		);
-		button_mov.addEventListener(
-			arc.Event.TOUCH_END, 
-			arc.util.bind(this.prepareMove, this)
-		);
 		button_atk.addEventListener(
 			arc.Event.TOUCH_END, 
 			arc.util.bind(this.prepareAttack, this)
 		);
-		this._map._buttons.push(button_mov);
 		this._map._buttons.push(button_atk);
-		
-		// be selected
-		this._stat = 100;
-	},
 
+		if (STAT < 200) {
+			// show move button
+			var button_mov = new Button(
+				this.getX() + 50, this.getY(),
+				this._map,
+				new arc.display.Sprite(system.getImage('img/mov.png'))
+			);
+			button_mov.addEventListener(
+				arc.Event.TOUCH_END, 
+				arc.util.bind(this.prepareMove, this)
+			);
+			this._map._buttons.push(button_mov);
+		}
+	},
 
 	// ------------------
 	// move functions
@@ -508,21 +522,29 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 	// prepare to move
 	// this is the entrance of UNIT MOVE
 	prepareMove: function() {
-		if (this._stat != 100) {
+		if (STAT != 100) {
 			return;
 		}
 		this._map.clearMenu();
 		this._map.showAvailGrids(this);
-		this._stat = 200;
+		STAT = 200;
 	},
 
 	_onMoveStart: function(e) {
-		if (this._stat > 200) {
+		if (STAT != 200) {
 			return;
 		}
-		this._stat = 201;
-		var stack = e.target.stack;
-		//console.log(stack);
+		STAT = 201;
+		var t = e.target;
+		var stack = t.stack;
+
+		var grid = this._map.getUnit(t.getX(), t.getY());
+		if (grid != null) {
+			alert("There is another unit!");
+			STAT = 200;
+			return;
+		}
+
 		this._moveStack = stack;
 		this.nextMove();
 	},
@@ -533,10 +555,12 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 			//console.log(next_move);
 			this.move(next_move.d, next_move.l);
 		} else {
+			// TODO: 
+			// should let unit stand still
+			// instead of play moving animation
 			this.stand();
 			this._map.clearAvailGrids();
-			this._stat = 0;
-			//this.showMenu();
+			this.showMenu();
 		}
 	},
 	move: function(direction, length) {
@@ -595,19 +619,37 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 	// prepare to attack
 	// this is the entrance of UNIT ATTACK
 	prepareAttack: function() {
-		this._map.clearMenu();
-		this._map.showAttackRange(this);
-		this._stat = 0;
-	},
-	_onAttackStart: function(e) {
-		if (this._stat > 200) {
+		if (STAT >= 300) {
 			return;
 		}
-		this._stat = 201;
+		this._map.clearMenu();
+		this._map.showAttackRange(this);
+		STAT = 300;
+	},
+	_onAttackStart: function(e) {
+		if (STAT != 300) {
+			return;
+		}
+
+		STAT = 301;
 		
 		var t = e.target;
-		var d = 0;
 		
+		// TODO:
+		// get enemy unit
+		this._atk_enemy = this._map.getUnit(t.getX(), t.getY());
+
+		if (this._atk_enemy == null) {
+			alert("There is no enemy unit!");
+			STAT = 300;
+			return;
+		}
+
+		// TODO:
+		// calculate damage
+		this._atk_dmg = 0;
+		
+		var d = 0;	
 		if (t.getX() > this.getX()) {
 			d = 3;
 		} 
@@ -648,7 +690,6 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 		this.addChild(this.anim_attack);
 		this._attack[this._d].addEventListener(
 			arc.Event.COMPLETE,
-			//arc.util.bind(this.stand, this)
 			arc.util.bind(this._onAttackComplete, this)
 		);
 		this.anim_attack.setX(-1 * CONFIG.const.MERGIN);
@@ -660,9 +701,8 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 		// ...callback
 		// enemy hp/mp change animation
 		// ...callback
-		this.stand();	
+		this.restore();
 	},
-
 
 	stand: function() {
 		this._removeAllChild();
@@ -670,6 +710,11 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 		this.addChild(this.anim_stand);
 	},
 
+	restore: function() {
+		this.stand();
+		this._map.clearAvailGrids();
+		STAT = 0;
+	},
 
 
 	// animations without direction
