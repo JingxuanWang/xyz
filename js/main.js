@@ -8,6 +8,12 @@ var CONFIG;
 // avoid unit action at the same time
 var STAT = 0;
 
+// 100 _onClick get through
+// 200 show available grids for move
+// 201 onMoveStart: is moving
+// 300 show available grids for attack
+// 301 onAttackStart: is attacking
+
 var GameMain = arc.Class.create(arc.Game, {
 	initialize: function(params) {
 
@@ -294,7 +300,7 @@ var Map = arc.Class.create(arc.display.DisplayObjectContainer, {
 		// add shader click listener
 		for (var i = 0; i < avail_grids.length; ++i) {
 			var shader = new arc.display.Sprite(
-				system.getImage('img/pie8.png')
+				system.getImage(CONFIG.UI.mov_base)
 			);
 			var grid = avail_grids[i];
 			//console.log(grid.stack);
@@ -306,6 +312,7 @@ var Map = arc.Class.create(arc.display.DisplayObjectContainer, {
 				arc.util.bind(unit._onMoveStart, unit)
 			);
 			this.addChild(grid);
+			this.setChildIndex(grid, 1);
 			this.avail_grids.push(grid);
 		}
 
@@ -328,15 +335,25 @@ var Map = arc.Class.create(arc.display.DisplayObjectContainer, {
 		// add shader click listener
 		for (var i = 0; i < avail_grids.length; ++i) {
 			var shader = new arc.display.Sprite(
-				system.getImage('img/pie8.png')
+				system.getImage(CONFIG.UI.mov_base)
 			);
 			var grid = avail_grids[i];
 			grid.addChild(shader);
-			grid.addEventListener(
-				arc.Event.TOUCH_END, 
-				arc.util.bind(unit._onAttackStart, unit)
-			);
+			
+			var enemy = this.getUnit(grid.getX(), grid.getY());
+			if (enemy == null) {
+				grid.addEventListener(
+					arc.Event.TOUCH_END, 
+					arc.util.bind(unit._onAttackStart, unit)
+				);
+			} else {
+				enemy.addEventListener(
+					arc.Event.TOUCH_END, 
+					arc.util.bind(unit._onAttackStart, unit)
+				);
+			}
 			this.addChild(grid);
+			this.setChildIndex(grid, 1);
 			this.avail_grids.push(grid);
 		}
 
@@ -473,8 +490,23 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 
 	// while unit is clicked 
 	// show menu
-	_onClick: function() {
-		if (STAT == 300 || STAT == 200) {
+	_onClick: function(e) {
+	/*
+		var tparent = this.getParent();
+		this.dispatchEvent(
+			tparent, 
+			arc.Event.TOUCH_END, 
+			{
+				x:this.getX(), 
+				y:this.getY()
+			}
+		);
+	*/
+		console.log("_onClick: " +STAT);
+		if (STAT == 300) {
+			return;
+		}
+		if (STAT == 200) {
 			this.restore();
 			return;
 		}
@@ -492,7 +524,7 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 		var button_atk = new Button(
 			this.getX() - 30, this.getY(),
 			this._map,
-			new arc.display.Sprite(system.getImage('img/atk.png'))
+			new arc.display.Sprite(system.getImage(CONFIG.UI.img_menu_atk))
 		);
 		button_atk.addEventListener(
 			arc.Event.TOUCH_END, 
@@ -505,7 +537,7 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 			var button_mov = new Button(
 				this.getX() + 50, this.getY(),
 				this._map,
-				new arc.display.Sprite(system.getImage('img/mov.png'))
+				new arc.display.Sprite(system.getImage(CONFIG.UI.img_menu_mov))
 			);
 			button_mov.addEventListener(
 				arc.Event.TOUCH_END, 
@@ -627,6 +659,7 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 		STAT = 300;
 	},
 	_onAttackStart: function(e) {
+		console.log("_onAttackStart: " + STAT);
 		if (STAT != 300) {
 			return;
 		}
@@ -737,6 +770,19 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 	},
 	getAtkRng: function() {
 		return this._attr.rng;
+	}
+});
+
+var InfoBox = arc.Class.create(arc.display.DisplayObjectContainer, {
+	_name: "InfoBox",
+	_stat: 0,
+	_map: null,
+	_unit: null,
+
+	initialize: function(unit) {
+	},
+
+	show: function() {
 	}
 });
 

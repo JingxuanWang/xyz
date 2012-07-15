@@ -28,7 +28,7 @@
 					"rng" : 1
 				},
 				"position" : {
-					"i" : 9,
+					"i" : 8,
 					"j" : 9,
 					"d" : 0
 				},
@@ -66,9 +66,10 @@
 			}
 		]
 	},
-	"ui" : {
-		"img_menu_atk" : "img/atk.png",
-		"img_menu_mov" : "img/mov.png"
+	"UI" : {
+		"mov_base" : "img/menu/blue.png", 
+		"img_menu_atk" : "img/menu/atk.png",
+		"img_menu_mov" : "img/menu/mov.png"
 	},
 	"image" : [
 		"img/unit/Unit_mov_1.png",
@@ -78,8 +79,22 @@
 		"img/unit/Unit_atk_11.png",
 		"img/unit/Unit_spc_11.png",
 		"img/map/HM_1.png",
-		"img/pie8.png",
-		"img/atk.png",
-		"img/mov.png"
+		"img/menu/pie8.png",
+		"img/menu/Mark_1-1.png",
+		"img/menu/Mark_2-1.png",
+		"img/menu/Mark_3-1.png",
+		"img/menu/Mark_4-1.png",
+		"img/menu/Mark_5-1.png",
+		"img/menu/Mark_6-1.png",
+		"img/menu/Mark_7-1.png",
+		"img/menu/Mark_8-1.png",
+		"img/menu/Mark_12-1.png",
+		"img/menu/Mark_13-1.png",
+		"img/menu/Mark_14-1.png",
+		"img/menu/black.png",
+		"img/menu/blue.png",
+		"img/menu/green.png",
+		"img/menu/atk.png",
+		"img/menu/mov.png"
 	]
 }

@@ -1,8 +1,9 @@
 #!/usr/bin/perl
 
 use strict;
+#use warnings;
 use Image::Magick;
-
+use Data::Dumper;
 
 my $CONFIG = +{
 	UNIT_ATK => {
@@ -357,7 +358,82 @@ sub unit_spc {
 
 }
 
+sub image_base {
+	my $ret;
+	my $config = [
+		+{
+			color => 'black',
+			size => '192x96',
+			width => 192,
+			height => 96,
+		},
+		+{
+			color => 'green',
+			size => '48x48',
+			width => 48,
+			height => 48,
+		},
 
-unit_atk($CONFIG->{UNIT_ATK});
-unit_mov($CONFIG->{UNIT_MOV});
-unit_spc($CONFIG->{UNIT_SPC});
+		+{
+			color => 'blue3',
+			size => '48x48',
+			width => 48,
+			height => 48,
+		},
+	];
+	for my $conf (@{$config}) {
+		my $outputPNG = "$conf->{color}.png";
+		my $image = Image::Magick->new(size => $conf->{size});
+		die unless $image;
+
+		#$ret = $image->Set(size => '192x96');
+		#warn "$ret\n" if $ret;
+		$ret = $image->Read("xc:black");
+		$ret = $image->Read("gradient: +level 0xAA%");
+		$ret = $image->Draw(
+			fill => $conf->{color}, 
+			primitive => 'rectangle', 
+			points => "0, 0 $conf->{width}, $conf->{height}"
+		);
+		warn "$ret\n" if $ret;
+
+		my $opacity = 50;
+		my $transparency=1 - ($opacity / 100);
+		$image->Evaluate(value=>$transparency, operator=>'Multiply', channel=>'Alpha');
+
+		#$image->Set(alpha=>'Set');
+		#$image->Set('virtual-pixel'=>'Transparent');
+		#$image->Blur(geometry=>'192x96',channel=>'A');
+		#$image->Level(levels=>'50%,100%',channel=>'A');
+
+		#$ret = $image->Transparent($color);
+		#warn "$ret\n" if $ret;
+		$ret = $image->Write("$outputPNG");
+		warn "Write Failed $ret\n" if $ret;
+	}
+}
+
+sub batch_convert {
+	my ($dir) = @_;
+
+	my @files = `ls $dir`;
+	for my $file (@files) {
+		chomp($file);
+		if ($file =~ /(.*)\.(bmp|jpg|jpeg)/) {
+			my $prefix = $1;
+			my $newFileName = "$prefix.png";
+			my $stmt = "convert -transparent '#F700FF' $dir/$file $dir/$newFileName";
+			print $stmt,"\n";
+			`$stmt`;
+		}
+	}
+}
+
+#unit_atk($CONFIG->{UNIT_ATK});
+#unit_mov($CONFIG->{UNIT_MOV});
+#unit_spc($CONFIG->{UNIT_SPC});
+
+#image_base();
+
+batch_convert(@ARGV);
+
