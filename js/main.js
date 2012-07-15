@@ -243,8 +243,9 @@ var Map = arc.Class.create(arc.display.DisplayObjectContainer, {
 		// load map
 		this._matrix = new Matrix(this, CONFIG.map.width, CONFIG.map.height);
 		
-		var _map = new arc.display.Sprite(system.getImage('img/map/HM_1.png'));
+		var _map = new arc.display.Sprite(system.getImage(CONFIG.map.image));
 		this.addChild(_map);
+
 
 		for (var i = 0; i < CONFIG.map.unit.length; ++i) {
 			var unit_conf = CONFIG.map.unit[i];
@@ -311,8 +312,8 @@ var Map = arc.Class.create(arc.display.DisplayObjectContainer, {
 				arc.Event.TOUCH_END, 
 				arc.util.bind(unit._onMoveStart, unit)
 			);
-			this.addChild(grid);
-			this.setChildIndex(grid, 1);
+			this.addChildAt(grid, 1);
+			//this.setChildIndex(grid, 1);
 			this.avail_grids.push(grid);
 		}
 
@@ -352,8 +353,8 @@ var Map = arc.Class.create(arc.display.DisplayObjectContainer, {
 					arc.util.bind(unit._onAttackStart, unit)
 				);
 			}
-			this.addChild(grid);
-			this.setChildIndex(grid, 1);
+			this.addChildAt(grid, 1);
+			//this.setChildIndex(grid, 1);
 			this.avail_grids.push(grid);
 		}
 
@@ -367,12 +368,53 @@ var Map = arc.Class.create(arc.display.DisplayObjectContainer, {
 		}
 		this.avail_grids = [];
 	},
+	showMenu: function(unit) {
+		// show attack button
+		var button_atk = new Button(
+			unit.getX() - 30, 
+			unit.getY(),
+			this,
+			new arc.display.Sprite(system.getImage(CONFIG.UI.img_menu_atk))
+		);
+		button_atk.addEventListener(
+			arc.Event.TOUCH_END, 
+			arc.util.bind(unit.prepareAttack, unit)
+		);
+		this._buttons.push(button_atk);
+
+		if (STAT < 200) {
+			// show move button
+			var button_mov = new Button(
+				unit.getX() + 50, 
+				unit.getY(),
+				this,
+				new arc.display.Sprite(system.getImage(CONFIG.UI.img_menu_mov))
+			);
+			button_mov.addEventListener(
+				arc.Event.TOUCH_END, 
+				arc.util.bind(unit.prepareMove, unit)
+			);
+			this._buttons.push(button_mov);
+		}
+	},
 	clearMenu: function() {
 		for (var i = 0; i < this._buttons.length; ++i) {
 			this.removeChild(this._buttons[i]);
 		}
 		this._buttons = [];
 	},
+	showInfoBox: function(unit) {
+		this.removeInfoBox();	
+		this.infobox = new InfoBox(unit, this);
+		this.addChildAt(this.infobox, 100);
+	},
+	removeInfoBox: function() {
+		if (this.infobox == null) {
+			return;
+		}
+		this.removeChild(this.infobox);
+		this.infobox = null;
+	}
 });
 
 var Attr = arc.Class.create({
@@ -403,6 +445,11 @@ var Attr = arc.Class.create({
 		this.mor = attr.mor;
 		this.mov = attr.mov;
 		this.rng = attr.rng;
+		this.cur_hp = attr.cur_hp ? attr.cur_hp : this.hp;
+		this.cur_mp = attr.cur_mp ? attr.cur_mp : this.mp;
+		this.exp = attr.exp ? attr.exp : 0;
+		this.min_exp = attr.min_exp;
+		this.max_exp = attr.max_exp;
 	},
 });
 
@@ -428,7 +475,7 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 		this.setY(position.j * CONFIG.const.SIZE);
 		// laod resoruce according unit type
 		this.anim_mov = new arc.display.MovieClip(4, true, true); 
-		this.anim_stand = new arc.display.MovieClip(2, true, true); 
+		this.anim_stand = new arc.display.MovieClip(2, true, true);
 		//this.anim_preAttack = new arc.display.MovieClip(2, false, false);
 		this.anim_attack = new arc.display.MovieClip(8, false, false);
 
@@ -474,13 +521,12 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 		}
 
 		this.anim_stand.addChild(
-			this._stand[this._d], 
+			this._stand[this._d],
 			{
 				1: {}, 
 				2: {},
 			}
 		);
-
 		this.addChild(this.anim_stand);
 		this.addEventListener(
 			arc.Event.TOUCH_END, 
@@ -491,6 +537,8 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 	// while unit is clicked 
 	// show menu
 	_onClick: function(e) {
+		this._map.showInfoBox(this);
+		return;
 	/*
 		var tparent = this.getParent();
 		this.dispatchEvent(
@@ -515,36 +563,9 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 			return;
 		}
 		
-		this.showMenu();		
+		this._map.showMenu(this);
 		// be selected
 		STAT = 100;
-	},
-	showMenu: function() {
-		// show attack button
-		var button_atk = new Button(
-			this.getX() - 30, this.getY(),
-			this._map,
-			new arc.display.Sprite(system.getImage(CONFIG.UI.img_menu_atk))
-		);
-		button_atk.addEventListener(
-			arc.Event.TOUCH_END, 
-			arc.util.bind(this.prepareAttack, this)
-		);
-		this._map._buttons.push(button_atk);
-
-		if (STAT < 200) {
-			// show move button
-			var button_mov = new Button(
-				this.getX() + 50, this.getY(),
-				this._map,
-				new arc.display.Sprite(system.getImage(CONFIG.UI.img_menu_mov))
-			);
-			button_mov.addEventListener(
-				arc.Event.TOUCH_END, 
-				arc.util.bind(this.prepareMove, this)
-			);
-			this._map._buttons.push(button_mov);
-		}
 	},
 
 	// ------------------
@@ -592,7 +613,7 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 			// instead of play moving animation
 			this.stand();
 			this._map.clearAvailGrids();
-			this.showMenu();
+			this._map.showMenu(this);
 		}
 	},
 	move: function(direction, length) {
@@ -768,8 +789,35 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 	getMov: function() {
 		return this._attr.mov;
 	},
+	getName: function() {
+		return this._attr.name;
+	},
+	getSchool: function() {
+		return this._attr.school;
+	},
+	getLv: function() {
+		return this._attr.lv;
+	},
+	getHp: function() {
+		return this._attr.hp;
+	},
+	getCurHp: function() {
+		return this._attr.cur_hp;
+	},
+	getMp: function() {
+		return this._attr.mp;
+	},
+	getCurMp: function() {
+		return this._attr.cur_mp;
+	},
+	getExp: function() {
+		return this._attr.exp;
+	},
 	getAtkRng: function() {
 		return this._attr.rng;
+	},
+	get: function(property) {
+		return this._attr[property];
 	}
 });
 
@@ -779,9 +827,197 @@ var InfoBox = arc.Class.create(arc.display.DisplayObjectContainer, {
 	_map: null,
 	_unit: null,
 
-	initialize: function(unit) {
+	initialize: function(unit, map) {
+		this._unit = unit;
+		this._map = map;
+		this.setBasePoint(unit.getX(), unit.getY());
+	
+		this.setBase();
+		this.setName(unit.getName());
+		this.setLv(unit.getLv());
+		this.setSchool(unit.getSchool());
+		this.setHp(unit.get('hp'), unit.get('cur_hp'));
+		this.setMp(unit.get('mp'), unit.get('cur_mp'));
+		this.setExp(unit.get('exp'));
+		this.setTerrain(unit.get('terrain'));
 	},
+	setBasePoint: function(x, y) {
+		if (x >= CONFIG.const.system.width / 2) {
+			this.setX(x - 4 * CONFIG.const.SIZE);
+		} else {
+			this.setX(x + CONFIG.const.SIZE);
+		}
+		if (y >= CONFIG.const.system.height / 2) {
+			this.setY(y - CONFIG.const.SIZE);
+		} else {
+			this.setY(y);
+		}
+	},
+	setBase: function() {
+		this._base = new arc.display.Sprite(system.getImage(CONFIG.Menu.base));
+		this.addChild(this._base);
+	},
+	setName: function(name) {
+		if (name == null) {
+			return;
+		}
+        this._nameTxt = new arc.display.TextField();
+        this._nameTxt.setX(10);
+        this._nameTxt.setY(5);
+        //this._nameTxt.setAlign(arc.display.Align.CENTER);
+		this._nameTxt.setColor(0xffffff);
+        this._nameTxt.setFont("Helvetica", 16, false);
+		this._nameTxt.setText(name)
+        this.addChild(this._nameTxt);
+	},
+	setLv: function(lv) {
+		if (lv == null) {
+			return;
+		}
+        this._lvTxt = new arc.display.TextField();
+        this._lvTxt.setX(60);
+        this._lvTxt.setY(5);
+        //this._lvTxt.setAlign(arc.display.Align.CENTER);
+		this._lvTxt.setColor(0xffffff);
+        this._lvTxt.setFont("Helvetica", 16, false);
+		this._lvTxt.setText("等级: "+lv)
+        this.addChild(this._lvTxt);
+	},
+	setSchool: function(school) {
+		if (school == null) {
+			return;
+		}
+        this._schoolTxt = new arc.display.TextField();
+        this._schoolTxt.setX(130);
+        this._schoolTxt.setY(5);
+        //this._schoolTxt.setAlign(arc.display.Align.CENTER);
+		this._schoolTxt.setColor(0xffffff);
+        this._schoolTxt.setFont("Helvetica", 16, false);
+		this._schoolTxt.setText(school)
+        this.addChild(this._schoolTxt);
+	},
+	setHp: function(hp, cur_hp) {
+		if (hp == null || cur_hp == null) {
+			return;
+		}
+		
+		// set hp image
+		var img_hp = new arc.display.Sprite(system.getImage(CONFIG.Menu.heart));
+		img_hp.setX(10);
+		img_hp.setY(25);
+		this.addChild(img_hp);
 
+		// set hp bar
+		var bar_hp = new arc.display.Sprite(
+			system.getImage(
+				CONFIG.Menu.hp, 
+				[0, 0, 1, 8]
+			)
+		);
+		bar_hp.setX(45);
+		bar_hp.setY(33);
+		var rate = parseInt((cur_hp / hp) * 100);
+		bar_hp.setScaleX(130);
+		console.log(rate);
+		this.addChild(bar_hp);
+
+		// set hp number
+		this._hpTxt = new arc.display.TextField();
+        this._hpTxt.setX(100);
+        this._hpTxt.setY(30);
+		this._hpTxt.setColor(0xffffff);
+        this._hpTxt.setFont("Helvetica", 15, false);
+		this._hpTxt.setText(" /  " + hp);
+		this.addChild(this._hpTxt);	
+
+		this._curHpTxt = new arc.display.TextField();
+        this._curHpTxt.setX(75);
+        this._curHpTxt.setY(30);
+		this._curHpTxt.setColor(0xffffff);
+        this._curHpTxt.setFont("Helvetica", 15, false);
+		this._curHpTxt.setText(cur_hp);
+		this.addChild(this._curHpTxt);	
+
+	},
+	setMp: function(mp, cur_mp) {
+		if (mp == null || cur_mp == null) {
+			return;
+		}
+		
+		// set hp image
+		var img_mp = new arc.display.Sprite(system.getImage(CONFIG.Menu.magic));
+		img_mp.setX(10);
+		img_mp.setY(50);
+		this.addChild(img_mp);
+
+		// set hp bar
+		var bar_mp = new arc.display.Sprite(
+			system.getImage(
+				CONFIG.Menu.mp, 
+				[0, 0, 1, 8]
+			)
+		);
+		bar_mp.setX(45);
+		bar_mp.setY(58);
+		var rate = parseInt((cur_mp / mp) * 100);
+		bar_mp.setScaleX(130);
+		console.log(rate);
+		this.addChild(bar_mp);
+
+		// set hp number
+		this._mpTxt = new arc.display.TextField();
+        this._mpTxt.setX(100);
+        this._mpTxt.setY(55);
+		this._mpTxt.setColor(0xffffff);
+        this._mpTxt.setFont("Helvetica", 15, false);
+		this._mpTxt.setText(" /  " + mp);
+		this.addChild(this._mpTxt);	
+
+		this._curMpTxt = new arc.display.TextField();
+        this._curMpTxt.setX(75);
+        this._curMpTxt.setY(55);
+		this._curMpTxt.setColor(0xffffff);
+        this._curMpTxt.setFont("Helvetica", 15, false);
+		this._curMpTxt.setText(cur_mp);
+		this.addChild(this._curMpTxt);	
+
+	},
+	setExp: function(exp) {
+		if (exp == null) {
+			return;
+		}
+		this._expTxt = new arc.display.TextField();
+        this._expTxt.setX(10);
+        this._expTxt.setY(80);
+		this._expTxt.setColor(0xffffff);
+        this._expTxt.setFont("Helvetica", 13, false);
+		this._expTxt.setText("经验值：" + exp);
+		this.addChild(this._expTxt);	
+
+	},
+	setTerrain: function(terrain) {
+		//if (terrain == null) {
+		//	return;
+		//}
+        this._terrainTxt = new arc.display.TextField();
+        this._terrainTxt.setX(120);
+        this._terrainTxt.setY(80);
+        //this._schoolTxt.setAlign(arc.display.Align.CENTER);
+		this._terrainTxt.setColor(0xffffff);
+        this._terrainTxt.setFont("Helvetica", 13, false);
+		this._terrainTxt.setText(
+			/* TODO: implement Terrain related features
+			this._map.getTerrainInfo(
+				this._unit.getX(), 
+				this._unit.getY()
+			)
+			*/
+			"平地 100%"
+		);
+        this.addChild(this._terrainTxt);
+	},
+	setStatus: function() {
+	},
 	show: function() {
 	}
 });
