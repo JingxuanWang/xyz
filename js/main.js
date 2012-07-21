@@ -8,6 +8,8 @@ var CONFIG;
 // avoid unit action at the same time
 var STAT = 0;
 
+var INFOBOX = null;
+
 // 100 _onClick get through
 // 200 show available grids for move
 // 201 onMoveStart: is moving
@@ -23,6 +25,9 @@ var GameMain = arc.Class.create(arc.Game, {
 
 	update: function() {
 		//console.log(system.getFps());
+		if (STAT == 400 && INFOBOX != null) {
+			INFOBOX.update();
+		}
 	},
 });
 
@@ -75,9 +80,6 @@ var Button = arc.Class.create(arc.display.DisplayObjectContainer, {
 		this._map = map;
 		this.addChild(sprite);
 		this._map.addChild(this);
-	},
-	_onClick: function() {
-		console.log("Button._onClick called");	
 	},
 });
 
@@ -408,6 +410,10 @@ var Map = arc.Class.create(arc.display.DisplayObjectContainer, {
 		this.infobox = new InfoBox(unit, this);
 		this.addChildAt(this.infobox, 100);
 	},
+	showInfoBoxStatusChange: function(unit) {
+		this.showInfoBox(unit);
+		this.infobox.anim_hurt("hp", unit.get("cur_hp") - unit._damage);
+	},
 	removeInfoBox: function() {
 		if (this.infobox == null) {
 			return;
@@ -477,12 +483,23 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 		this.anim_mov = new arc.display.MovieClip(4, true, true); 
 		this.anim_stand = new arc.display.MovieClip(2, true, true);
 		//this.anim_preAttack = new arc.display.MovieClip(2, false, false);
-		this.anim_attack = new arc.display.MovieClip(8, false, false);
+		this.anim_attack = new arc.display.MovieClip(10, false, false);
+		this.anim_hurt = new arc.display.MovieClip(2, false, false);
+		this.anim_defence = new arc.display.MovieClip(1, false, false);
+		this.anim_levelup = new arc.display.MovieClip(5, false, false);
+		this.anim_attrup = new arc.display.MovieClip(10, false, false);
 
 		this._stand = [];
 		this._move = [];
 		this._attack = [];
 		this._pattack = [];
+		this._hurt = new arc.display.SheetMovieClip(
+			system.getImage(
+				resource.img_spc, 
+				[0, 192, 48, 48]
+			),
+			48, 2
+		);
 		for (var i = 0; i <= 3; ++i) {
 			this._move[i] = new arc.display.SheetMovieClip(
 				system.getImage(
@@ -507,7 +524,7 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 					resource.img_atk, 
 					[0, i * 64, 256, 64]
 				), 
-				64, 8
+				64, 10
 			);
 		}
 		for (var i = 0; i <= 3; ++i) {
@@ -516,7 +533,7 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 					resource.img_atk, 
 					[0, i * 64, 64, 64]
 				), 
-				64, 8, false, true
+				64, 10, false, true
 			);
 		}
 
@@ -537,35 +554,28 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 	// while unit is clicked 
 	// show menu
 	_onClick: function(e) {
-		this._map.showInfoBox(this);
-		return;
-	/*
-		var tparent = this.getParent();
-		this.dispatchEvent(
-			tparent, 
-			arc.Event.TOUCH_END, 
-			{
-				x:this.getX(), 
-				y:this.getY()
-			}
-		);
-	*/
+
 		console.log("_onClick: " +STAT);
-		if (STAT == 300) {
+		if (STAT >= 300) {
 			return;
-		}
-		if (STAT == 200) {
+		} else if (STAT == 200) {
 			this.restore();
 			return;
-		}
-		
-		if (STAT >= 100) {
+		} else if (STAT > 101) {
 			return;
+		} else if (STAT == 101) {
+			this.restore();
+			return;
+		} else if (STAT == 100) {
+			this._map.clearMenu();
+			this._map.showInfoBox(this);
+			STAT = 101;
+			return;
+		} else {	
+			this._map.showMenu(this);
+			// be selected
+			STAT = 100;
 		}
-		
-		this._map.showMenu(this);
-		// be selected
-		STAT = 100;
 	},
 
 	// ------------------
@@ -753,9 +763,13 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 	_onAttackComplete: function() {
 		// enemy hurt animation
 		// ...callback
+		this._atk_enemy.hurt(this);
+
 		// enemy hp/mp change animation
 		// ...callback
-		this.restore();
+		
+		//this.restore();
+		//this._atk_enemy = null;
 	},
 
 	stand: function() {
@@ -766,13 +780,61 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 
 	restore: function() {
 		this.stand();
+		//this._map.clearMenu();
+		this._map.removeInfoBox();
 		this._map.clearAvailGrids();
 		STAT = 0;
 	},
 
 
 	// animations without direction
-	hurt: function() {
+	hurt: function(attacker) {
+		this._removeAllChild();
+		this.anim_hurt.addChild(this._hurt, {1: {}});
+		this._hurt.addEventListener(
+			arc.Event.COMPLETE,
+			arc.util.bind(attacker.removeAtkAnim, attacker)
+		);
+		this.addChild(this.anim_hurt);
+		this.anim_hurt.gotoAndPlay(1);
+
+		var dmg = this.calDamage();
+
+		this.setDamage(dmg);
+	},
+	removeAtkAnim: function() {
+		this.restore();
+		this._atk_enemy.showDamageInfoBox();
+	},
+	showDamageInfoBox: function() {
+		this.restore();
+		
+		// InfoBox animation
+		this._map.showInfoBoxStatusChange(this);
+	},
+	calDamage: function() {
+		var cur_hp = this.get("cur_hp");
+		if (cur_hp >= 100) {
+			//this.set("cur_hp", cur_hp - 100);
+			this._damage = 100;
+			return 100;
+		} else {
+			//this.set("cur_hp", 0);
+			this._damage = cur_hp;
+			return cur_hp;
+		}
+	},
+	setDamage: function(dmg) {
+		if (dmg <= 0) {
+			return;
+		}
+		this._dmgTxt = new arc.display.TextField();
+        this._dmgTxt.setX(0);
+        this._dmgTxt.setY(0);
+		this._dmgTxt.setColor(0xffffff);
+        this._dmgTxt.setFont("Helvetica", 13, false);
+		this._dmgTxt.setText(dmg);
+		this.addChild(this._dmgTxt);
 	},
 	weak: function() {
 	},
@@ -818,6 +880,13 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 	},
 	get: function(property) {
 		return this._attr[property];
+	},
+	set: function(property, value) {
+		if (property == null || value == null || this._attr[property] == null) {
+			return;
+		} else {
+			this._attr[property] = value;
+		}
 	}
 });
 
@@ -900,7 +969,10 @@ var InfoBox = arc.Class.create(arc.display.DisplayObjectContainer, {
 		if (hp == null || cur_hp == null) {
 			return;
 		}
-		
+		this.hp = hp;
+		this.cur_hp = cur_hp;
+		this._hp_update_step = parseInt(this.hp * 0.05);
+
 		// set hp image
 		var img_hp = new arc.display.Sprite(system.getImage(CONFIG.Menu.heart));
 		img_hp.setX(10);
@@ -908,19 +980,19 @@ var InfoBox = arc.Class.create(arc.display.DisplayObjectContainer, {
 		this.addChild(img_hp);
 
 		// set hp bar
-		var bar_hp = new arc.display.Sprite(
+		this.bar_hp = new arc.display.Sprite(
 			system.getImage(
 				CONFIG.Menu.hp, 
 				[0, 0, 1, 8]
 			)
 		);
-		bar_hp.setX(45);
-		bar_hp.setY(33);
-		var rate = parseInt((cur_hp / hp) * 100);
-		bar_hp.setScaleX(130);
-		console.log(rate);
-		this.addChild(bar_hp);
+		this.bar_hp.setX(45);
+		this.bar_hp.setY(33);
+		var rate = parseInt((this.cur_hp / this.hp) * 130);
+		this.bar_hp.setScaleX(rate);
+		this.addChild(this.bar_hp);
 
+	
 		// set hp number
 		this._hpTxt = new arc.display.TextField();
         this._hpTxt.setX(100);
@@ -943,7 +1015,11 @@ var InfoBox = arc.Class.create(arc.display.DisplayObjectContainer, {
 		if (mp == null || cur_mp == null) {
 			return;
 		}
-		
+	
+		this.mp = mp;
+		this.cur_mp = cur_mp;
+		this._mp_update_step = parseInt(this.mp * 0.05);
+
 		// set hp image
 		var img_mp = new arc.display.Sprite(system.getImage(CONFIG.Menu.magic));
 		img_mp.setX(10);
@@ -951,18 +1027,19 @@ var InfoBox = arc.Class.create(arc.display.DisplayObjectContainer, {
 		this.addChild(img_mp);
 
 		// set hp bar
-		var bar_mp = new arc.display.Sprite(
+		this.bar_mp = new arc.display.Sprite(
 			system.getImage(
 				CONFIG.Menu.mp, 
 				[0, 0, 1, 8]
 			)
 		);
-		bar_mp.setX(45);
-		bar_mp.setY(58);
-		var rate = parseInt((cur_mp / mp) * 100);
-		bar_mp.setScaleX(130);
-		console.log(rate);
-		this.addChild(bar_mp);
+		this.bar_mp.setX(45);
+		this.bar_mp.setY(58);
+		var rate = parseInt((this.cur_mp / this.mp) * 130);
+		this.bar_mp.setScaleX(rate);
+		this.addChild(this.bar_mp);
+
+		this.cur_mp = cur_mp;
 
 		// set hp number
 		this._mpTxt = new arc.display.TextField();
@@ -994,6 +1071,7 @@ var InfoBox = arc.Class.create(arc.display.DisplayObjectContainer, {
 		this._expTxt.setText("经验值：" + exp);
 		this.addChild(this._expTxt);	
 
+		this.cur_exp = exp;
 	},
 	setTerrain: function(terrain) {
 		//if (terrain == null) {
@@ -1016,9 +1094,56 @@ var InfoBox = arc.Class.create(arc.display.DisplayObjectContainer, {
 		);
         this.addChild(this._terrainTxt);
 	},
+	anim_hurt: function(tgtAttr, tgtNum) {
+		if (tgtAttr == null || this[tgtAttr] == null || tgtNum == null) {
+			return;
+		}
+		if (this[tgtAttr] != tgtNum) {
+			STAT = 400;
+			INFOBOX = this;
+			this._tgtAttr = tgtAttr;
+			this._tgtNum = tgtNum;
+		}
+
+		// setTimeout for clear
+	},
+	anim_heal: function() {
+	
+	},
+	anim_exp: function() {
+	
+	},
 	setStatus: function() {
 	},
 	show: function() {
-	}
+	},
+	update: function() {
+		if (this._tgtAttr == null || this._tgtNum == null) {
+			return;
+		}
+		if (this._tgtAttr == "hp") {
+			if (this.cur_hp < this._tgtNum - this._hp_update_step) {
+				this.cur_hp += this._hp_update_step;
+			} else if (this.cur_hp > this._tgtNum + this._hp_update_step) {
+				this.cur_hp -= this._hp_update_step;
+			} else if (this.cur_hp == this._tgtNum) {
+				if (STAT == 400) {
+					setTimeout(
+						arc.util.bind(this._map.removeInfoBox, this._map),
+						500
+					);
+					STAT = 0;
+					this._unit.set("cur_hp", this.cur_hp);
+				} else {
+					return;
+				}
+			} else {
+				this.cur_hp = this._tgtNum;
+			}
+			var rate = parseInt((this.cur_hp / this.hp) * 130);
+			this.bar_hp.setScaleX(rate);
+			this._curHpTxt.setText(this.cur_hp);
+		}
+	},
 });
 
