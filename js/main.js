@@ -28,6 +28,9 @@ var GameMain = arc.Class.create(arc.Game, {
 		if ((STAT == 400 || STAT == 500) && INFOBOX != null) {
 			INFOBOX.update();
 		}
+		//if (this.map != null && this.map._units[0] != null) {
+			//console.log(this.map._units[0].getWidth());
+		//}
 	},
 });
 
@@ -172,10 +175,12 @@ var Matrix = arc.Class.create({
 
 		var queue = [];
 		queue.push(grid);
-		
+	
 		var visited = [];
 		visited[grid._j * this.getX() + grid._i] = 1;
 		var movableGrids = [];
+		movableGrids.push(grid);
+
 		while(queue.length > 0) {
 			var t = queue.shift();
 
@@ -228,7 +233,45 @@ var Matrix = arc.Class.create({
 		}
 		return movableGrids;
 	},
-
+	getAtkRngGrids: function(x, y, type) {
+		var gr = [];
+		var ar = [];
+		if (type == 1) {
+			gr[0] = new Grid(x, y + 1);
+			gr[1] = new Grid(x, y - 1);
+			gr[2] = new Grid(x - 1, y);
+			gr[3] = new Grid(x + 1, y);
+		} else if (type == 2){
+			gr[0] = new Grid(x, y + 1);
+			gr[1] = new Grid(x, y - 1);
+			gr[2] = new Grid(x - 1, y);
+			gr[3] = new Grid(x + 1, y);
+			gr[4] = new Grid(x + 1, y + 1);
+			gr[5] = new Grid(x - 1, y - 1);
+			gr[6] = new Grid(x - 1, y + 1);
+			gr[7] = new Grid(x + 1, y - 1);
+		} else if (type == 3) {
+			gr[0] = new Grid(x, y + 1);
+			gr[1] = new Grid(x, y - 1);
+			gr[2] = new Grid(x - 1, y);
+			gr[3] = new Grid(x + 1, y);
+			gr[4] = new Grid(x + 1, y + 1);
+			gr[5] = new Grid(x - 1, y - 1);
+			gr[6] = new Grid(x - 1, y + 1);
+			gr[7] = new Grid(x + 1, y - 1);
+			gr[8] = new Grid(x, y + 2);
+			gr[9] = new Grid(x + 2, y);
+			gr[10] = new Grid(x, y - 2);
+			gr[11] = new Grid(x - 2, y);
+		}
+		while(gr.length > 0) {
+			var tmp = gr.shift();
+			if (this.isValidGrid(tmp)) {
+				ar.push(tmp);
+			}
+		}
+		return ar;
+	}
 });
 
 var Map = arc.Class.create(arc.display.DisplayObjectContainer, {
@@ -244,16 +287,36 @@ var Map = arc.Class.create(arc.display.DisplayObjectContainer, {
 	initialize: function() {
 		// load map
 		this._matrix = new Matrix(this, CONFIG.map.width, CONFIG.map.height);
-		
-		var _map = new arc.display.Sprite(system.getImage(CONFIG.map.image));
-		this.addChild(_map);
 
+		//var _map = new arc.display.Sprite(system.getImage(CONFIG.map.image));
+		//this.addChild(_map);
+		var ctx = document.getElementById("map").getContext('2d');
+		var _map = new Image();
+		_map.src = CONFIG.map.image;
+		ctx.drawImage(_map, 0, 0);
+		
+		// click event can not be passed to lower layer
+		var _testImage = new Image();
+		_testImage.src = CONFIG.UI.mov_base;
+		ctx.drawImage(_testImage, 0, 0);
+		_testImage.addEventListener(
+			"click", function() {console.log("clicked!!");}		
+		);
+		//
+
+		this._unit_layer = new arc.display.DisplayObjectContainer();
+		this._ui_layer = new arc.display.DisplayObjectContainer();
+		this._effect_layer = new arc.display.DisplayObjectContainer();
+		this.addChild(this._effect_layer);
+		this.addChild(this._unit_layer);
+		this.addChild(this._ui_layer);
 
 		for (var i = 0; i < CONFIG.map.unit.length; ++i) {
 			var unit_conf = CONFIG.map.unit[i];
 			// assign units
 			var unit = new Unit(this, unit_conf);
-			this.addChild(unit);
+			//this.addChild(unit);
+			this._unit_layer.addChild(unit);
 			this._units.push(unit);
 		}
 
@@ -277,6 +340,29 @@ var Map = arc.Class.create(arc.display.DisplayObjectContainer, {
 	_onTouchMove: function(e) {
 	},
 	_onTouchEnd: function(e) {
+		if (this._ct_unit == null) {
+			return;
+		}
+		if (STAT == 200) {
+			var t = e.target;
+			// find touch target is movable
+			for (var i = 0; i < this.avail_grids.length; ++i) {
+				var g = this.avail_grids[i];
+				if (
+					t.getX() < g.getX() + CONFIG.const.SIZE
+				&&  t.getX() >= g.getX()
+				&&	t.getY() < g.getY() + CONFIG.const.SIZE
+				&&  t.getY() >= g.getY()
+				) {
+					var unit = this._ct_unit;
+					unit._onMoveStart(g);
+				}
+			}
+		};	
+	},
+
+	restore: function() {
+		this._ct_unit = null;
 	},
 
 	scroll: function() {
@@ -294,10 +380,16 @@ var Map = arc.Class.create(arc.display.DisplayObjectContainer, {
 	showAvailGrids: function(unit) {
 		// get avail grids
 		this.avail_grids = [];
+		this.attack_range = [];
 		var avail_grids = this._matrix.getAvailGrids(
 			parseInt(unit.getX() / CONFIG.const.SIZE), 
 			parseInt(unit.getY() / CONFIG.const.SIZE),
 			unit.get("mov")
+		);
+		var attack_range = this._matrix.getAtkRngGrids(
+			parseInt(unit.getX() / CONFIG.const.SIZE), 
+			parseInt(unit.getY() / CONFIG.const.SIZE),
+			unit.get("rng")
 		);
 
 		// add shader click listener
@@ -306,19 +398,37 @@ var Map = arc.Class.create(arc.display.DisplayObjectContainer, {
 				system.getImage(CONFIG.UI.mov_base)
 			);
 			var grid = avail_grids[i];
-			//console.log(grid.stack);
-			//shader.setX(grid._i * CONFIG.const.SIZE);
-			//shader.setY(grid._j * CONFIG.const.SIZE);
 			grid.addChild(shader);
 			grid.addEventListener(
 				arc.Event.TOUCH_END, 
 				arc.util.bind(unit._onMoveStart, unit)
 			);
-			this.addChildAt(grid, 1);
-			//this.setChildIndex(grid, 1);
+			this._effect_layer.addChild(grid);
 			this.avail_grids.push(grid);
 		}
 
+		for (var i = 0; i < attack_range.length; ++i) {
+			var mark = new arc.display.Sprite(
+				system.getImage(CONFIG.UI.ar)
+			);
+			var grid = attack_range[i];
+			for (var j = 0; j < avail_grids.length; ++j) {
+				var g = avail_grids[j];
+				if (g.getX() == grid.getX() && g.getY() == grid.getY()) {
+					grid.stack = g.stack; 
+					break;
+				}
+			}
+
+			grid.addEventListener(
+				arc.Event.TOUCH_END, 
+				arc.util.bind(unit._onMoveStart, unit)
+			);
+
+			grid.addChild(mark);
+			this._effect_layer.addChild(grid);
+			this.attack_range.push(grid);
+		}
 		//console.log(avail_grids);
 
 		// add grid shader 
@@ -329,7 +439,7 @@ var Map = arc.Class.create(arc.display.DisplayObjectContainer, {
 		this.avail_grids = [];
 
 		// TODO: this will be changed
-		var avail_grids = this._matrix.getAvailGrids(
+		var avail_grids = this._matrix.getAtkRngGrids(
 			parseInt(unit.getX() / CONFIG.const.SIZE), 
 			parseInt(unit.getY() / CONFIG.const.SIZE),
 			unit.get("rng")
@@ -355,7 +465,7 @@ var Map = arc.Class.create(arc.display.DisplayObjectContainer, {
 					arc.util.bind(unit._onAttackStart, unit)
 				);
 			}
-			this.addChildAt(grid, 1);
+			this._effect_layer.addChild(grid);
 			//this.setChildIndex(grid, 1);
 			this.avail_grids.push(grid);
 		}
@@ -365,17 +475,22 @@ var Map = arc.Class.create(arc.display.DisplayObjectContainer, {
 	},
 
 	clearAvailGrids: function() {
-		for (var i = 0; i < this.avail_grids.length; ++i) {
-			this.removeChild(this.avail_grids[i]);
-		}
+		//for (var i = 0; i < this.avail_grids.length; ++i) {
+		//	this.removeChild(this.avail_grids[i]);
+		//}
+		this._effect_layer._removeAllChild();
 		this.avail_grids = [];
+		//for (var i = 0; i < this.attack_range.length; ++i) {
+		//	this.removeChild(this.attack_range[i]);
+		//}
+		this.attack_range = [];
 	},
 	showMenu: function(unit) {
 		// show attack button
 		var button_atk = new Button(
 			unit.getX() - 30, 
 			unit.getY(),
-			this,
+			this._ui_layer,
 			new arc.display.Sprite(system.getImage(CONFIG.UI.img_menu_atk))
 		);
 		button_atk.addEventListener(
@@ -384,31 +499,33 @@ var Map = arc.Class.create(arc.display.DisplayObjectContainer, {
 		);
 		this._buttons.push(button_atk);
 
-		if (STAT < 200) {
+		//if (STAT < 200) {
 			// show move button
 			var button_mov = new Button(
 				unit.getX() + 50, 
 				unit.getY(),
-				this,
+				this._ui_layer,
 				new arc.display.Sprite(system.getImage(CONFIG.UI.img_menu_mov))
 			);
 			button_mov.addEventListener(
 				arc.Event.TOUCH_END, 
-				arc.util.bind(unit.prepareMove, unit)
+				//arc.util.bind(unit.prepareMove, unit)
+				arc.util.bind(unit.restore, unit)
 			);
 			this._buttons.push(button_mov);
-		}
+		//}
 	},
 	clearMenu: function() {
-		for (var i = 0; i < this._buttons.length; ++i) {
-			this.removeChild(this._buttons[i]);
-		}
+		this._ui_layer._removeAllChild();
+		//for (var i = 0; i < this._buttons.length; ++i) {
+		//	this.removeChild(this._buttons[i]);
+		//}
 		this._buttons = [];
 	},
 	showInfoBox: function(unit) {
 		this.removeInfoBox();	
 		this.infobox = new InfoBox(unit, this);
-		this.addChildAt(this.infobox, 100);
+		this._ui_layer.addChild(this.infobox, 100);
 	},
 	showInfoBoxHurt: function(unit) {
 		this.showInfoBox(unit);
@@ -423,7 +540,7 @@ var Map = arc.Class.create(arc.display.DisplayObjectContainer, {
 		if (this.infobox == null) {
 			return;
 		}
-		this.removeChild(this.infobox);
+		this._ui_layer.removeChild(this.infobox);
 		this.infobox = null;
 
 		if (STAT == 401) {
@@ -541,7 +658,7 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 		this._hurt = new arc.display.SheetMovieClip(
 			system.getImage(
 				resource.img_spc, 
-				[0, 192, 48, 48]
+				[0, 96, 48, 48]
 			),
 			48, 2
 		);
@@ -549,7 +666,7 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 			this._move[i] = new arc.display.SheetMovieClip(
 				system.getImage(
 					resource.img_mov, 
-					[48, i * 48, 96, 48]
+					[0, i * 48, 96, 48]
 				), 
 				48, 4
 			);
@@ -558,9 +675,9 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 			this._stand[i] = new arc.display.SheetMovieClip(
 				system.getImage(
 					resource.img_mov, 
-					[48, i * 48, 96, 48]
+					[0, i * 48, 96, 48]
 				), 
-				48, 2
+				48, 2, true
 			);
 		}
 		for (var i = 0; i <= 3; ++i) {
@@ -581,7 +698,7 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 				64, 10, false, true
 			);
 		}
-
+/*
 		this.anim_stand.addChild(
 			this._stand[this._d],
 			{
@@ -590,6 +707,9 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 			}
 		);
 		this.addChild(this.anim_stand);
+*/
+		this.addChild(this._stand[this._d]);
+		this._stand[this._d].play();
 		this.addEventListener(
 			arc.Event.TOUCH_END, 
 			arc.util.bind(this._onClick, this)
@@ -599,12 +719,13 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 	// while unit is clicked 
 	// show menu
 	_onClick: function(e) {
-
 		console.log("_onClick: " +STAT);
 		if (STAT >= 300) {
 			return;
 		} else if (STAT == 200) {
-			this.restore();
+			this._map.clearAvailGrids();
+			this._map.showMenu(this);
+			//this.restore();
 			return;
 		} else if (STAT > 101) {
 			return;
@@ -616,10 +737,12 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 			this._map.showInfoBox(this);
 			STAT = 101;
 			return;
-		} else {	
-			this._map.showMenu(this);
-			// be selected
+		} else if (STAT == 0) {
 			STAT = 100;
+			this.prepareMove();
+		} else {	
+			// Exceptions
+			this.restore();
 		}
 	},
 
@@ -642,6 +765,13 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 		if (STAT != 200) {
 			return;
 		}
+		this._map.clearAvailGrids();
+		
+		// here we should remember original location
+		// for cancel operation
+		this._orig_x = this.getX();
+		this._orig_y = this.getY();
+
 		STAT = 201;
 		var t = e.target;
 		var stack = t.stack;
@@ -667,12 +797,11 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 			// should let unit stand still
 			// instead of play moving animation
 			this.stand();
-			this._map.clearAvailGrids();
 			this._map.showMenu(this);
 		}
 	},
 	move: function(direction, length) {
-		console.log("move ("+direction+","+length+")");
+		//console.log("move ("+direction+","+length+")");
 		this._removeAllChild();
 		//this.anim_mov.addChild(this._move[direction], {1:{}, 2:{}, 3:{}, 4:{}});
 		this.anim_mov.addChild(this._move[direction], {1:{}, 2:{}});
@@ -746,16 +875,18 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 		
 		// get enemy unit
 		this._atk_enemy = this._map.getUnit(t.getX(), t.getY());
-		// double link
-		this._atk_enemy._attacker = this;
-		this._map._attacker = this;
-		this._map._defender = this._atk_enemy;
 
 		if (this._atk_enemy == null) {
 			alert("There is no enemy unit!");
 			STAT = 300;
 			return;
 		}
+
+		// double link
+		this._atk_enemy._attacker = this;
+		this._map._attacker = this;
+		this._map._defender = this._atk_enemy;
+
 
 		var d = 0;	
 		if (t.getX() > this.getX()) {
@@ -828,7 +959,7 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 
 	restore: function() {
 		this.stand();
-		//this._map.clearMenu();
+		this._map.clearMenu();
 		this._map.removeInfoBox();
 		this._map.clearAvailGrids();
 		STAT = 0;
@@ -1051,7 +1182,7 @@ var InfoBox = arc.Class.create(arc.display.DisplayObjectContainer, {
         this._hpTxt.setX(100);
         this._hpTxt.setY(30);
 		this._hpTxt.setColor(0xffffff);
-        this._hpTxt.setFont("Helvetica", 15, false);
+        this._hpTxt.setFont("Helvetica", 15, true);
 		this._hpTxt.setText(" /  " + hp);
 		this.addChild(this._hpTxt);	
 
@@ -1059,7 +1190,7 @@ var InfoBox = arc.Class.create(arc.display.DisplayObjectContainer, {
         this._curHpTxt.setX(75);
         this._curHpTxt.setY(30);
 		this._curHpTxt.setColor(0xffffff);
-        this._curHpTxt.setFont("Helvetica", 15, false);
+        this._curHpTxt.setFont("Helvetica", 15, true);
 		this._curHpTxt.setText(cur_hp);
 		this.addChild(this._curHpTxt);	
 
@@ -1099,7 +1230,7 @@ var InfoBox = arc.Class.create(arc.display.DisplayObjectContainer, {
         this._mpTxt.setX(100);
         this._mpTxt.setY(55);
 		this._mpTxt.setColor(0xffffff);
-        this._mpTxt.setFont("Helvetica", 15, false);
+        this._mpTxt.setFont("Helvetica", 15, true);
 		this._mpTxt.setText(" /  " + mp);
 		this.addChild(this._mpTxt);	
 
@@ -1107,7 +1238,7 @@ var InfoBox = arc.Class.create(arc.display.DisplayObjectContainer, {
         this._curMpTxt.setX(75);
         this._curMpTxt.setY(55);
 		this._curMpTxt.setColor(0xffffff);
-        this._curMpTxt.setFont("Helvetica", 15, false);
+        this._curMpTxt.setFont("Helvetica", 15, true);
 		this._curMpTxt.setText(cur_mp);
 		this.addChild(this._curMpTxt);	
 

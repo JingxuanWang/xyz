@@ -19,7 +19,7 @@ my $CONFIG = +{
 	UNIT_MOV => {
 		w => 48,
 		h => 48,
-		width => 48 * 3,
+		width => 48 * 2,
 		height => 48 * 5,
 		frame => 2,
 		img_num => 151,
@@ -29,8 +29,8 @@ my $CONFIG = +{
 	UNIT_SPC => {
 		w => 48,
 		h => 48,
-		width => 48 * 1,
-		height => 48 * 6,
+		width => 48 * 4,
+		height => 48 * 3,
 		frame => 1,
 		img_num => 151,
 		prefix => "Unit_spc_",
@@ -76,21 +76,21 @@ sub unit_mov {
 			$sx = 0;
 			$sy = (6 + $l) * $h;
 			
-			my $src = Image::Magick->new;
-			$ret = $src->Read($file);
-			warn "$ret\n" if $ret;
-			$ret = $src->Crop(geometry=>$w."x".$h."+".$sx."+".$sy);
-			warn "$ret\n" if $ret;
+			#my $src = Image::Magick->new;
+			#$ret = $src->Read($file);
+			#warn "$ret\n" if $ret;
+			#$ret = $src->Crop(geometry=>$w."x".$h."+".$sx."+".$sy);
+			#warn "$ret\n" if $ret;
 				
-			$ret = $dst->Composite(
-				image => $src,
-				compose => 'Over',
-				x => $dx,
-				y => $dy
-			);
+			#$ret = $dst->Composite(
+			#	image => $src,
+			#	compose => 'Over',
+			#	x => $dx,
+			#	y => $dy
+			#);
 		
 
-			$dx += $w;
+			#$dx += $w;
 			$sy = $l * 2 * $h;
 			for (my $j = 0; $j < $frame; ++$j) {
 				my $src = Image::Magick->new;
@@ -110,13 +110,13 @@ sub unit_mov {
 			}
 		}
 
-
 			my $l = 2;		
 			$dx = 0;
 			$dy = ($l + 1) * $h;
 			$sx = 0;
 			$sy = (6 + $l) * $h;
-			
+		
+=cut
 			my $src = Image::Magick->new;
 			$ret = $src->Read($file);
 			warn "$ret\n" if $ret;
@@ -132,10 +132,12 @@ sub unit_mov {
 				x => $dx,
 				y => $dy
 			);
-		
+=cut	
 
-			$dx += $w;
-			$sy = $l * 2 * $h;
+			($dx, $dy) = (0, $h * 3);
+			($sx, $sy) = (0, $h * 4);
+			#$dx += $w;
+			#$sy = $l * 2 * $h;
 			for (my $j = 0; $j < $frame; ++$j) {
 				my $src = Image::Magick->new;
 				$ret = $src->Read($file);
@@ -286,6 +288,10 @@ sub unit_spc {
 	my $img_num = $config->{img_num};
 	my ($type, $side, $level);
 
+	# first clip from unit_mov
+
+
+
 	for (my $i = 1; $i <= $img_num; ++$i) {
 		my $file = "$CONFIG->{DIR}/$config->{prefix}"
 				.$i."$config->{postfix}";
@@ -303,11 +309,17 @@ sub unit_spc {
 		my ($sx, $sy) = (0, 0);
 		my ($dx, $dy) = (0, 0);
 
-		# first three images
+		my $mov_file = "$CONFIG->{DIR}/Unit_mov_"
+				.$i."$config->{postfix}";
+
+		# clip from move file
+		
+		# down
+		($sx, $sy) = (0, $h * 6);
 		my $src = Image::Magick->new;
-		$ret = $src->Read($file);
+		$ret = $src->Read($mov_file);
 		warn "$ret\n" if $ret;
-		$ret = $src->Crop(geometry=>$w."x".($h * 3)."+".$sx."+".$sy);
+		$ret = $src->Crop(geometry=>$w."x".$h."+".$sx."+".$sy);
 		warn "$ret\n" if $ret;
 		$ret = $dst->Composite(
 			image => $src,
@@ -315,15 +327,134 @@ sub unit_spc {
 			x => $dx,
 			y => $dy
 		);
-		$sy += 2 * $h;
-		$dy += 3 * $h;
 
+		$dx += $w;
+
+		# right
+		$sx = 0;
+		$sy = $h * 8;
+		my $src = Image::Magick->new;
+		$ret = $src->Read($mov_file);
+		warn "$ret\n" if $ret;
+		$ret = $src->Crop(geometry=>$w."x".$h."+".$sx."+".$sy);
+		warn "$ret\n" if $ret;
+		$ret = $src->Flop();
+		warn "$ret\n" if $ret;
+		$ret = $dst->Composite(
+			image => $src,
+			compose => 'Over',
+			x => $dx,
+			y => $dy
+		);
+
+		$dx += $w;
+
+		# up
+		$sx = 0;
+		$sy = $h * 7;
+		my $src = Image::Magick->new;
+		$ret = $src->Read($mov_file);
+		warn "$ret\n" if $ret;
+		$ret = $src->Crop(geometry=>$w."x".$h."+".$sx."+".$sy);
+		warn "$ret\n" if $ret;
+		$ret = $dst->Composite(
+			image => $src,
+			compose => 'Over',
+			x => $dx,
+			y => $dy
+		);
+
+		$dx += $w;
+
+		# left
+		$sx = 0;
+		$sy = $h * 8;
+		my $src = Image::Magick->new;
+		$ret = $src->Read($mov_file);
+		warn "$ret\n" if $ret;
+		$ret = $src->Crop(geometry=>$w."x".$h."+".$sx."+".$sy);
+		warn "$ret\n" if $ret;
+		$ret = $dst->Composite(
+			image => $src,
+			compose => 'Over',
+			x => $dx,
+			y => $dy
+		);
+
+		$dx += $w;
+		# read from spc file
+		
+		# down
+		($sx, $sy) = (0, 0);
+		($dx, $dy) = (0, $h);
+		my $src = Image::Magick->new;
+		$ret = $src->Read($file);
+		warn "$ret\n" if $ret;
+		$ret = $src->Crop(geometry=>$w."x".$h."+".$sx."+".$sy);
+		warn "$ret\n" if $ret;
+		$ret = $dst->Composite(
+			image => $src,
+			compose => 'Over',
+			x => $dx,
+			y => $dy
+		);
+
+		$dx += $w;
+
+		# right
+		($sx, $sy) = (0, $h * 2);
 		my $src = Image::Magick->new;
 		$ret = $src->Read($file);
 		warn "$ret\n" if $ret;
 		$ret = $src->Crop(geometry=>$w."x".$h."+".$sx."+".$sy);
 		warn "$ret\n" if $ret;
 		$ret = $src->Flop();
+		warn "$ret\n" if $ret;
+		$ret = $dst->Composite(
+			image => $src,
+			compose => 'Over',
+			x => $dx,
+			y => $dy
+		);
+
+		$dx += $w;
+
+		# up
+		($sx, $sy) = (0, $h);
+		my $src = Image::Magick->new;
+		$ret = $src->Read($file);
+		warn "$ret\n" if $ret;
+		$ret = $src->Crop(geometry=>$w."x".$h."+".$sx."+".$sy);
+		warn "$ret\n" if $ret;
+		$ret = $dst->Composite(
+			image => $src,
+			compose => 'Over',
+			x => $dx,
+			y => $dy
+		);
+
+		$dx += $w;
+
+		# left
+		($sx, $sy) = (0, $h * 2);
+		my $src = Image::Magick->new;
+		$ret = $src->Read($file);
+		warn "$ret\n" if $ret;
+		$ret = $src->Crop(geometry=>$w."x".$h."+".$sx."+".$sy);
+		warn "$ret\n" if $ret;
+		$ret = $dst->Composite(
+			image => $src,
+			compose => 'Over',
+			x => $dx,
+			y => $dy
+		);
+
+		($dx, $dy) = (0, $h * 2);
+		($sx, $sy) = (0, $h * 3);
+		my $src = Image::Magick->new;
+		$ret = $src->Read($file);
+		warn "$ret\n" if $ret;
+		$ret = $src->Crop(geometry=>$w."x".$h."+".$sx."+".$sy);
 		warn "$ret\n" if $ret;
 		
 		$ret = $dst->Composite(
@@ -333,7 +464,7 @@ sub unit_spc {
 			y => $dy
 		);
 		$sy += $h;
-		$dy += $h;
+		$dx += $w;
 
 		my $src = Image::Magick->new;
 		$ret = $src->Read($file);
@@ -346,8 +477,7 @@ sub unit_spc {
 			x => $dx,
 			y => $dy
 		);
-
-
+		
 		$ret = $dst->Transparent('#F700FF');
 		warn "$ret\n" if $ret;
 
@@ -398,7 +528,7 @@ sub image_base {
 		warn "$ret\n" if $ret;
 
 		my $opacity = 50;
-		my $transparency=1 - ($opacity / 100);
+		my $transparency = 1 - ($opacity / 100);
 		$image->Evaluate(value=>$transparency, operator=>'Multiply', channel=>'Alpha');
 
 		#$image->Set(alpha=>'Set');
@@ -431,9 +561,9 @@ sub batch_convert {
 
 #unit_atk($CONFIG->{UNIT_ATK});
 #unit_mov($CONFIG->{UNIT_MOV});
-#unit_spc($CONFIG->{UNIT_SPC});
+unit_spc($CONFIG->{UNIT_SPC});
 
 #image_base();
 
-batch_convert(@ARGV);
+#batch_convert(@ARGV);
 

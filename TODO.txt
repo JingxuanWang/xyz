@@ -1,3 +1,50 @@
+20120728
+	1，完成了地图分层。地图的绘制放到了另外一个canvas里头，用jQuery控制
+	2，完成了场景内元素的分层绘制。分成了
+		UI层
+		单位层
+		效果层
+		绘制顺序由下往上，UI层最后描画，显示在最上层。
+	3，调整了行动的流程。开始的时候不显示菜单。
+	4，加入了准备行动期的攻击范围显示。
+	5，重新整理了图片的布局
+	6，改掉了arctic.js点击区域异常的bug。
+
+1326         _updateSize:function(){
+1327             var minX = 0, minY = 0, maxX = 0, maxY = 0;
+1328             var len = this._displayArr.length;
+1329             var frameWidth = 0;
+1330             for(var i = 0; i < len; i++){
+1331                 var disp = this._displayArr[i];
+1332 
+1333                 var tminX = disp._screenRect[0],
+1334                     tminY = disp._screenRect[1],
+1335                     tmaxX = disp._screenRect[0] + disp._screenRect[2],
+1336                     tmaxY = disp._screenRect[1] + disp._screenRect[3];
+1337 ---------->
+1338                 if (tmaxX > tminX + disp._frameWidth) {
+1339                     tmaxX = tminX + disp._frameWidth;
+1340                 }
+1341 ---------->
+1342                 if(i == 0){
+1343                     minX = tminX;
+1344                     minY = tminY;
+1345                     maxX = tmaxX;
+1346                     maxY = tmaxY;
+1347                 }
+1348                 if(tminX < minX) minX = tminX;
+1349                 if(tmaxX > maxX) maxX = tmaxX;
+1350                 if(tminY < minY) minY = tminY;
+1351                 if(tmaxY > maxY) maxY = tmaxY;
+1352 
+1353             }
+
+
+
+	TODO：
+		1，继续调整行动流程。考虑结合jQuery把基于浏览器的取消操作做出来。
+		2，点击区域异常的bug依然存在。
+
 20120722
 	完成了以下内容：
 		1：经验值动画，并且跟整个攻击流程串联起来。

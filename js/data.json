@@ -79,7 +79,8 @@
 	"UI" : {
 		"mov_base" : "img/menu/blue.png", 
 		"img_menu_atk" : "img/menu/atk.png",
-		"img_menu_mov" : "img/menu/mov.png"
+		"img_menu_mov" : "img/menu/mov.png",
+		"ar" : "img/menu/Mark_12-1.png"
 	},
 	"Menu": {
 		"base" : "img/menu/black.png",
