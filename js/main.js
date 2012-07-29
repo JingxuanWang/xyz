@@ -295,14 +295,6 @@ var Map = arc.Class.create(arc.display.DisplayObjectContainer, {
 		_map.src = CONFIG.map.image;
 		ctx.drawImage(_map, 0, 0);
 		
-		// click event can not be passed to lower layer
-		var _testImage = new Image();
-		_testImage.src = CONFIG.UI.mov_base;
-		ctx.drawImage(_testImage, 0, 0);
-		_testImage.addEventListener(
-			"click", function() {console.log("clicked!!");}		
-		);
-		//
 
 		this._unit_layer = new arc.display.DisplayObjectContainer();
 		this._ui_layer = new arc.display.DisplayObjectContainer();
@@ -534,7 +526,7 @@ var Map = arc.Class.create(arc.display.DisplayObjectContainer, {
 	showInfoBoxExpUp: function(unit) {
 		var unit = this._attacker;
 		this.showInfoBox(unit);
-		this.infobox.anim_exp("cur_exp", unit.get("cur_exp") + unit._getExp);
+		this.infobox.anim_exp("cur_exp", unit.get("exp") + unit._getExp);
 	},
 	removeInfoBox: function() {
 		if (this.infobox == null) {
@@ -559,21 +551,24 @@ var Map = arc.Class.create(arc.display.DisplayObjectContainer, {
 		if (STAT == 501) {
 			// level up animation
 			if (this._attacker._levelup) {
-
-			}	
-			// callback for dead animation
-			if (this._defender.get("cur_hp") <= 0) {
-				this._defender.die();
+				this._attacker.levelup();
 				return;
-				//this.removeChild(this._defender);
-			}
+			}	
 
 			this._attacker.restore();
 			this._defender.restore();
+			this._attacker = null;
+			this._defender = null;
 		}
 	},
-	nextUnit: function() {
-		STAT = 0;	
+	checkDead: function() {
+		// callback for dead animation
+		if (this._defender.get("cur_hp") <= 0) {
+			STAT = 502;
+			this._defender.die();
+		} else {
+			STAT = 0;
+		}
 	}
 });
 
@@ -636,11 +631,10 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 		// laod resoruce according unit type
 		this.anim_mov = new arc.display.MovieClip(4, true, true); 
 		this.anim_stand = new arc.display.MovieClip(2, true, true);
-		//this.anim_preAttack = new arc.display.MovieClip(2, false, false);
 		this.anim_attack = new arc.display.MovieClip(10, false, false);
 		this.anim_hurt = new arc.display.MovieClip(2, false, false);
 		this.anim_defence = new arc.display.MovieClip(1, false, false);
-		this.anim_levelup = new arc.display.MovieClip(5, false, false);
+		this.anim_levelup = new arc.display.MovieClip(8, false, false);
 		this.anim_attrup = new arc.display.MovieClip(10, false, false);
 		this.anim_die = new arc.display.MovieClip(8, false, false);
 
@@ -661,6 +655,19 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 				[0, 96, 48, 48]
 			),
 			48, 2
+		);
+		this._turn_round = new arc.display.SheetMovieClip(
+			system.getImage(
+				resource.img_spc, 
+				[0, 0, 192, 48]
+			),
+			48, 8, true
+		);
+		this._powerup = new arc.display.Sprite(
+			system.getImage(
+				resource.img_spc,
+				[48, 96, 48, 48]
+			)
 		);
 		for (var i = 0; i <= 3; ++i) {
 			this._move[i] = new arc.display.SheetMovieClip(
@@ -698,22 +705,37 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 				64, 10, false, true
 			);
 		}
-/*
-		this.anim_stand.addChild(
-			this._stand[this._d],
-			{
-				1: {}, 
-				2: {},
-			}
+		//this._attack[this._d].addEventListener(
+		this.anim_attack.addEventListener(
+			arc.Event.COMPLETE,
+			arc.util.bind(this._onAttackComplete, this)
 		);
-		this.addChild(this.anim_stand);
-*/
+		this.anim_die.addEventListener(
+			arc.Event.COMPLETE,
+			arc.util.bind(this._onDead, this)
+		);
+		this.anim_levelup.addEventListener(
+			arc.Event.COMPLETE,
+			arc.util.bind(this._onLevelUpComplete, this)
+		);
+
+
 		this.addChild(this._stand[this._d]);
 		this._stand[this._d].play();
 		this.addEventListener(
 			arc.Event.TOUCH_END, 
 			arc.util.bind(this._onClick, this)
 		);
+		this.addEventListener(
+			arc.Event.TOUCH_MOVE,
+			arc.util.bind(this._onDrag, this)
+		);
+	},
+	_onDrag: function(e) {
+		if (STAT == 0) {
+			this._map.showInfoBox(this);
+			STAT = 101;
+		}
 	},
 
 	// while unit is clicked 
@@ -762,6 +784,7 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 	},
 
 	_onMoveStart: function(e) {
+		console.log("onMoveStart !! " + STAT);
 		if (STAT != 200) {
 			return;
 		}
@@ -822,8 +845,8 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 		} else if (direction == 3) {
 			tx += length * CONFIG.const.SIZE;
 		}
-
-		var anim = new arc.anim.Animation(
+			
+		this._cur_anim = new arc.anim.Animation(
 			this.anim_mov,
 			//{x: tx - cx, y: ty - cy},
 			{x: tx - cx, y: ty - cy, time: 500 * length}
@@ -832,8 +855,8 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 		this.tx = tx;
 		this.ty = ty;
 		
-		anim.play();
-		anim.addEventListener(
+		this._cur_anim.play();
+		this._cur_anim.addEventListener(
 			arc.Event.COMPLETE, 
 			arc.util.bind(this._onMoveComplete, this) 
 		);
@@ -844,8 +867,9 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 		this.setY(this.ty);
 		this.anim_mov.setX(0);
 		this.anim_mov.setY(0);
+		this._cur_anim = null;
 		//console.log(this.tx + " : " + this.ty);
-		this.nextMove();	
+		this.nextMove();
 	},
 
 
@@ -874,6 +898,9 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 		var t = e.target;
 		
 		// get enemy unit
+		var defenders = [];
+		this._map.defenders = [];
+		
 		this._atk_enemy = this._map.getUnit(t.getX(), t.getY());
 
 		if (this._atk_enemy == null) {
@@ -886,6 +913,10 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 		this._atk_enemy._attacker = this;
 		this._map._attacker = this;
 		this._map._defender = this._atk_enemy;
+		
+		for (var i = 0; i < defenders.length; ++i) {
+			this._map._defenders.push(defenders[i]);
+		}
 
 
 		var d = 0;	
@@ -927,10 +958,6 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 			}
 		);
 		this.addChild(this.anim_attack);
-		this._attack[this._d].addEventListener(
-			arc.Event.COMPLETE,
-			arc.util.bind(this._onAttackComplete, this)
-		);
 		this.anim_attack.setX(-1 * CONFIG.const.MERGIN);
 		this.anim_attack.setY(-1 * CONFIG.const.MERGIN);
 		this.anim_attack.gotoAndPlay(1);
@@ -939,7 +966,6 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 		// enemy hurt animation
 		// ...callback
 		this._atk_enemy.hurt(this);
-
 		// enemy hp/mp change animation
 		// ...callback
 		
@@ -957,24 +983,36 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 		this.addChild(this.anim_stand);
 	},
 
-	restore: function() {
+	restore: function(stat) {
+		this.initListener();		
 		this.stand();
 		this._map.clearMenu();
 		this._map.removeInfoBox();
 		this._map.clearAvailGrids();
-		STAT = 0;
+		STAT = stat ? stat : 0;
 	},
-
+	initListener: function() {
+		this.removeEventListener(arc.Event.TOUCH_END);
+		this.addEventListener(
+			arc.Event.TOUCH_END, 
+			arc.util.bind(this._onClick, this)
+		);
+	},
 
 	// animations without direction
 	hurt: function(attacker) {
 		this._removeAllChild();
-		this.anim_hurt.addChild(this._hurt, {1: {}});
-		this._hurt.addEventListener(
+	
+		
+		this.anim_hurt.addChild(this._hurt, {1: {}, 2: {}});
+		this.addChild(this.anim_hurt);
+		
+		this.anim_hurt.removeEventListener(arc.Event.COMPLETE);
+		this.anim_hurt.addEventListener(
 			arc.Event.COMPLETE,
 			arc.util.bind(attacker.removeAtkAnim, attacker)
 		);
-		this.addChild(this.anim_hurt);
+
 		this.anim_hurt.gotoAndPlay(1);
 
 		var dmg = this.calDamage();
@@ -982,8 +1020,50 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 
 		this.setDamage(dmg);
 	},
-	removeAtkAnim: function() {
+	levelup: function() {
+		this._removeAllChild();
+		this.anim_levelup.addChild(
+			this._turn_round, 
+			{
+				1: {visible: true},
+				2: {},
+				3: {},
+				4: {},
+				5: {},
+				6: {},
+				7: {},
+				8: {},
+				9: {},
+				10: {},
+				11: {visible: false}
+			}
+		);
+		this._turn_round.gotoAndStop(1);
+		this.anim_levelup.addChild(
+			this._powerup, 
+			{
+				1: {visible: false},
+				11: {visible: true},
+				12: {},
+				13: {},
+				14: {},
+				15: {},
+				16: {}
+			}
+		);
+		this.addChild(this.anim_levelup);
+		this.anim_levelup.gotoAndPlay(1);
+	},
+	_onLevelUpComplete: function() {
+		this._levelup = false;
 		this.restore();
+		console.log(this.get("name")+"等级提升至"+this.get("lv")+"级！");
+		this._map.checkDead();
+	},
+	removeAtkAnim: function() {
+		console.log("removeAtkAnim");
+		this.restore();
+		// should change to moltiple
 		this._atk_enemy.showDamageInfoBox();
 	},
 	showDamageInfoBox: function() {
@@ -994,9 +1074,9 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 	},
 	calDamage: function() {
 		var cur_hp = this.get("cur_hp");
-		if (cur_hp >= 100) {
-			this._damage = 100;
-			return 100;
+		if (cur_hp >= 10) {
+			this._damage = 10;
+			return 10;
 		} else {
 			this._damage = cur_hp;
 			return cur_hp;
@@ -1008,7 +1088,8 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 		if (exp < 5) {
 			exp = 5;
 		}
-		this._getExp = exp;
+		//this._getExp = exp;
+		this._getExp = 100;
 	},
 	addExpKill: function(defender) {
 		var lvDiff = defender.get("lv") - this.get("lv");
@@ -1050,12 +1131,12 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 				8: {visible: false},
 			}
 		);
-		this._hurt.addEventListener(
-			arc.Event.COMPLETE,
-			arc.util.bind(this._map.nextUnit, this._map)
-		);
 		this.addChild(this.anim_die);
 		this.anim_die.gotoAndPlay(1);
+	},
+	_onDead: function() {
+		this._map._unit_layer.removeChild(this);
+		this._map.checkDead();
 	},
 	power_up: function() {
 	},
@@ -1349,9 +1430,9 @@ var InfoBox = arc.Class.create(arc.display.DisplayObjectContainer, {
 						500
 					);
 					STAT = 501;
-					var tgtExp = this._unit.get("cur_exp") + this._unit._getExp;
-					this._unit.set("cur_exp", tgtExp % 100);
-					if (tgtExp > 100) {
+					var tgtExp = this._unit.get("exp") + this._unit._getExp;
+					this._unit.set("exp", tgtExp % 100);
+					if (tgtExp >= 100) {
 						this._unit._levelup = true;
 						this._unit.set("lv", 
 							this._unit.get("lv") + parseInt(tgtExp / 100)
@@ -1363,10 +1444,8 @@ var InfoBox = arc.Class.create(arc.display.DisplayObjectContainer, {
 					return;
 				}
 			}
-			//console.log("update exp: " + this.cur_exp);
 			this._expTxt.setText("经验值：" + this.cur_exp);
 		}
-		//console.log("STAT : "+ STAT + " - this._tgtAttr : " + this._tgtAttr + " - this._tgtNum : " + this._tgtNum);
 	},
 });
 
