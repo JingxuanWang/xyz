@@ -11,14 +11,14 @@
 		"width" : 20,
 		"height" : 20,
 		"image" : "img/map/HM_1.png",
-		"unit" : [
+		"player_unit" : [
 			{
 				"attr" : {
-					"name": "李典",
+					"name": "项羽",
 					"lv" : 1,
-					"school" : "轻步兵",
+					"school" : "群雄",
 					"hp" : 110,
-					"mp" : 110,
+					"mp" : 20,
 					"atk" : 30,
 					"def" : 10,
 					"intl" : 5,
@@ -38,27 +38,31 @@
 					"d" : 0
 				},
 				"resource" : {
-					"img_atk" : "img/unit/Unit_atk_1.png",	
-					"img_mov" : "img/unit/Unit_mov_1.png",	
-					"img_spc" : "img/unit/Unit_spc_1.png"
+					"img_atk" : "img/unit/Unit_atk_109.png",	
+					"img_mov" : "img/unit/Unit_mov_109.png",	
+					"img_spc" : "img/unit/Unit_spc_109.png"
 				}
-			},
+			}
+		],
+		"allies_unit" : [
+		],
+		"enemy_unit" : [
 			{
 				"attr" : {
-					"name": "陶谦",
+					"name": "官兵",
 					"lv" : 1,
-					"school" : "轻骑兵",
-					"hp" : 130,
-					"mp" : 130,
-					"atk" : 30,
-					"def" : 10,
+					"school" : "轻步兵",
+					"hp" : 100,
+					"mp" : 10,
+					"atk" : 20,
+					"def" : 12,
 					"intl" : 15,
 					"dex" : 15,
 					"mor" : 20,
 					"mov" : 3,
 					"rng" : 1,
-					"cur_hp" : 130,
-					"cur_mp" : 130,
+					"cur_hp" : 100,
+					"cur_mp" : 10,
 					"exp" : 30,
 					"min_exp" : 0,
 					"max_exp" : 100
@@ -69,10 +73,11 @@
 					"d" : 3
 				},
 				"resource" : {
-					"img_atk" : "img/unit/Unit_atk_11.png",	
-					"img_mov" : "img/unit/Unit_mov_11.png",	
-					"img_spc" : "img/unit/Unit_spc_11.png"
-				}
+					"img_atk" : "img/unit/Unit_atk_3.png",	
+					"img_mov" : "img/unit/Unit_mov_3.png",	
+					"img_spc" : "img/unit/Unit_spc_3.png"
+				},
+				"strategy" : "hold_position"
 			}
 		]
 	},
@@ -94,12 +99,12 @@
 		"mp_incr" : "img/menu/bar/blue.png"
 	},
 	"image" : [
-		"img/unit/Unit_mov_1.png",
-		"img/unit/Unit_atk_1.png",
-		"img/unit/Unit_spc_1.png",
-		"img/unit/Unit_mov_11.png",
-		"img/unit/Unit_atk_11.png",
-		"img/unit/Unit_spc_11.png",
+		"img/unit/Unit_mov_109.png",
+		"img/unit/Unit_atk_109.png",
+		"img/unit/Unit_spc_109.png",
+		"img/unit/Unit_mov_3.png",
+		"img/unit/Unit_atk_3.png",
+		"img/unit/Unit_spc_3.png",
 		"img/map/HM_1.png",
 		"img/menu/pie8.png",
 		"img/menu/bar_red.png",

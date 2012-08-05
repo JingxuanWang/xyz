@@ -279,10 +279,15 @@ var Map = arc.Class.create(arc.display.DisplayObjectContainer, {
 	_stat: 0,
 	_scroll: 0,
 	_units: [],
+	_player_units: [],
+	_allies_units: [],
+	_enemy_units: [],
 	_buttons: [],
 	_matrix: null,
 	_ct_unit: null,
 	avail_grids: [],
+	_phrase: 0,
+	_turn: 1,
 
 	initialize: function() {
 		// load map
@@ -303,13 +308,37 @@ var Map = arc.Class.create(arc.display.DisplayObjectContainer, {
 		this.addChild(this._unit_layer);
 		this.addChild(this._ui_layer);
 
-		for (var i = 0; i < CONFIG.map.unit.length; ++i) {
-			var unit_conf = CONFIG.map.unit[i];
+		// init player unit
+		for (var i = 0; i < CONFIG.map.player_unit.length; ++i) {
+			var unit_conf = CONFIG.map.player_unit[i];
 			// assign units
-			var unit = new Unit(this, unit_conf);
+			var unit = new Unit(this, unit_conf, 0);
 			//this.addChild(unit);
 			this._unit_layer.addChild(unit);
 			this._units.push(unit);
+			this._player_units.push(unit);
+		}
+
+		// init allies unit
+		for (var i = 0; i < CONFIG.map.allies_unit.length; ++i) {
+			var unit_conf = CONFIG.map.allies_unit[i];
+			// assign units
+			var unit = new Unit(this, unit_conf, 1);
+			//this.addChild(unit);
+			this._unit_layer.addChild(unit);
+			this._units.push(unit);
+			this._allies_units.push(unit);
+		}
+
+		// init enemy unit
+		for (var i = 0; i < CONFIG.map.enemy_unit.length; ++i) {
+			var unit_conf = CONFIG.map.enemy_unit[i];
+			// assign units
+			var unit = new Unit(this, unit_conf, 2);
+			//this.addChild(unit);
+			this._unit_layer.addChild(unit);
+			this._units.push(unit);
+			this._enemy_units.push(unit);
 		}
 
 		// regist event listener
@@ -325,6 +354,8 @@ var Map = arc.Class.create(arc.display.DisplayObjectContainer, {
 			arc.Event.TOUCH_END, 
 			arc.util.bind(this._onTouchEnd, this)
 		);
+
+		// battle start
 	},
 
 	_onTouchStart: function(e) {
@@ -502,7 +533,7 @@ var Map = arc.Class.create(arc.display.DisplayObjectContainer, {
 			button_mov.addEventListener(
 				arc.Event.TOUCH_END, 
 				//arc.util.bind(unit.prepareMove, unit)
-				arc.util.bind(unit.restore, unit)
+				arc.util.bind(unit.finish, unit)
 			);
 			this._buttons.push(button_mov);
 		//}
@@ -561,6 +592,37 @@ var Map = arc.Class.create(arc.display.DisplayObjectContainer, {
 			this._defender = null;
 		}
 	},
+	checkTurnEnd: function(unit) {
+		if (unit._side == 0) {
+			for (var i = 0; i < this._player_unit.length; ++i) {
+				if (this._player_unit[i]._flag != "finished") {
+					return 0;
+				}
+			}	
+		} else if (unit._side == 1) {
+			for (var i = 0; i < this._allies_unit.length; ++i) {
+				if (this._allies_unit[i]._flag != "finished") {
+					return 0;
+				}
+			}	
+		} else if (unit._side == 2) {
+			for (var i = 0; i < this._enemy_unit.length; ++i) {
+				if (this._enemy_unit[i]._flag != "finished") {
+					return 0;
+				}
+			}	
+		}
+		return 1;
+	},
+	sideChange: function(unit) {
+		this._phrase = (unit._side + 1) % 3;
+		if (this._phrase == 0) {
+			this.nextTurn();
+		}
+	},
+	nextTurn: function() {
+	
+	},
 	checkDead: function() {
 		// callback for dead animation
 		if (this._defender.get("cur_hp") <= 0) {
@@ -615,11 +677,13 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 	_map: null,
 	_attr: null,
 
-	initialize: function(map, unit_conf) {
+	initialize: function(map, unit_conf, side) {
 		var attr = unit_conf.attr;
 		var position = unit_conf.position;
 		var resource = unit_conf.resource;
 		
+		this._side = side;
+
 		// for future use
 		this._attr = new Attr(attr);
 		this._moveStack = [];
@@ -630,7 +694,7 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 		this.setY(position.j * CONFIG.const.SIZE);
 		// laod resoruce according unit type
 		this.anim_mov = new arc.display.MovieClip(4, true, true); 
-		this.anim_stand = new arc.display.MovieClip(2, true, true);
+		this.anim_ready = new arc.display.MovieClip(2, true, true);
 		this.anim_attack = new arc.display.MovieClip(10, false, false);
 		this.anim_hurt = new arc.display.MovieClip(2, false, false);
 		this.anim_defence = new arc.display.MovieClip(1, false, false);
@@ -638,6 +702,7 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 		this.anim_attrup = new arc.display.MovieClip(10, false, false);
 		this.anim_die = new arc.display.MovieClip(8, false, false);
 
+		this._ready = [];
 		this._stand = [];
 		this._move = [];
 		this._attack = [];
@@ -677,17 +742,13 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 				), 
 				48, 4
 			);
-		}
-		for (var i = 0; i <= 3; ++i) {
-			this._stand[i] = new arc.display.SheetMovieClip(
+			this._ready[i] = new arc.display.SheetMovieClip(
 				system.getImage(
 					resource.img_mov, 
 					[0, i * 48, 96, 48]
 				), 
 				48, 2, true
 			);
-		}
-		for (var i = 0; i <= 3; ++i) {
 			this._attack[i] = new arc.display.SheetMovieClip(
 				system.getImage(
 					resource.img_atk, 
@@ -695,14 +756,18 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 				), 
 				64, 10
 			);
-		}
-		for (var i = 0; i <= 3; ++i) {
 			this._pattack[i] = new arc.display.SheetMovieClip(
 				system.getImage(
 					resource.img_atk, 
 					[0, i * 64, 64, 64]
 				), 
 				64, 10, false, true
+			);
+			this._stand[i] = new arc.display.Sprite(
+				system.getImage(
+					resource.img_spc,
+					[i * 48, 0, 48, 48]
+				)
 			);
 		}
 		//this._attack[this._d].addEventListener(
@@ -720,8 +785,8 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 		);
 
 
-		this.addChild(this._stand[this._d]);
-		this._stand[this._d].play();
+		this.addChild(this._ready[this._d]);
+		this._ready[this._d].play();
 		this.addEventListener(
 			arc.Event.TOUCH_END, 
 			arc.util.bind(this._onClick, this)
@@ -742,7 +807,11 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 	// show menu
 	_onClick: function(e) {
 		console.log("_onClick: " +STAT);
-		if (STAT >= 300) {
+		if (STAT > 300) {
+			return;
+		} else if (STAT == 300 && this._map._ct_unit == this) {
+			this._map.clearAvailGrids();
+			this.restore();
 			return;
 		} else if (STAT == 200) {
 			this._map.clearAvailGrids();
@@ -759,7 +828,7 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 			this._map.showInfoBox(this);
 			STAT = 101;
 			return;
-		} else if (STAT == 0) {
+		} else if (STAT == 0 && this._flag != "finished") {
 			STAT = 100;
 			this.prepareMove();
 		} else {	
@@ -819,7 +888,7 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 			// TODO: 
 			// should let unit stand still
 			// instead of play moving animation
-			this.stand();
+			this.ready();
 			this._map.showMenu(this);
 		}
 	},
@@ -973,23 +1042,55 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 		//this._atk_enemy = null;
 	},
 
-	stand: function() {
+	ready: function() {
 		this._removeAllChild();
 		if (this.get("cur_hp") / this.get("hp") < 0.2) {
-			this.anim_stand.addChild(this._weak, {1:{}, 2:{}});
+			this.anim_ready.addChild(this._weak, {1:{}, 2:{}});
 		} else {
-			this.anim_stand.addChild(this._stand[this._d], {1:{}, 2:{}});
+			this.anim_ready.addChild(this._ready[this._d], {1:{}, 2:{}});
 		}
-		this.addChild(this.anim_stand);
+		this.addChild(this.anim_ready);
 	},
-
-	restore: function(stat) {
+	stand: function() {
+		this._removeAllChild();
+		//if (this.get("cur_hp") / this.get("hp") < 0.2) {
+		//	this.anim_ready.addChild(this._weak, {1:{}, 2:{}});
+		//	this.addChild(this.anim_ready);
+		//} else {
+			this.addChild(this._stand[this._d]);
+		//}
+	},
+	finish: function(stat) {
+		this._flag = "finished";
 		this.initListener();		
 		this.stand();
 		this._map.clearMenu();
 		this._map.removeInfoBox();
 		this._map.clearAvailGrids();
-		STAT = stat ? stat : 0;
+		if (typeof(stat) == 'object' || typeof(stat) == 'function') {
+			STAT = 0;
+		} else {
+			STAT = stat ? stat : 0;
+		}
+		if(this._map.checkTurnEnd(this)) {
+			this._map.sideChange(this);
+		}
+	},
+	restore: function(stat) {
+		this.initListener();		
+		if (this._flag != "finished") {
+			this.ready();
+		} else {
+			this.stand();
+		}
+		this._map.clearMenu();
+		this._map.removeInfoBox();
+		this._map.clearAvailGrids();
+		if (typeof(stat) == 'object' || typeof(stat) == 'function') {
+			STAT = 0;
+		} else {
+			STAT = stat ? stat : 0;
+		}
 	},
 	initListener: function() {
 		this.removeEventListener(arc.Event.TOUCH_END);
@@ -1062,7 +1163,8 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 	},
 	removeAtkAnim: function() {
 		console.log("removeAtkAnim");
-		this.restore();
+		//this.restore();
+		this.finish();
 		// should change to moltiple
 		this._atk_enemy.showDamageInfoBox();
 	},
@@ -1088,8 +1190,7 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 		if (exp < 5) {
 			exp = 5;
 		}
-		//this._getExp = exp;
-		this._getExp = 100;
+		this._getExp = exp;
 	},
 	addExpKill: function(defender) {
 		var lvDiff = defender.get("lv") - this.get("lv");
@@ -1113,8 +1214,8 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 	},
 	weak: function() {
 		this._removeAllChild();
-		this.anim_stand.addChild(this._weak, {1:{}, 2:{}});
-		this.addChild(this.anim_stand);
+		this.anim_ready.addChild(this._weak, {1:{}, 2:{}});
+		this.addChild(this.anim_ready);
 	},
 	die: function() {
 		this._removeAllChild();
@@ -1234,6 +1335,11 @@ var InfoBox = arc.Class.create(arc.display.DisplayObjectContainer, {
 		if (hp == null || cur_hp == null) {
 			return;
 		}
+
+		if (cur_hp > hp) {
+			cur_hp = hp;
+		}
+
 		this.hp = hp;
 		this.cur_hp = cur_hp;
 		this._hp_update_step = parseInt(this.hp * 0.05);
@@ -1279,6 +1385,9 @@ var InfoBox = arc.Class.create(arc.display.DisplayObjectContainer, {
 	setMp: function(mp, cur_mp) {
 		if (mp == null || cur_mp == null) {
 			return;
+		}
+		if (cur_mp > mp) {
+			cur_mp = mp;
 		}
 	
 		this.mp = mp;
