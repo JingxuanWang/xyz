@@ -594,20 +594,20 @@ var Map = arc.Class.create(arc.display.DisplayObjectContainer, {
 	},
 	checkTurnEnd: function(unit) {
 		if (unit._side == 0) {
-			for (var i = 0; i < this._player_unit.length; ++i) {
-				if (this._player_unit[i]._flag != "finished") {
+			for (var i = 0; i < this._player_units.length; ++i) {
+				if (this._player_units[i]._flag != "finished") {
 					return 0;
 				}
 			}	
 		} else if (unit._side == 1) {
-			for (var i = 0; i < this._allies_unit.length; ++i) {
-				if (this._allies_unit[i]._flag != "finished") {
+			for (var i = 0; i < this._allies_units.length; ++i) {
+				if (this._allies_units[i]._flag != "finished") {
 					return 0;
 				}
 			}	
 		} else if (unit._side == 2) {
-			for (var i = 0; i < this._enemy_unit.length; ++i) {
-				if (this._enemy_unit[i]._flag != "finished") {
+			for (var i = 0; i < this._enemy_units.length; ++i) {
+				if (this._enemy_units[i]._flag != "finished") {
 					return 0;
 				}
 			}	
