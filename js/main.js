@@ -97,9 +97,6 @@ var Matrix = arc.Class.create({
 		this._x = x;
 		this._y = y;
 	},
-	getMap: function() {
-		return this._bc;
-	},
 	getIndex: function(x, y) {
 		return y * this._y + x;
 	},
@@ -292,7 +289,7 @@ var BattleController = arc.Class.create(arc.display.DisplayObjectContainer, {
 	_enemy_units: [],
 	_buttons: [],
 	_matrix: null,
-	_action_unit: null,
+	actor: null,
 	avail_grids: [],
 	attack_range: [],
 	event_queue: [],
@@ -372,7 +369,20 @@ var BattleController = arc.Class.create(arc.display.DisplayObjectContainer, {
 			this.checkDead();
 		}
 	},
-
+	getEffectedArea: function(x, y, type) {
+		return [{x : x, y : y}];
+	},
+	getEffectedUnits: function(x, y, type) {
+		var ea = this.getEffectedArea(x, y, type);
+		var effectList = [];
+		for (var i = 0; i < ea.length; ++i) {
+			var u = this.getUnit(ea[i].x, ea[i].y);
+			if (u != null) {
+				effectList.push(u);
+			}
+		}
+		return effectList;
+	},
 	getUnit: function(x, y) {
 		for (var i = 0; i < this._units.length; ++i) {
 			if (this._units[i].getX() == x 
@@ -517,18 +527,18 @@ var BattleController = arc.Class.create(arc.display.DisplayObjectContainer, {
 		this._ui_layer._removeAllChild();
 		this._buttons = [];
 	},
-	showInfoBox: function(unit) {
+	showInfoBox: function(unit, type) {
 		this.removeInfoBox();	
-		this.infobox = new InfoBox(unit, this);
+		this.infobox = new InfoBox(unit, this, type);
 		this._ui_layer.addChild(this.infobox, 100);
 	},
 	showInfoBoxHurt: function(unit) {
-		this.showInfoBox(unit);
-		this.infobox.anim_hurt("cur_hp", unit.get("cur_hp") - unit._damage);
+		this.showInfoBox(unit, 1);
+		this.infobox.anim_hurt();
 	},
 	showInfoBoxExpUp: function(unit) {
-		this.showInfoBox(unit);
-		this.infobox.anim_exp("cur_exp", unit.get("exp") + unit._getExp);
+		this.showInfoBox(unit, 1);
+		this.infobox.anim_exp();
 	},
 	removeInfoBox: function() {
 		if (this.infobox == null) {
@@ -543,20 +553,20 @@ var BattleController = arc.Class.create(arc.display.DisplayObjectContainer, {
 			// if defender dead
 			// add extra exp
 			if (this._defender.get("hp") == 0) {
-				this._attacker.addExpKill(this._defender);
+				this.actor.addExpKill(this._defender);
 			}
-			//this.showInfoBoxExpUp(this._attacker);
+			//this.showInfoBoxExpUp(this.actor);
 		}
 		if (STAT == 501) {
 			// level up animation
-			if (this._attacker._levelup) {
-				this._attacker.levelup();
+			if (this.actor._levelup) {
+				this.actor.levelup();
 				return;
 			}	
 
-			this._attacker.restore();
+			this.actor.restore();
 			this._defender.restore();
-			this._attacker = null;
+			this.actor = null;
 			this._defender = null;
 		}
 	},
@@ -680,12 +690,19 @@ var Attr = arc.Class.create({
 		this.mor = attr.mor;
 		this.mov = attr.mov;
 		this.rng = attr.rng;
+		this.exp = attr.exp ? attr.exp : 0;
 		this.cur_hp = attr.cur_hp ? attr.cur_hp : this.hp;
 		this.cur_mp = attr.cur_mp ? attr.cur_mp : this.mp;
-		this.exp = attr.exp ? attr.exp : 0;
-		this.min_exp = attr.min_exp;
-		this.max_exp = attr.max_exp;
+		this.cur_exp = attr.cur_exp;
 	},
+	compare: function(attr) {
+		for (var prop in this) {
+			if (this[prop] != attr.prop) {
+				return false;
+			}
+		}
+		return true;
+	}
 });
 
 var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
@@ -827,16 +844,16 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 		console.log("_onClick: " +STAT);
 		if (STAT > 300) {
 			return;
-		} else if (STAT == 300 && this._bc._action_unit == this) {
+		} else if (STAT == 300 && this._bc.actor == this) {
 			this._bc.clearAvailGrids();
 			this.restore();
 			return;
-		} else if (STAT == 200 && this._bc._action_unit == this) {
+		} else if (STAT == 200 && this._bc.actor == this) {
 			this._bc.clearAvailGrids();
 			this._bc.showMenu(this);
 			//this.restore();
 			return;
-		} else if (STAT == 200 && this._bc._action_unit != this) {
+		} else if (STAT == 200 && this._bc.actor != this) {
 			alert ("那里有其他单位不能移动");
 			return;
 		} else if (STAT > 101) {
@@ -844,7 +861,7 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 		} else if (STAT == 101) {
 			this.restore();
 			return;
-		} else if (STAT == 100 && this._bc._action_unit == this) {
+		} else if (STAT == 100 && this._bc.actor == this) {
 			this._bc.clearMenu();
 			this._bc.showInfoBox(this);
 			STAT = 101;
@@ -852,7 +869,7 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 		} else if (STAT == 0 && this._flag != "finished") {
 			STAT = 100;
 			this.prepareMove();
-			this._bc._action_unit = this;
+			this._bc.actor = this;
 		} else {	
 			// Exceptions
 			this.restore();
@@ -992,23 +1009,22 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 		var defenders = [];
 		this._bc.defenders = [];
 		
-		this._atk_enemy = this._bc.getUnit(t.getX(), t.getY());
+		this.tgt_units = this._bc.getEffectedUnits(t.getX(), t.getY());
 
-		if (this._atk_enemy == null) {
+		if (this.tgt_units == null) {
 			alert("There is no enemy unit!");
 			STAT = 300;
 			return;
 		}
 
-		// double link
-		this._atk_enemy._attacker = this;
-		this._bc._attacker = this;
-		this._bc._defender = this._atk_enemy;
-		
-		for (var i = 0; i < defenders.length; ++i) {
-			this._bc._defenders.push(defenders[i]);
+		this.saveOrigStatus();
+		for (var i = 0; i < this.tgt_units.length; ++i) {
+			this.tgt_units[i].saveOrigStatus();	
 		}
 
+		// double link
+		//this.tgt_units.actor = this;
+		this._bc.tgt_units = this.tgt_units;
 
 		var d = 0;	
 		if (t.getX() > this.getX()) {
@@ -1054,20 +1070,17 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 		this.anim_attack.gotoAndPlay(1);
 	},
 	_onAttackComplete: function() {
-		// enemy hurt animation
-		// ...callback
-		this._atk_enemy.hurt(this);
-		// enemy hp/mp change animation
-		// ...callback
-		
+		// for each enemy
+		for (var i = 0; i < this._bc.tgt_units.length; ++i) {
+			this._bc.tgt_units[i].hurt(this);
+		}
+	
+		// register exp up InfoBox Event
 		var self = this;
 		this._bc.pushEvent(
 			arc.util.bind(this._bc.showInfoBoxExpUp, this._bc),
 			self
 		);
-
-		//this.restore();
-		//this._atk_enemy = null;
 	},
 
 	ready: function() {
@@ -1156,6 +1169,9 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 		var dmg = this.calDamage();
 		attacker.calExp(this, dmg);
 		this.setDamage(dmg);
+		
+		// change data
+		this.set("cur_hp", this.get("cur_hp") - dmg);
 
 		// register InfoBox Event
 		var self = this;
@@ -1208,7 +1224,7 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 		// should change to moltiple
 		this.finish();
 		this._bc.nextEvent();
-		//this._atk_enemy.showDamageInfoBox();
+		//this.tgt_units.showDamageInfoBox();
 	},
 	showDamageInfoBox: function() {
 		this.restore();
@@ -1226,13 +1242,22 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 			return cur_hp;
 		}
 	},
+	addExp: function(exp) {
+		var tExp = this.get("cur_exp") + exp;
+		if (tExp > this.get("exp")) {
+			this.set("cur_exp", tExp % this.get("exp"));
+			this.set("lv", this.get("lv") + parseInt(tExp / this.get("exp")));
+		} else {
+			this.set("cur_exp", tExp);
+		}
+	},
 	calExp: function(defender, dmg) {
 		var lvDiff = defender.get("lv") - this.get("lv");
-		var exp = parseInt(dmg / 10) + lvDiff;
+		var exp = parseInt(dmg / 1) + lvDiff;
 		if (exp < 5) {
 			exp = 5;
 		}
-		this._getExp = exp;
+		this.addExp(exp);
 	},
 	addExpKill: function(defender) {
 		var lvDiff = defender.get("lv") - this.get("lv");
@@ -1240,17 +1265,17 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 		if (exp < 10) {
 			exp = 10;
 		}
-		this._getExp += exp;
+		this.addExp(exp);
 	},
 	setDamage: function(dmg) {
 		if (dmg <= 0) {
 			return;
 		}
 		this._dmgTxt = new arc.display.TextField();
-        this._dmgTxt.setX(0);
-        this._dmgTxt.setY(0);
+		this._dmgTxt.setX(0);
+		this._dmgTxt.setY(0);
 		this._dmgTxt.setColor(0xffffff);
-        this._dmgTxt.setFont("Helvetica", 13, false);
+		this._dmgTxt.setFont("Helvetica", 13, false);
 		this._dmgTxt.setText(dmg);
 		this.addChild(this._dmgTxt);
 
@@ -1284,11 +1309,23 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 	},
 	power_up: function() {
 	},
-	getMap: function() {
-		return this._bc;
+	saveOrigStatus: function() {
+		this._origAttr = new Attr(this._attr);	
+	},
+	removeOrigStatus: function() {
+		delete this._origAttr;
+	},
+	compare: function(property) {
+		return (this._attr[property] == this._origAttr[property]);
+	},
+	compareAll: function() {
+		return this._attr.compare(this._origAttr);
 	},
 	get: function(property) {
 		return this._attr[property];
+	},
+	get_orig: function(property) {
+		return this._origAttr[property];
 	},
 	set: function(property, value) {
 		if (property == null || value == null || this._attr[property] == null) {
@@ -1305,19 +1342,37 @@ var InfoBox = arc.Class.create(arc.display.DisplayObjectContainer, {
 	_bc: null,
 	_unit: null,
 
-	initialize: function(unit, bc) {
+	initialize: function(unit, bc, type) {
 		this._unit = unit;
 		this._bc = bc;
+		this._type = type;
+		this._style = unit._side;
+
 		this.setBasePoint(unit.getX(), unit.getY());
 	
 		this.setBase();
 		this.setName(unit.get("name"));
-		this.setLv(unit.get("lv"));
 		this.setSchool(unit.get("school"));
-		this.setHp(unit.get('hp'), unit.get('cur_hp'));
-		this.setMp(unit.get('mp'), unit.get('cur_mp'));
-		this.setExp(unit.get('exp'));
-		this.setTerrain(unit.get('terrain'));
+		if (this._type == 1) {
+			this.setLv(unit.get_orig("lv"));
+			this.setHp(unit.get_orig('hp'), unit.get_orig('cur_hp'));
+			this.setMp(unit.get_orig('mp'), unit.get_orig('cur_mp'));
+			if (this._style == 0) {
+				this.setExp(unit.get_orig('exp'), unit.get_orig('cur_exp'));
+			}
+		} else {
+			this.setLv(unit.get("lv"));
+			this.setHp(unit.get('hp'), unit.get('cur_hp'));
+			this.setMp(unit.get('mp'), unit.get('cur_mp'));
+		}
+		if (this._type == 1 && this._style == 0) {
+			this.setEquipExp();
+		} else if (!this._type){
+			if (this._style == 0) {
+				this.setExp(unit.get('exp'), unit.get('cur_exp'));
+			}
+			this.setTerrain(unit.get('terrain'));
+		}
 	},
 	setBasePoint: function(x, y) {
 		if (x >= CONFIG.const.system.width / 2) {
@@ -1326,53 +1381,69 @@ var InfoBox = arc.Class.create(arc.display.DisplayObjectContainer, {
 			this.setX(x + CONFIG.const.SIZE);
 		}
 		if (y >= CONFIG.const.system.height / 2) {
-			this.setY(y - CONFIG.const.SIZE);
+			if (this._type == 1 && this._style == 0) {
+				this.setY(y - 2 * CONFIG.const.SIZE);
+			} else {
+				this.setY(y - CONFIG.const.SIZE);
+			}
 		} else {
 			this.setY(y);
 		}
 	},
 	setBase: function() {
-		this._base = new arc.display.Sprite(system.getImage(CONFIG.Menu.base));
+		this._base = new arc.display.Sprite(
+			system.getImage(
+				CONFIG.Menu.base,
+				[0, 0, 48, 48]
+			)
+		);
+		if (this._type == 1 && this._style == 0) {
+			this._base.setScaleX(4);
+			this._base.setScaleY(3);
+		} else {
+			this._base.setScaleX(4);
+			this._base.setScaleY(2);
+		}
 		this.addChild(this._base);
 	},
 	setName: function(name) {
 		if (name == null) {
 			return;
 		}
-        this._nameTxt = new arc.display.TextField();
-        this._nameTxt.setX(10);
-        this._nameTxt.setY(5);
-        //this._nameTxt.setAlign(arc.display.Align.CENTER);
+		this._nameTxt = new arc.display.TextField();
+		this._nameTxt.setX(10);
+		this._nameTxt.setY(5);
+		//this._nameTxt.setAlign(arc.display.Align.CENTER);
 		this._nameTxt.setColor(0xffffff);
-        this._nameTxt.setFont("Helvetica", 16, false);
+		this._nameTxt.setFont("Helvetica", 16, false);
 		this._nameTxt.setText(name)
-        this.addChild(this._nameTxt);
+		this.addChild(this._nameTxt);
 	},
 	setLv: function(lv) {
 		if (lv == null) {
 			return;
 		}
-        this._lvTxt = new arc.display.TextField();
-        this._lvTxt.setX(60);
-        this._lvTxt.setY(5);
-        //this._lvTxt.setAlign(arc.display.Align.CENTER);
+		this._lvTxt = new arc.display.TextField();
+		this._lvTxt.setX(60);
+		this._lvTxt.setY(5);
+		//this._lvTxt.setAlign(arc.display.Align.CENTER);
 		this._lvTxt.setColor(0xffffff);
-        this._lvTxt.setFont("Helvetica", 16, false);
+		this._lvTxt.setFont("Helvetica", 16, false);
 		this._lvTxt.setText("等级: "+lv)
-        this.addChild(this._lvTxt);
+		this.addChild(this._lvTxt);
 	},
 	setSchool: function(school) {
 		if (school == null) {
 			return;
 		}
-        this._schoolTxt = new arc.display.TextField();
-        this._schoolTxt.setX(130);
-        this._schoolTxt.setY(5);
-        //this._schoolTxt.setAlign(arc.display.Align.CENTER);
+		this._schoolTxt = new arc.display.TextField();
+		this._schoolTxt.setX(130);
+		this._schoolTxt.setY(5);
+		//this._schoolTxt.setAlign(arc.display.Align.CENTER);
 		this._schoolTxt.setColor(0xffffff);
-        this._schoolTxt.setFont("Helvetica", 16, false);
+		this._schoolTxt.setFont("Helvetica", 16, false);
 		this._schoolTxt.setText(school)
-        this.addChild(this._schoolTxt);
+		this.addChild(this._schoolTxt);
 	},
 	setHp: function(hp, cur_hp) {
 		if (hp == null || cur_hp == null) {
@@ -1383,6 +1454,8 @@ var InfoBox = arc.Class.create(arc.display.DisplayObjectContainer, {
 			cur_hp = hp;
 		}
 
+		var bl = 32;
+
 		this.hp = hp;
 		this.cur_hp = cur_hp;
 		this._hp_update_step = parseInt(this.hp * 0.05);
@@ -1390,7 +1463,7 @@ var InfoBox = arc.Class.create(arc.display.DisplayObjectContainer, {
 		// set hp image
 		var img_hp = new arc.display.Sprite(system.getImage(CONFIG.Menu.heart));
 		img_hp.setX(10);
-		img_hp.setY(25);
+		img_hp.setY(bl - 5);
 		this.addChild(img_hp);
 
 		// set hp bar
@@ -1401,7 +1474,7 @@ var InfoBox = arc.Class.create(arc.display.DisplayObjectContainer, {
 			)
 		);
 		this.bar_hp.setX(45);
-		this.bar_hp.setY(33);
+		this.bar_hp.setY(bl + 3);
 		var rate = parseInt((this.cur_hp / this.hp) * 130);
 		this.bar_hp.setScaleX(rate);
 		this.addChild(this.bar_hp);
@@ -1409,18 +1482,18 @@ var InfoBox = arc.Class.create(arc.display.DisplayObjectContainer, {
 	
 		// set hp number
 		this._hpTxt = new arc.display.TextField();
-        this._hpTxt.setX(100);
-        this._hpTxt.setY(30);
+		this._hpTxt.setX(100);
+		this._hpTxt.setY(bl);
 		this._hpTxt.setColor(0xffffff);
-        this._hpTxt.setFont("Helvetica", 15, true);
+		this._hpTxt.setFont("Helvetica", 15, true);
 		this._hpTxt.setText(" /  " + hp);
 		this.addChild(this._hpTxt);	
 
 		this._curHpTxt = new arc.display.TextField();
-        this._curHpTxt.setX(75);
-        this._curHpTxt.setY(30);
+		this._curHpTxt.setX(75);
+		this._curHpTxt.setY(bl);
 		this._curHpTxt.setColor(0xffffff);
-        this._curHpTxt.setFont("Helvetica", 15, true);
+		this._curHpTxt.setFont("Helvetica", 15, true);
 		this._curHpTxt.setText(cur_hp);
 		this.addChild(this._curHpTxt);	
 
@@ -1432,18 +1505,20 @@ var InfoBox = arc.Class.create(arc.display.DisplayObjectContainer, {
 		if (cur_mp > mp) {
 			cur_mp = mp;
 		}
-	
+
+		var bl = 57;
+
 		this.mp = mp;
 		this.cur_mp = cur_mp;
 		this._mp_update_step = parseInt(this.mp * 0.05);
 
-		// set hp image
+		// set mp image
 		var img_mp = new arc.display.Sprite(system.getImage(CONFIG.Menu.magic));
 		img_mp.setX(10);
-		img_mp.setY(50);
+		img_mp.setY(bl - 5);
 		this.addChild(img_mp);
 
-		// set hp bar
+		// set mp bar
 		this.bar_mp = new arc.display.Sprite(
 			system.getImage(
 				CONFIG.Menu.mp, 
@@ -1451,56 +1526,96 @@ var InfoBox = arc.Class.create(arc.display.DisplayObjectContainer, {
 			)
 		);
 		this.bar_mp.setX(45);
-		this.bar_mp.setY(58);
+		this.bar_mp.setY(bl + 3);
 		var rate = parseInt((this.cur_mp / this.mp) * 130);
 		this.bar_mp.setScaleX(rate);
 		this.addChild(this.bar_mp);
 
 		this.cur_mp = cur_mp;
 
-		// set hp number
+		// set mp number
 		this._mpTxt = new arc.display.TextField();
-        this._mpTxt.setX(100);
-        this._mpTxt.setY(55);
+		this._mpTxt.setX(100);
+		this._mpTxt.setY(bl);
 		this._mpTxt.setColor(0xffffff);
-        this._mpTxt.setFont("Helvetica", 15, true);
+		this._mpTxt.setFont("Helvetica", 15, true);
 		this._mpTxt.setText(" /  " + mp);
 		this.addChild(this._mpTxt);	
 
 		this._curMpTxt = new arc.display.TextField();
-        this._curMpTxt.setX(75);
-        this._curMpTxt.setY(55);
+		this._curMpTxt.setX(75);
+		this._curMpTxt.setY(bl);
 		this._curMpTxt.setColor(0xffffff);
-        this._curMpTxt.setFont("Helvetica", 15, true);
+		this._curMpTxt.setFont("Helvetica", 15, true);
 		this._curMpTxt.setText(cur_mp);
 		this.addChild(this._curMpTxt);	
 
 	},
-	setExp: function(exp) {
-		if (exp == null) {
+	setExp: function(exp, cur_exp) {
+		if (exp == null || cur_exp == null) {
 			return;
 		}
-		this._expTxt = new arc.display.TextField();
-        this._expTxt.setX(10);
-        this._expTxt.setY(80);
-		this._expTxt.setColor(0xffffff);
-        this._expTxt.setFont("Helvetica", 13, false);
-		this._expTxt.setText("经验值：" + exp);
-		this.addChild(this._expTxt);	
+		if (this._type == 1) {
+			var bl = 82;
+			var img_exp = new arc.display.Sprite(system.getImage(CONFIG.Menu.magic));
+			img_exp.setX(10);
+			img_exp.setY(bl - 5);
+			this.addChild(img_exp);
 
-		this.cur_exp = exp;
+			this.exp = exp;
+			this.cur_exp = cur_exp;
+
+			// set exp bar
+			this.bar_exp = new arc.display.Sprite(
+				system.getImage(
+					CONFIG.Menu.exp, 
+					[0, 0, 1, 8]
+				)
+			);
+			this.bar_exp.setX(45);
+			this.bar_exp.setY(bl + 3);
+			var rate = parseInt((this.cur_exp / this.exp) * 130);
+			this.bar_exp.setScaleX(rate);
+			this.addChild(this.bar_exp);
+
+
+			// set exp number
+			this._expTxt = new arc.display.TextField();
+			this._expTxt.setX(100);
+			this._expTxt.setY(bl);
+			this._expTxt.setColor(0xffffff);
+			this._expTxt.setFont("Helvetica", 15, true);
+			this._expTxt.setText(" /  " + exp);
+			this.addChild(this._expTxt);	
+
+			this._curExpTxt = new arc.display.TextField();
+			this._curExpTxt.setX(75);
+			this._curExpTxt.setY(bl);
+			this._curExpTxt.setColor(0xffffff);
+			this._curExpTxt.setFont("Helvetica", 15, true);
+			this._curExpTxt.setText(cur_exp);
+			this.addChild(this._curExpTxt);	
+		} else {
+			this._curExpTxt = new arc.display.TextField();
+			this._curExpTxt.setX(10);
+			this._curExpTxt.setY(80);
+			this._curExpTxt.setColor(0xffffff);
+			this._curExpTxt.setFont("Helvetica", 13, false);
+			this._curExpTxt.setText("经验值：" + exp);
+			this.addChild(this._curExpTxt);	
+		}
 		this._exp_update_step = 3;
 	},
 	setTerrain: function(terrain) {
 		//if (terrain == null) {
 		//	return;
 		//}
-        this._terrainTxt = new arc.display.TextField();
-        this._terrainTxt.setX(120);
-        this._terrainTxt.setY(80);
-        //this._schoolTxt.setAlign(arc.display.Align.CENTER);
+		this._terrainTxt = new arc.display.TextField();
+		this._terrainTxt.setX(120);
+		this._terrainTxt.setY(80);
+		//this._schoolTxt.setAlign(arc.display.Align.CENTER);
 		this._terrainTxt.setColor(0xffffff);
-        this._terrainTxt.setFont("Helvetica", 13, false);
+		this._terrainTxt.setFont("Helvetica", 13, false);
 		this._terrainTxt.setText(
 			/* TODO: implement Terrain related features
 			this._bc.getTerrainInfo(
@@ -1510,94 +1625,101 @@ var InfoBox = arc.Class.create(arc.display.DisplayObjectContainer, {
 			*/
 			"平地 100%"
 		);
-        this.addChild(this._terrainTxt);
+		this.addChild(this._terrainTxt);
 	},
-	anim_hurt: function(tgtAttr, tgtNum) {
-		if (tgtAttr == null || this[tgtAttr] == null || tgtNum == null) {
-			return;
-		}
-		if (this[tgtAttr] != tgtNum) {
-			STAT = 400;
-			INFOBOX = this;
-			this._tgtAttr = tgtAttr;
-			this._tgtNum = tgtNum;
-		}
+	setEquipExp: function(atk, def) {
+		this._atkTxt = new arc.display.TextField();
+		this._atkTxt.setX(20);
+		this._atkTxt.setY(110);
+		this._atkTxt.setColor(0xffffff);
+		this._atkTxt.setFont("Helvetica", 13, false);
+		this._atkTxt.setText(atk);
+		this.addChild(this._atkTxt);
+	   
+	  	this._defTxt = new arc.display.TextField();
+		this._defTxt.setX(120);
+		this._defTxt.setY(110);
+		this._defTxt.setColor(0xffffff);
+		this._defTxt.setFont("Helvetica", 13, false);
+		this._defTxt.setText(def);
+		this.addChild(this._defTxt);
+	},
+	anim_hurt: function() {
+		STAT = 400;
+		INFOBOX = this;
 	},
 	anim_heal: function() {
 	
 	},
-	anim_exp: function(tgtAttr, tgtNum) {
-		if (tgtAttr == null || this[tgtAttr] == null || tgtNum == null) {
-			return;
-		}
-		if (this[tgtAttr] != tgtNum) {
-			STAT = 500;
-			INFOBOX = this;
-			this._tgtAttr = tgtAttr;
-			this._tgtNum = tgtNum < 100 ? tgtNum : 100;
+	anim_exp: function() {
+		STAT = 500;
+		INFOBOX = this;
+		//this._tgtAttr = tgtAttr;
+		//this._tgtNum = tgtNum < this.exp ? tgtNum : this.exp;
+		this.expTgt = this._unit.get("cur_exp" - this._exp_update_step);
+		if (this._unit.compare("lv") == 0) {
+			this.expTgt = this._unit.get("exp");
+			// register levelup
+			this._bc.pushEvent(
+				arc.util.bind(this._unit.levelup, this._unit)
+			);
 		}
 	},
 	setStatus: function() {
 	},
 	show: function() {
 	},
-	update: function() {
-		if (this._tgtAttr == null || this._tgtNum == null) {
-			return;
+	compareBasic: function() {
+		if (
+		(	this.cur_exp == this._unit.get("cur_exp")
+		||  this.cur_exp == this.exp)
+		&&  this.cur_hp  == this._unit.get("cur_hp")
+		&&  this.cur_mp  == this._unit.get("cur_mp")
+		) {
+			return true;
 		}
-		if (this._tgtAttr == "cur_hp") {
-			if (this.cur_hp < this._tgtNum - this._hp_update_step) {
+		return false;
+	},
+	update: function() {
+		// hp differs
+		if (this.cur_hp != this._unit.get("cur_hp")) {
+			if (this.cur_hp < this._unit.get("cur_hp") - this._hp_update_step) {
 				this.cur_hp += this._hp_update_step;
-			} else if (this.cur_hp > this._tgtNum + this._hp_update_step) {
+			} else if (this.cur_hp > this._unit.get("cur_hp") + this._hp_update_step) {
 				this.cur_hp -= this._hp_update_step;
-			} else if (this.cur_hp == this._tgtNum) {
-				if (STAT == 400) {
-					setTimeout(
-						arc.util.bind(this._bc.removeInfoBox, this._bc),
-						500
-					);
-					STAT = 401;
-					this._unit.set("cur_hp", this.cur_hp);
-					this._tgtNum = 0;
-					this._tgtAttr = null;
-					this._unit.ready();
-				} else {
-					return;
-				}
 			} else {
-				this.cur_hp = this._tgtNum;
+				this.cur_hp = this._unit.get("cur_hp");
 			}
 			var rate = parseInt((this.cur_hp / this.hp) * 130);
 			this.bar_hp.setScaleX(rate);
 			this._curHpTxt.setText(this.cur_hp);
-		} else if(this._tgtAttr == "cur_exp") {
+		} 
+		// exp differs
+		if(this._type == 1 && this._style == 0 
+		&& this.cur_exp != this.expTgt) {
 			// 或者经验值涨到100，或者涨到目标值
 			// 动画停止
-			if (this.cur_exp < this._tgtNum - this._exp_update_step) {
+			if (this.cur_exp < this.expTgt) {
 				this.cur_exp += this._exp_update_step;
 			} else {
-				this.cur_exp = this._tgtNum;
-				if (STAT == 500) {
-					setTimeout(
-						arc.util.bind(this._bc.removeInfoBox, this._bc),
-						500
-					);
-					STAT = 501;
-					var tgtExp = this._unit.get("exp") + this._unit._getExp;
-					this._unit.set("exp", tgtExp % 100);
-					if (tgtExp >= 100) {
-						this._unit._levelup = true;
-						this._unit.set("lv", 
-							this._unit.get("lv") + parseInt(tgtExp / 100)
-						);
-					}
-					this._tgtNum = 0;
-					this._tgtAttr = null;
-				} else {
-					return;
-				}
+				this.cur_exp = this.expTgt;
 			}
-			this._expTxt.setText("经验值：" + this.cur_exp);
+			var rate = parseInt((this.cur_exp / this.exp) * 130);
+			this.bar_exp.setScaleX(rate);
+			this._curExpTxt.setText(this.cur_exp);
+		}
+		if (this.compareBasic()) {
+			if (STAT == 400) {
+				STAT = 401;
+				this._unit.ready();
+			}
+			if (STAT == 500) {
+				STAT = 501;
+			}
+			setTimeout(
+				arc.util.bind(this._bc.removeInfoBox, this._bc),
+				500
+			);
 		}
 	},
 });
