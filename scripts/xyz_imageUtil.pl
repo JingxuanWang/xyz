@@ -70,9 +70,14 @@ sub unit_mov {
 		my ($sx, $sy) = (0, 0);
 		my ($dx, $dy) = (0, 0);
 		for (my $l = 0; $l < 3; ++$l) {
-		
+			if ($l == 1) {
+				$dy = 2 * $h;
+			} elsif ($l == 2) {
+				$dy = 3 * $h;
+			}
+	
 			$dx = 0;
-			$dy = $l * $h;
+			#$dy = $l * $h;
 			$sx = 0;
 			$sy = (6 + $l) * $h;
 			
@@ -134,7 +139,7 @@ sub unit_mov {
 			);
 =cut	
 
-			($dx, $dy) = (0, $h * 3);
+			($dx, $dy) = (0, $h);
 			($sx, $sy) = (0, $h * 4);
 			#$dx += $w;
 			#$sy = $l * 2 * $h;
@@ -222,6 +227,11 @@ sub unit_atk {
 		my ($sx, $sy) = (0, 0);
 		my ($dx, $dy) = (0, 0);
 		for (my $l = 0; $l < 3; ++$l) {
+			if ($l == 1) {
+				$dy = 2 * $h;
+			} elsif ($l == 2) {
+				$dy = 3 * $h;
+			}
 			for (my $j = 0; $j < $frame; ++$j) {
 				my $src = Image::Magick->new;
 				$ret = $src->Read($file);
@@ -239,9 +249,10 @@ sub unit_atk {
 				$sy += $h;
 			}
 			$dx = 0;
-			$dy += $h;
+			#$dy += $h;
 		}
 
+			$dy = $h;
 			$sy -= $frame * $h;
 			# flip left to right
 			for (my $j = 0; $j < $frame; ++$j) {
@@ -287,9 +298,6 @@ sub unit_spc {
 	my $frame = $config->{frame};
 	my $img_num = $config->{img_num};
 	my ($type, $side, $level);
-
-	# first clip from unit_mov
-
 
 
 	for (my $i = 1; $i <= $img_num; ++$i) {
@@ -559,8 +567,8 @@ sub batch_convert {
 	}
 }
 
-#unit_atk($CONFIG->{UNIT_ATK});
-#unit_mov($CONFIG->{UNIT_MOV});
+unit_atk($CONFIG->{UNIT_ATK});
+unit_mov($CONFIG->{UNIT_MOV});
 unit_spc($CONFIG->{UNIT_SPC});
 
 #image_base();

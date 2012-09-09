@@ -92,10 +92,11 @@ var Matrix = arc.Class.create({
 	_name: "Matrix",
 	_array: [],
 
-	initialize: function(bc, x, y) {
+	initialize: function(bc, x, y, terrain) {
 		this._bc = bc;
 		this._x = x;
 		this._y = y;
+		this._array = terrain;
 	},
 	getIndex: function(x, y) {
 		return y * this._y + x;
@@ -105,17 +106,30 @@ var Matrix = arc.Class.create({
 		var x = index - y * this._y;
 		return [x, y];
 	},
-	isValidGrid: function(x, y, terrain, unit) {
-		if (x < 0 || x > this._x || y < 0 || y > this._y) {
+	isValidGrid: function(x, y) {
+		if (x < 0 || x >= this._x || y < 0 || y >= this._y) {
 			return false;
 		}
-		if (terrain) {
+		if (!this.getGridTerrain(x, y)) {
 			// judge terrain
+			return false;
 		}
-		if (unit) {
+		if (!this._bc.canPass(
+			x * CONFIG.const.SIZE, 
+			y * CONFIG.const.SIZE
+		)) {
 			// judge other unit
+			return false;
 		}
 		return true;
+	},
+	// 读入的矩阵是xy颠倒的，因此在这里反过来
+	getGridTerrain: function(y, x) {
+		if (this._array[x][y] >= 0) {
+			return true;
+		} else {
+			return false;
+		}
 	},
 	setX: function(x) {
 		this._x = x;
@@ -130,7 +144,7 @@ var Matrix = arc.Class.create({
 		return this._y;
 	},
 	load: function(matrix) {
-		this._array = matrix;
+		//this._array = matrix;
 	},
 	getNeighbor_4: function(x, y) {
 		var arr = [];
@@ -183,13 +197,14 @@ var Matrix = arc.Class.create({
 			if (t.mov > 0) {
 				var gr = [];
 				gr[0] = new Grid(t._i, t._j + 1);
-				gr[1] = new Grid(t._i, t._j - 1);
-				gr[2] = new Grid(t._i - 1, t._j);
-				gr[3] = new Grid(t._i + 1, t._j);
+				gr[1] = new Grid(t._i + 1, t._j);
+				gr[2] = new Grid(t._i, t._j - 1);
+				gr[3] = new Grid(t._i - 1, t._j);
 
 				for (var a = 0; a <= 3; ++a) {
 					var tg = gr[a];
-					if (this.isValidGrid(tg) && !visited[tg._j * this.getX() + tg._i]) {
+					if (this.isValidGrid(tg._i, tg._j) 
+					&& !visited[tg._j * this.getX() + tg._i]) {
 						tg.mov = t.mov - 1;
 						visited[tg._j * this.getX() + tg._i] = 1;
 						tg.stack = [];
@@ -234,27 +249,27 @@ var Matrix = arc.Class.create({
 		var ar = [];
 		if (type == 1) {
 			gr[0] = new Grid(x, y + 1);
-			gr[1] = new Grid(x, y - 1);
-			gr[2] = new Grid(x - 1, y);
-			gr[3] = new Grid(x + 1, y);
+			gr[1] = new Grid(x + 1, y);
+			gr[2] = new Grid(x, y - 1);
+			gr[3] = new Grid(x - 1, y);
 		} else if (type == 2){
 			gr[0] = new Grid(x, y + 1);
-			gr[1] = new Grid(x, y - 1);
-			gr[2] = new Grid(x - 1, y);
-			gr[3] = new Grid(x + 1, y);
+			gr[1] = new Grid(x + 1, y);
+			gr[2] = new Grid(x, y - 1);
+			gr[3] = new Grid(x - 1, y);
 			gr[4] = new Grid(x + 1, y + 1);
-			gr[5] = new Grid(x - 1, y - 1);
-			gr[6] = new Grid(x - 1, y + 1);
-			gr[7] = new Grid(x + 1, y - 1);
+			gr[5] = new Grid(x + 1, y - 1);
+			gr[6] = new Grid(x - 1, y - 1);
+			gr[7] = new Grid(x - 1, y + 1);
 		} else if (type == 3) {
 			gr[0] = new Grid(x, y + 1);
-			gr[1] = new Grid(x, y - 1);
-			gr[2] = new Grid(x - 1, y);
-			gr[3] = new Grid(x + 1, y);
+			gr[1] = new Grid(x + 1, y);
+			gr[2] = new Grid(x, y - 1);
+			gr[3] = new Grid(x - 1, y);
 			gr[4] = new Grid(x + 1, y + 1);
-			gr[5] = new Grid(x - 1, y - 1);
-			gr[6] = new Grid(x - 1, y + 1);
-			gr[7] = new Grid(x + 1, y - 1);
+			gr[5] = new Grid(x + 1, y - 1);
+			gr[6] = new Grid(x - 1, y - 1);
+			gr[7] = new Grid(x - 1, y + 1);
 			gr[8] = new Grid(x, y + 2);
 			gr[9] = new Grid(x + 2, y);
 			gr[10] = new Grid(x, y - 2);
@@ -262,9 +277,9 @@ var Matrix = arc.Class.create({
 		}
 		while(gr.length > 0) {
 			var tmp = gr.shift();
-			if (this.isValidGrid(tmp)) {
+			//if (this.isValidGrid(tmp._i, tmp._j)) {
 				ar.push(tmp);
-			}
+			//}
 		}
 		return ar;
 	}
@@ -296,7 +311,7 @@ var BattleController = arc.Class.create(arc.display.DisplayObjectContainer, {
 
 	initialize: function() {
 		// load map
-		this._matrix = new Matrix(this, CONFIG.map.width, CONFIG.map.height);
+		this._matrix = new Matrix(this, CONFIG.map.width, CONFIG.map.height, CONFIG.map.terrain);
 
 		this._unit_layer = new arc.display.DisplayObjectContainer();
 		this._ui_layer = new arc.display.DisplayObjectContainer();
@@ -392,7 +407,21 @@ var BattleController = arc.Class.create(arc.display.DisplayObjectContainer, {
 		}
 		return null;
 	},
+	canPass: function(x, y) {
+		var u = this.getUnit(x, y);
+		if (u == null 
+		|| this.actor == null
+		) {
+			return true;
+		}
+		if (this.actor._side == u._side) {
+			return true;
+		} else {
+			return false;
+		}
+	},
 	showAvailGrids: function(unit) {
+		//unit = this.actor;
 		// get avail grids
 		this.avail_grids = [];
 		this.attack_range = [];
@@ -635,8 +664,8 @@ var Map = arc.Class.create(arc.display.DisplayObjectContainer, {
 		//_map.src = CONFIG.map.image;
 		//ctx.drawImage(_map, 0, 0);
 		
-
-
+		//this._debug();
+	
 		// regist event listener
 		this.addEventListener(
 			arc.Event.TOUCH_START, 
@@ -653,7 +682,20 @@ var Map = arc.Class.create(arc.display.DisplayObjectContainer, {
 
 		// battle start
 	},
-
+	_debug: function() {
+		for (var i = 0; i < CONFIG.map.width; ++i) {
+			for (var j = 0; j < CONFIG.map.height; ++j) {
+				var shader = new arc.display.Sprite(
+					system.getImage(CONFIG.UI.mov_base)
+				);
+				shader.setX(i * CONFIG.const.SIZE);
+				shader.setY(j * CONFIG.const.SIZE);
+				if ((i + j) % 2) {
+					this.addChild(shader);
+				}
+			}
+		}
+	},
 	_onTouchStart: function(e) {
 	},
 	_onTouchMove: function(e) {
@@ -868,8 +910,8 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 			return;
 		} else if (STAT == 0 && this._flag != "finished") {
 			STAT = 100;
-			this.prepareMove();
 			this._bc.actor = this;
+			this.prepareMove();
 		} else {	
 			// Exceptions
 			this.restore();
@@ -906,6 +948,8 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 		STAT = 201;
 		var t = e.target;
 		var stack = t.stack;
+
+		console.log(stack);
 
 		var grid = this._bc.getUnit(t.getX(), t.getY());
 		if (grid != null) {
@@ -947,11 +991,11 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 		if (direction == 0) {
 			ty += length * CONFIG.const.SIZE;
 		} else if (direction == 1) {
-			ty -= length * CONFIG.const.SIZE;
-		} else if (direction == 2) {
-			tx -= length * CONFIG.const.SIZE;
-		} else if (direction == 3) {
 			tx += length * CONFIG.const.SIZE;
+		} else if (direction == 2) {
+			ty -= length * CONFIG.const.SIZE;
+		} else if (direction == 3) {
+			tx -= length * CONFIG.const.SIZE;
 		}
 			
 		this._cur_anim = new arc.anim.Animation(
@@ -1028,13 +1072,13 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 
 		var d = 0;	
 		if (t.getX() > this.getX()) {
-			d = 3;
+			d = 1;
 		} 
 		else if (t.getX() < this.getX()) {
-			d = 2;
+			d = 3;
 		}
 		else if (t.getY() < this.getY()) {
-			d = 1;
+			d = 2;
 		}
 		this._bc.clearAvailGrids();
 		this.attack(d);
@@ -1252,6 +1296,10 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 		}
 	},
 	calExp: function(defender, dmg) {
+		if (this._side != 0) {
+			return 0;
+		}
+
 		var lvDiff = defender.get("lv") - this.get("lv");
 		var exp = parseInt(dmg / 1) + lvDiff;
 		if (exp < 5) {
@@ -1310,6 +1358,7 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 	power_up: function() {
 	},
 	saveOrigStatus: function() {
+		delete this._origAttr;
 		this._origAttr = new Attr(this._attr);	
 	},
 	removeOrigStatus: function() {
@@ -1555,6 +1604,7 @@ var InfoBox = arc.Class.create(arc.display.DisplayObjectContainer, {
 		if (exp == null || cur_exp == null) {
 			return;
 		}
+		console.log("type : " + this._type + " exp :" + exp + " cur_exp : " + cur_exp)
 		if (this._type == 1) {
 			var bl = 82;
 			var img_exp = new arc.display.Sprite(system.getImage(CONFIG.Menu.magic));
@@ -1670,19 +1720,30 @@ var InfoBox = arc.Class.create(arc.display.DisplayObjectContainer, {
 	show: function() {
 	},
 	compareBasic: function() {
-		if (
-		(	this.cur_exp == this._unit.get("cur_exp")
-		||  this.cur_exp == this.exp)
-		&&  this.cur_hp  == this._unit.get("cur_hp")
-		&&  this.cur_mp  == this._unit.get("cur_mp")
-		) {
-			return true;
-		}
-		return false;
+//		if (this._type == 1) {
+//			if (this.cur_hp  == this._unit.get("cur_hp")
+//			&&  this.cur_mp  == this._unit.get("cur_mp")) {
+//				return true;
+//			} else {
+//				return false;
+//			}
+//		} else if (this._type == 0) {
+			if (
+			(	this.cur_exp == this._unit.get("cur_exp")
+			||  this.cur_exp == this.exp)
+			&&  this.cur_hp  == this._unit.get("cur_hp")
+			&&  this.cur_mp  == this._unit.get("cur_mp")
+			) {
+				//console.log("compareBasic return true " + this._type);	
+				return true;
+			}
+				//console.log("compareBasic return false" + this._type);	
+			return false;
+//		}
 	},
 	update: function() {
 		// hp differs
-		if (this.cur_hp != this._unit.get("cur_hp")) {
+		if (STAT == 400 && this.cur_hp != this._unit.get("cur_hp")) {
 			if (this.cur_hp < this._unit.get("cur_hp") - this._hp_update_step) {
 				this.cur_hp += this._hp_update_step;
 			} else if (this.cur_hp > this._unit.get("cur_hp") + this._hp_update_step) {
@@ -1695,7 +1756,9 @@ var InfoBox = arc.Class.create(arc.display.DisplayObjectContainer, {
 			this._curHpTxt.setText(this.cur_hp);
 		} 
 		// exp differs
-		if(this._type == 1 && this._style == 0 
+		if(STAT == 500 
+		&& this._type == 1 
+		&& this._style == 0 
 		&& this.cur_exp != this.expTgt) {
 			// 或者经验值涨到100，或者涨到目标值
 			// 动画停止
