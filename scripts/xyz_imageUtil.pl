@@ -551,27 +551,33 @@ sub image_base {
 	}
 }
 
+# for item mark map
+# convert bmp to png
+# and set background color to be transparent
 sub batch_convert {
 	my ($dir) = @_;
 
-	my @files = `ls $dir`;
+	my $SRC_DIR = "./src";
+	my $OUTPUT_DIR = "./output";
+
+	my @files = `ls $SRC_DIR/$dir`;
 	for my $file (@files) {
 		chomp($file);
 		if ($file =~ /(.*)\.(bmp|jpg|jpeg)/) {
 			my $prefix = $1;
 			my $newFileName = "$prefix.png";
-			my $stmt = "convert -transparent '#F700FF' $dir/$file $dir/$newFileName";
+			my $stmt = "convert -transparent '#F700FF' $SRC_DIR/$dir/$file $OUTPUT_DIR/$dir/$newFileName";
 			print $stmt,"\n";
 			`$stmt`;
 		}
 	}
 }
 
-unit_atk($CONFIG->{UNIT_ATK});
-unit_mov($CONFIG->{UNIT_MOV});
-unit_spc($CONFIG->{UNIT_SPC});
+#unit_atk($CONFIG->{UNIT_ATK});
+#unit_mov($CONFIG->{UNIT_MOV});
+#unit_spc($CONFIG->{UNIT_SPC});
 
 #image_base();
 
-#batch_convert(@ARGV);
+batch_convert(@ARGV);
 

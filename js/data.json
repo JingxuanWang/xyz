@@ -32,10 +32,17 @@
 			[0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0], 
 			[0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0]  
 		],
+		"mission" : {
+			"max_round" : 5,
+			"key_chara" : {
+				"110001" : 1
+			}
+		},
 		"image" : "img/map/HM_1.png",
 		"player_unit" : [
 			{
 				"attr" : {
+					"chara_id" : 110001,
 					"name": "项羽",
 					"lv" : 1,
 					"school" : "群雄",
@@ -70,6 +77,7 @@
 		"enemy_unit" : [
 			{
 				"attr" : {
+					"chara_id" : 130001,
 					"name": "官兵",
 					"lv" : 1,
 					"school" : "轻步兵",
@@ -109,15 +117,33 @@
 	},
 	"Menu": {
 		"base" : "img/menu/black.png",
-		"heart" : "img/menu/heart.png",
-		"magic" : "img/menu/magic.png",
-		"hp" : "img/menu/bar_green.png",
-		"mp" : "img/menu/bar_yellow.png",
-		"exp" : "img/menu/bar_pink.png",
-		"hp_decr" : "img/menu/bar_red.png",
-		"hp_incr" : "img/menu/bar_blue.png",
-		"mp_decr" : "img/menu/bar_red.png",
-		"mp_incr" : "img/menu/bar/blue.png"
+		"icon" : {
+			"hp" : "img/menu/heart.png",
+			"mp" : "img/menu/magic.png",
+			"exp" : "img/menu/exp.png",
+			"weapon" : "img/menu/weapon.png",
+			"armor" : "img/menu/armor.png"
+		},
+		"stat" : {
+			"seal" : "img/menu/stat_seal.png",
+			"paralyze" : "img/menu/stat_paralyze.png",
+			"confuse" : "img/menu/stat_confuse.png"
+		},
+		"elem" : {
+			"fire" : "img/menu/elem_fire.png",
+			"water" : "img/menu/elem_water.png",
+			"air" : "img/menu/elem_air.png",
+			"earth" : "img/menu/elem_earth.png"
+		},
+		"bar" : {
+			"hp" : "img/menu/bar_green.png",
+			"mp" : "img/menu/bar_yellow.png",
+			"exp" : "img/menu/bar_pink.png",
+			"hp_decr" : "img/menu/bar_red.png",
+			"hp_incr" : "img/menu/bar_blue.png",
+			"mp_decr" : "img/menu/bar_red.png",
+			"mp_incr" : "img/menu/bar/blue.png"
+		}
 	},
 	"image" : [
 		"img/unit/Unit_mov_109.png",
@@ -136,6 +162,7 @@
 		"img/menu/bar_pink.png",
 		"img/menu/heart.png",
 		"img/menu/magic.png",
+		"img/menu/exp.png",
 		"img/menu/Mark_12-1.png",
 		"img/menu/Mark_13-1.png",
 		"img/menu/Mark_14-1.png",
@@ -143,6 +170,15 @@
 		"img/menu/blue.png",
 		"img/menu/green.png",
 		"img/menu/atk.png",
-		"img/menu/mov.png"
+		"img/menu/mov.png",
+		"img/menu/armor.png",
+		"img/menu/weapon.png",
+		"img/menu/stat_confuse.png",
+		"img/menu/stat_paralyze.png",
+		"img/menu/stat_seal.png",
+		"img/menu/elem_fire.png",
+		"img/menu/elem_water.png",
+		"img/menu/elem_earth.png",
+		"img/menu/elem_air.png"
 	]
 }
