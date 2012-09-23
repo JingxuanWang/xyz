@@ -4,11 +4,12 @@ var system;
 // configuration
 var CONFIG;
 
-var DAMAGE = 80;
+var DAMAGE = 50;
 
 // game status
 // avoid unit action at the same time
 var STAT = 0;
+
 
 var INFOBOX = null;
 
@@ -289,10 +290,14 @@ var EventUnit = arc.Class.create({
 	_name: "EventUnit",
 	func: null,
 	params: null,
+	priority: 0,
+	timestamp: 0,
 
-	initialize: function(func, params) {
+	initialize: function(func, params, priority) {
 		this.func = func;
 		this.params = params;
+		this.priority = priority;
+		this.timestamp = new Date().getTime();
 	}
 });
 
@@ -365,13 +370,34 @@ var BattleController = arc.Class.create(arc.display.DisplayObjectContainer, {
 
 	// Event Queue Control Logic
 	// get event from queue
-	getEvent: function() {
+	getEvent: function(priority) {
 		return this.event_queue.shift();
 	},
 	// regist a event on tail of the queue
-	pushEvent: function(func, params) {
-		var e = new EventUnit(func, params);
-		this.event_queue.push(e);
+	pushEvent: function(func, params, priority) {
+		console.log("PushEvent: " + func + " : " + params + " : " + priority );
+		//this.event_queue.push(e);
+
+		priority = priority > 0 ? priority : 0;
+		var ev = new EventUnit(func, params, priority);
+
+		// push event with priority and timestamp
+		var i = 0;
+		for (i = 0; i < this.event_queue.length; ++i) {
+			var e = this.event_queue[i];
+			if (e == null) {
+				break;
+			} 
+			// find first one that should be in the latter half
+			else if (e.priority == ev.priority && e.timestamp > ev.timestamp) {
+				break;
+			}
+			else if (e.priority > ev.priority) {
+				break;
+			}
+		}
+		this.event_queue.splice(i, 0, ev);
+		console.log(this.event_queue);
 	},
 	// play a event
 	startEvent: function(e) {
@@ -379,15 +405,17 @@ var BattleController = arc.Class.create(arc.display.DisplayObjectContainer, {
 			e.func(e.params);
 		}
 	},
-	nextEvent: function(e) {
+	nextEvent: function(priority) {
 		var e = this.getEvent();
 		if (e != null) {
 			this.startEvent(e);
 		} else {
 			// action end
 			//if (STAT < 502) {
-				//this.checkDead();
+			//	this.checkDead();
 			//} else {
+				// not more dead animation
+				STAT = 0;
 				if(this.checkTurnEnd(this.actor)) {
 					this.sideChange(this.actor);
 				}
@@ -587,7 +615,17 @@ var BattleController = arc.Class.create(arc.display.DisplayObjectContainer, {
 		this.infobox = null;
 		this.nextEvent();
 	},
+	checkActionEnd: function() {
+		if(this.actor && this.actor.isFinished()) {
+			return true;
+		} else {
+			return false;
+		}
+	},
 	checkTurnEnd: function(unit) {
+		if (!unit) {
+			return false;
+		}
 		if (unit._side == 0) {
 			for (var i = 0; i < this._player_units.length; ++i) {
 				if (!this._player_units[i].isFinished()) {
@@ -636,6 +674,7 @@ var BattleController = arc.Class.create(arc.display.DisplayObjectContainer, {
 		for (var i = 0; i < this._enemy_units.length; ++i) {
 			this._enemy_units[i].roundInit();
 		}
+		STAT = 0;
 	},
 	checkGameOver: function() {
 		// check round
@@ -669,11 +708,16 @@ var BattleController = arc.Class.create(arc.display.DisplayObjectContainer, {
 	},
 	checkDead: function() {
 		// callback for dead animation
+		if (!this.tgt_units) {
+			return;
+		}
+		
 		for (var i = 0; i < this.tgt_units.length; ++i) {
 			var unit = this.tgt_units[i];
-			if (unit.get("cur_hp") <= 0) {
+			if (unit.get("cur_hp") <= 0 && unit.isAlive()) {
 				STAT = 502;
-				this.pushEvent(arc.util.bind(unit.die, unit));
+				console.log("before checkDead");
+				this.pushEvent(arc.util.bind(unit.die, unit), null, 100);
 			}
 		}
 		// if we have event pushed in to the queue
@@ -1189,6 +1233,7 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 	
 		// register exp up InfoBox Event
 		var self = this;
+		console.log("before showInfoBoxExpUp");
 		this._bc.pushEvent(
 			arc.util.bind(this._bc.showInfoBoxExpUp, this._bc),
 			self
@@ -1225,13 +1270,18 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 		this._bc.clearMenu();
 		this._bc.removeInfoBox();
 		this._bc.clearAvailGrids();
-		this._bc.checkDead();
 		if (typeof(stat) == 'object' || typeof(stat) == 'function') {
 			STAT = 0;
 		} else {
 			STAT = stat ? stat : 0;
 		}
-		if(this._bc.checkTurnEnd(this)) {
+		if (this.compare("lv") == true) {
+			this._bc.checkDead();
+		}
+		//if (this._bc.checkActionEnd()) {
+		//	this._bc.checkDead();
+		//}
+		if (this._bc.checkTurnEnd(this)) {
 			// should not be checked here
 			/*
 			setTimeout(
@@ -1292,6 +1342,7 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 
 		// register InfoBox Event
 		var self = this;
+		console.log("before showInfoBoxHurt");
 		this._bc.pushEvent(
 			arc.util.bind(this._bc.showInfoBoxHurt, this._bc),
 			self
@@ -1332,9 +1383,9 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 		this.anim_levelup.gotoAndPlay(1);
 	},
 	_onLevelUpComplete: function() {
-		this._levelup = false;
 		console.log(this.get("name")+"等级提升至"+this.get("lv")+"级！");
 		this.finish();
+		this._bc.checkDead();
 	},
 	removeAtkAnim: function() {
 		console.log("removeAtkAnim");
@@ -1439,9 +1490,15 @@ var Unit = arc.Class.create(arc.display.DisplayObjectContainer, {
 		delete this._origAttr;
 	},
 	compare: function(property) {
+		if (!this._origAttr) {
+			return false;
+		}
 		return (this._attr[property] == this._origAttr[property]);
 	},
 	compareAll: function() {
+		if (!this._origAttr) {
+			return false;
+		}
 		return this._attr.compare(this._origAttr);
 	},
 	get: function(property) {
@@ -1732,7 +1789,7 @@ var InfoBox = arc.Class.create(arc.display.DisplayObjectContainer, {
 			this._curExpTxt.setY(80);
 			this._curExpTxt.setColor(0xffffff);
 			this._curExpTxt.setFont("Helvetica", 13, false);
-			this._curExpTxt.setText("经验值：" + exp);
+			this._curExpTxt.setText("经验值：" + cur_exp);
 			this.addChild(this._curExpTxt);	
 		}
 		this._exp_update_step = 3;
@@ -1808,10 +1865,12 @@ var InfoBox = arc.Class.create(arc.display.DisplayObjectContainer, {
 		INFOBOX = this;
 		//this._tgtAttr = tgtAttr;
 		//this._tgtNum = tgtNum < this.exp ? tgtNum : this.exp;
-		this.expTgt = this._unit.get("cur_exp" - this._exp_update_step);
+		//this.expTgt = this._unit.get("cur_exp") - this._exp_update_step;
+		this.expTgt = this._unit.get("cur_exp");
 		if (this._unit.compare("lv") == 0) {
 			this.expTgt = this._unit.get("exp");
 			// register levelup
+			console.log("before levelUP");
 			this._bc.pushEvent(
 				arc.util.bind(this._unit.levelup, this._unit)
 			);
@@ -1836,10 +1895,10 @@ var InfoBox = arc.Class.create(arc.display.DisplayObjectContainer, {
 			&&  this.cur_hp  == this._unit.get("cur_hp")
 			&&  this.cur_mp  == this._unit.get("cur_mp")
 			) {
-				//console.log("compareBasic return true " + this._type);	
+				console.log("compareBasic return true " + this._type);	
 				return true;
 			}
-				//console.log("compareBasic return false" + this._type);	
+				console.log("compareBasic return false" + this._type);	
 			return false;
 //		}
 	},
@@ -1860,7 +1919,8 @@ var InfoBox = arc.Class.create(arc.display.DisplayObjectContainer, {
 		// exp differs
 		if(STAT == 500 
 		&& this._type == 1 
-		&& this._style == 0 
+		&& this._style == 0
+		&& this.cur_exp && this.expTgt
 		&& this.cur_exp != this.expTgt) {
 			// 或者经验值涨到100，或者涨到目标值
 			// 动画停止
