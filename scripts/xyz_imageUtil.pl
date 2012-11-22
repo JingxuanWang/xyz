@@ -173,6 +173,7 @@ sub unit_mov {
 			my $src = Image::Magick->new;
 			$ret = $src->Read($file);
 			warn "$ret\n" if $ret;
+			$ret = $dst->Transparent('#F700FF');
 			$ret = $src->Crop(geometry=>$w."x".$h."+".$sx."+".$sy);
 			warn "$ret\n" if $ret;
 			
@@ -187,7 +188,6 @@ sub unit_mov {
 		}
 
 
-		$ret = $dst->Transparent('#F700FF');
 		warn "$ret\n" if $ret;
 
 		my $outputPNG = "$CONFIG->{OUTPUT_DIR}/$config->{prefix}".$i.".png";
