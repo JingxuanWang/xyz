@@ -1,49 +1,187 @@
-/**
- * enchant();
- * Preparation for using enchant.js.
- * (Exporting enchant.js class to global namespace.
- *  ex. enchant.Sprite -> Sprite etc..)
- *
- * enchant.js を使う前に必要な処理。
- * (enchant.js 本体や、読み込んだプラグインの中で定義されている enchant.Foo, enchant.Plugin.Bar などのクラスを、
- *  それぞれグローバルの Foo, Bar にエクスポートする。)
- */
 enchant();
 
-/*
- * window.onload
- *
- * The function which will be executed after loading page.
- * Command in enchant.js such as "new Core();" will cause an error if executed before entire page is loaded.
- *
- * ページがロードされた際に実行される関数。
- * すべての処理はページがロードされてから行うため、 window.onload の中で実行する。
- * 特に new Core(); は、<body> タグが存在しないとエラーになるので注意。
- */
-window.onload = function(){
-    /**
-     * new Core(width, height)
-     *
-     * Make instance of enchant.Core class. Set window size to 320 x 320
-     * Core オブジェクトを作成する。
-     * 画面の大きさは 320ピクセル x 320ピクセル に設定する。
-     */
-    var game = new Core(960, 960);
+var DOWN = 0;
+var LEFT = 1;
+var UP = 2;
+var RIGHT = 3;
+var SPEED = 2;
 
-    /**
-     * Core.fps
-     *
-     * Set fps (frame per second) in this game to 15.
-     * ゲームの fps (frame per second) を指定する。この場合、1秒間あたり15回画面が更新される。
-     */
-    game.fps = 4;
-    /**
-     * Core#preload
-     *
-     * You can preload all assets files before starting the game.
-     * Set needed file lists in relative/absolute path for attributes of Core#preload
-     * 必要なファイルを相対パスで引数に指定する。 ファイルはすべて、ゲームが始まる前にロードされる。
-     */
+var Attr = enchant.Class.create({
+	name: null,
+	chara_id : 0,
+	level: 0,
+	school: null,
+	rank: null,
+	hp: 0,
+	mp: 0,
+	atk: 0,
+	def: 0,
+	intl: 0,
+	dex: 0,
+	mor: 0,
+	mov: 0,
+	rng: 0,
+	
+	initialize: function(attr) {
+		this.chara_id = attr.chara_id;
+		this.name = attr.name;
+		this.level = attr.level;
+		this.school = attr.school;
+		this.rank = attr.rank;
+		this.hp = attr.hp;
+		this.mp = attr.mp;
+		this.atk = attr.atk;
+		this.def = attr.def;
+		this.intl = attr.intl;
+		this.dex = attr.dex;
+		this.mor = attr.mor;
+		this.mov = attr.mov;
+		this.rng = attr.rng;
+		this.exp = attr.exp ? attr.exp : 0;
+		this.cur_hp = attr.cur_hp ? attr.cur_hp : this.hp;
+		this.cur_mp = attr.cur_mp ? attr.cur_mp : this.mp;
+		this.cur_exp = attr.cur_exp;
+	},
+	compare: function(attr) {
+		for (var prop in this) {
+			if (this[prop] != attr.prop) {
+				return false;
+			}
+		}
+		return true;
+	}
+});
+
+var Chara = enchant.Class.create(enchant.Sprite, {
+	initialize: function(x, y, attr) {
+		enchant.Sprite.call(this, 32, 32);
+		this.x = x;
+		this.y = y;
+		//this.image = game.assets['chara1.png'];
+		//this.frame = 5;
+		// TODO: to read these by config
+		this._anims = {
+			"ATTACK" : {
+				"asset" : "img/unit/Unit_atk_109.png",
+				"frames" : [0, 0, 0, 0, 0, 1, 2, 3],
+				// df stand for direction factor
+				"df" : 4,
+				"fps" : 12
+			},
+			"MOVE" : {
+				"asset" : "img/unit/Unit_mov_109.png",
+				"frames" : [0, 1],
+				"df" : 2,
+				"fps" : 2
+			},
+			"WEAK" : {
+				"asset" : "img/unit/Unit_mov_109.png",
+				"frames" : [6, 7],
+				"df" : 0,
+				"fps" : 2
+			},
+			"STAND" : {
+				"asset" : "img/unit/Unit_spec_109.png",
+				"frames" : [0],
+				"df" : 0,
+				"fps" : 0
+			},
+			"DEFEND" : {
+				"asset" : "img/unit/Unit_spec_109.png",
+				"frames" : [4],
+				"df" : 1,
+				"fps" : 0
+			},
+			"HURT" : {
+				"asset" : "img/unit/Unit_spec_109.png",
+				"frames" : [8],
+				"df" : 0,
+				"fps" : 0
+			},
+			"WIN" : {
+				"asset" : "img/unit/Unit_spec_109.png",
+				"frames" : [9],
+				"df" : 0,
+				"fps" : 0
+			}
+		};
+
+		this.setAnim("MOVE", RIGHT);
+		
+		this.attr = new Attr(attr);
+		// init animations
+		game.rootScene.addChild(this);
+	},
+	// change only direction but not animation
+	setDirection: function(direction) {
+		if (direction == this._current_direction) {
+			return;
+		}
+
+		var frames = [];
+		// change direction for each frame
+		for (var i = 0; i < this._current_animation.frames.length; i++) {
+			frames[i] = this._current_animation.frames[i] 
+				+ this._current_animation.df * direction;
+		}
+		// set first frame
+		this.frame = frames[this._current_frame];
+
+		this._current_direction = direction;
+		this._last_frame_update = this.age; 
+	},
+	// status, asset, fps, frame num should be assigned
+	setAnim: function(anim, direction, frame_num){
+		if (anim === null || direction === null) {
+			console.log("Error Chara.setAnim: " + anim + " : " + direction);
+			return;
+		}
+
+		this.image = this._Anim[anim].asset;
+		var frames = [];
+		// change direction for each frame
+		for (var i = 0; i < this._Anim[anim].frames.length; i++) {
+			frames[i] = this._Anim[anim].frames[i] 
+				+ this._Anim[anim].df * direction;
+		}
+
+		frame_num = frame_num % frames.length;
+		// set first frame
+		this.frame = frames[frame_num];
+
+		this._current_animation = anim;
+		this._current_direction = direction;
+		this._current_frame = frame_num;
+		this._last_frame_update = this.age; 
+	},
+	getCurAnimTotalFrameNum: function() {
+		return this._current_animation.frames.length === null 
+			? this._current_animation.frames.length : 0;	
+	},
+	setCurAnimFrameNum: function(num) {
+		if (this._current_animation.frames.length == 1 && num > 1) {
+			console.log("Error Chara.setCurAnimFrameNum: No other frame to set");
+			return;
+		}
+		num = num % this._current_animation.frames.length;
+		this._current_frame = num;
+		this._last_frame_update = this.age;
+		this.frame = this._current_animation.frames[num];
+	}
+	setCurAnimNextFrame: function() {
+		setCurAnimFrameNum(this._current_frame + 1);
+	},
+	shouldPlayNextFrame: function() {
+		var next_frame = int((this.age % game.fps) 
+			/ game.fps * this._current_animation.fps);
+		return next_frame == this._current_frame ? true : false;
+	},
+}); 
+
+
+window.onload = function(){
+    var game = new Core(960, 960);
+    game.fps = 60;
     game.preload("img/chara1.png");
     game.preload([
 		"img/map/HM_1.png", 
@@ -55,131 +193,43 @@ window.onload = function(){
 		"img/unit/Unit_spc_3.png"
 	]);
 
-    /**
-     * Core#onload
-     *
-     * ロードが完了した直後に実行される関数を指定している。
-     * onload プロパティは load イベントのリスナとして働くので、以下の2つの書き方は同じ意味。
-     *
-     * game.onload = function(){
-     *     // code
-     * }
-     *
-     * game.addEventListener("load", function(){
-     *     // code
-     * })
-     */
     game.onload = function(){
-        /**
-         * new Sprite(width, height)
-         * スプライトオブジェクトを作成する。
-         * Sprite は、Entity, Node, EventTarget を継承しており、それぞれのメソッドやプロパティを使うことができる。
-         */
-        bear = new Sprite(32, 32);
 
-        /**
-         * Sprite.image {Object}
-         * Core#preload で指定されたファイルは、Core.assets のプロパティとして格納される。
-         * Sprite.image にこれを代入することで、画像を表示することができる
-         */
-        bear.image = game.assets["img/chara1.png"];
-
-		hero = new Sprite(48, 48);
+		var hero = new Sprite(48, 48);
 		hero.image = game.assets[
 			"img/unit/Unit_mov_109.png"
 		//	"img/unit/Unit_atk_109.png",
 		//	"img/unit/Unit_spc_109.png"
 		];
-	
-        /**
-         * Node.x Node.y {Number}
-         * x, y 座標を指定する。
-         * viewport の大きさに合わせて画面が拡大縮小されている場合も、
-         * オリジナルの座標系で指定できる。
-         */
-        bear.x = 0;
-        bear.y = 0;
 
+		
 		hero.x = 0;
 		hero.y = 100;
-        /**
-         * Sprite.frame {Number}
-         * (width, height) ピクセルの格子で指定された画像を区切り、
-         * 左上から数えて frame 番目の画像を表示することができる。
-         * デフォルトでは、0:左上の画像が表示される。
-         * このサンプルでは、シロクマが立っている画像を表示する (chara1.gif 参照)。
-         */
-        bear.frame = 5;
 		hero.frame = 2;
-        /**
-         * Group#addChild(node) {Function}
-         * オブジェクトをノードツリーに追加するメソッド。
-         * ここでは、クマの画像を表示するスプライトオブジェクトを、rootScene に追加している。
-         * Core.rootScene は Group を継承した Scene クラスのインスタンスで、描画ツリーのルートになる特別な Scene オブジェクト。
-         * この rootScene に描画したいオブジェクトを子として追加する (addChild) ことで、毎フレーム描画されるようになる。
-         * 引数には enchant.Node を継承したクラス (Entity, Group, Scene, Label, Sprite..) を指定する。
-         */
-        game.rootScene.addChild(bear);
-        game.rootScene.addChild(hero);
+
+		var map = new Sprite(480, 480);
+		map.image = game.assets["img/map/HM_1.png"];
+
+
+		var scene = new Group();
+
+		scene.addChild(map);
+		scene.addChild(hero);
+        game.rootScene.addChild(scene);
 		
-        /**
-         * EventTarget#addEventListener(event, listener)
-         * イベントに対するリスナを登録する。
-         * リスナとして登録された関数は、指定されたイベントの発行時に実行される。
-         * よく使うイベントには、以下のようなものがある。
-         * - "touchstart" : タッチ/クリックされたとき
-         * - "touchmove" : タッチ座標が動いた/ドラッグされたとき
-         * - "touchend" : タッチ/クリックが離されたとき
-         * - "enterframe" : 新しいフレームが描画される前
-         * - "exitframe" : 新しいフレームが描画された後
-         * enchant.js やプラグインに組み込まれたイベントは、それぞれのタイミングで自動で発行されるが、
-         * EventTarget#dispatchEvent で任意のイベントを発行することもできる。
-         *
-         * ここでは、右に向かって走っていくアニメーションを表現するために、
-         * 新しいフレームが描画される前に、毎回クマの画像を切り替え、x座標を1増やすという処理をリスナとして追加する。
-         */
-        bear.addEventListener("enterframe", function(){
-            /**
-             * クマを走らせるために、x座標をインクリメントしている。
-             * この無名関数 function(){ ... } は enterframe イベントのリスナなので、毎フレーム実行される。
-             */
-            this.x += 1;
-
-            /**
-             * this.age (Node.age) は、クマのオブジェクトが今までに何回描画されたか
-             * クマの画像を変えて走るアニメーションを表現するために、
-             * frame を 6 -> 7 -> 6 -> 7.. と順番に変えている。
-             */
-            this.frame = this.age % 2 + 6;
-        });
         hero.addEventListener("enterframe", function(){
-
-            /**
-             * this.age (Node.age) は、クマのオブジェクトが今までに何回描画されたか
-             * クマの画像を変えて走るアニメーションを表現するために、
-             * frame を 6 -> 7 -> 6 -> 7.. と順番に変えている。
-             */
-            this.frame = this.age % 2 + 2;
+			
+			// normal animation
+			var next_frame = (this.age % game.fps) / (game.fps / 2) + 2;
+			if (this.frame != next_frame) {
+				this.frame = next_frame;
+			}
+			// TODO:
+			//if (this.shouldPlayNextFrame()) {
+			//	this.setNextFrame(cur_anim);
+			//}
         });
 
-        /**
-         * タッチされると消える処理を実現するために、
-         * touchstart イベントが起こったとき、クマが消える処理をリスナとして追加する。
-         */
-        bear.addEventListener("touchstart", function(){
-            /**
-             * クマを game.rootScene から削除する。
-             * Group#addChild の逆は Group#removeChild。
-             */
-            game.rootScene.removeChild(bear);
-        });
     };
-
-    /**
-     * Core#start
-     * ゲームを開始する。この関数を実行するまで、ゲームは待機状態となる。
-     * 代わりに Core#debug を使うことで、デバッグモードで起動することができる。
-     * Core#pause(); で一時停止し、 Core#resume(); で再開することができる。
-     */
     game.start();
 };
