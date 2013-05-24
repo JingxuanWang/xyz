@@ -1,9 +1,10 @@
 enchant();
 
+var GAME;
 var DOWN = 0;
-var LEFT = 1;
+var RIGHT = 1;
 var UP = 2;
-var RIGHT = 3;
+var LEFT = 3;
 var SPEED = 2;
 
 var Attr = enchant.Class.create({
@@ -54,7 +55,7 @@ var Attr = enchant.Class.create({
 
 var Chara = enchant.Class.create(enchant.Sprite, {
 	initialize: function(x, y, attr) {
-		enchant.Sprite.call(this, 32, 32);
+		enchant.Sprite.call(this, x, y);
 		this.x = x;
 		this.y = y;
 		//this.image = game.assets['chara1.png'];
@@ -66,69 +67,128 @@ var Chara = enchant.Class.create(enchant.Sprite, {
 				"frames" : [0, 0, 0, 0, 0, 1, 2, 3],
 				// df stand for direction factor
 				"df" : 4,
-				"fps" : 12
+				"fps" : 12,
+				"loop" : false,
+				"width" : 64,
+				"height" : 64
 			},
 			"MOVE" : {
 				"asset" : "img/unit/Unit_mov_109.png",
 				"frames" : [0, 1],
 				"df" : 2,
-				"fps" : 2
+				"fps" : 2,
+				"loop" : true,
+				"width" : 48,
+				"height" : 48
 			},
 			"WEAK" : {
 				"asset" : "img/unit/Unit_mov_109.png",
 				"frames" : [6, 7],
 				"df" : 0,
-				"fps" : 2
+				"fps" : 2,
+				"loop" : true,
+				"width" : 48,
+				"height" : 48
 			},
 			"STAND" : {
 				"asset" : "img/unit/Unit_spec_109.png",
 				"frames" : [0],
 				"df" : 0,
-				"fps" : 0
+				"fps" : 0,
+				"loop" : false,
+				"width" : 48,
+				"height" : 48
 			},
 			"DEFEND" : {
 				"asset" : "img/unit/Unit_spec_109.png",
 				"frames" : [4],
 				"df" : 1,
-				"fps" : 0
+				"fps" : 0,
+				"loop" : false,
+				"width" : 48,
+				"height" : 48
 			},
 			"HURT" : {
 				"asset" : "img/unit/Unit_spec_109.png",
 				"frames" : [8],
 				"df" : 0,
-				"fps" : 0
+				"fps" : 0,
+				"loop" : false,
+				"width" : 48,
+				"height" : 48
 			},
 			"WIN" : {
 				"asset" : "img/unit/Unit_spec_109.png",
 				"frames" : [9],
 				"df" : 0,
-				"fps" : 0
+				"fps" : 0,
+				"loop" : false,
+				"width" : 48,
+				"height" : 48
 			}
 		};
 
-		this.setAnim("MOVE", RIGHT);
+		this.setAnim("MOVE", LEFT);
+		//this.setAnim("ATTACK", RIGHT);
+		var self = this;
+		//this.tl.moveX(100, 50).action({
+		this.tl.action({
+			time: 60,
+			// action start
+			onactionstart: function(evt){
+				self.setAnim("ATTACK", LEFT);
+			}, 
+			// action tick
+			onactiontick: function(evt){
 		
-		this.attr = new Attr(attr);
+			}, 
+			// action end
+			onactionend: function(evt){
+				self.setAnim("MOVE", LEFT);
+			},
+			}
+		);
+		
+		this.addEventListener("enterframe", function(){
+			if (this.shouldPlayNextFrame()) {
+				this.setCurAnimNextFrame();
+			}
+		});
+
+		// for non-loop animation
+		// we should add a "animation complete" event
+		// to handle what to do next
+		// TODO: see ACTION & PARALELL ACTION
+	
+		//this.attr = new Attr(attr);
 		// init animations
-		game.rootScene.addChild(this);
+		GAME.rootScene.addChild(this);
 	},
 	// change only direction but not animation
 	setDirection: function(direction) {
-		if (direction == this._current_direction) {
+		if (direction == this._cur_direction) {
 			return;
 		}
 
 		var frames = [];
 		// change direction for each frame
-		for (var i = 0; i < this._current_animation.frames.length; i++) {
-			frames[i] = this._current_animation.frames[i] 
-				+ this._current_animation.df * direction;
+		for (var i = 0; i < this._cur_anim.frames.length; i++) {
+			frames[i] = this._cur_anim.frames[i] 
+				+ this._cur_anim.df * direction;
 		}
 		// set first frame
-		this.frame = frames[this._current_frame];
+		this.frame = frames[this._cur_frame];
 
-		this._current_direction = direction;
+		this._cur_direction = direction;
 		this._last_frame_update = this.age; 
+	},
+	// called when sprite image size changed
+	_adjustNewSize: function(newWidth, newHeight) {
+		this.x += (this.width - newWidth) / 2;
+		this.y += (this.height - newHeight) / 2;
+		this.width = newWidth;
+		this.height = newHeight;
+		console.log(this.x + " : " + this.y + " : " + this.width + " : " + newWidth);
 	},
 	// status, asset, fps, frame num should be assigned
 	setAnim: function(anim, direction, frame_num){
@@ -137,50 +197,63 @@ var Chara = enchant.Class.create(enchant.Sprite, {
 			return;
 		}
 
-		this.image = this._Anim[anim].asset;
+		this.image = GAME.assets[this._anims[anim].asset];
 		var frames = [];
 		// change direction for each frame
-		for (var i = 0; i < this._Anim[anim].frames.length; i++) {
-			frames[i] = this._Anim[anim].frames[i] 
-				+ this._Anim[anim].df * direction;
+		for (var i = 0; i < this._anims[anim].frames.length; i++) {
+			frames[i] = this._anims[anim].frames[i] 
+				+ this._anims[anim].df * direction;
 		}
-
-		frame_num = frame_num % frames.length;
+		if (!frame_num) {
+			frame_num = 0;
+		} else {
+			frame_num = frame_num % frames.length;
+		}
 		// set first frame
 		this.frame = frames[frame_num];
+		this.adjustNewSize(this._anims[anim].width, this._anims[anim].height);
 
-		this._current_animation = anim;
-		this._current_direction = direction;
-		this._current_frame = frame_num;
-		this._last_frame_update = this.age; 
+
+		this._cur_anim = this._anims[anim];
+		this._cur_direction = direction;
+		this._cur_frame = frame_num;
+		this._last_frame_update = this.age;
+		//console.log("Chara: setAnim: " + this._cur_frame + " : " + frames.length);
 	},
 	getCurAnimTotalFrameNum: function() {
-		return this._current_animation.frames.length === null 
-			? this._current_animation.frames.length : 0;	
+		return this._cur_anim.frames.length === null 
+			? this._cur_anim.frames.length : 0;	
 	},
 	setCurAnimFrameNum: function(num) {
-		if (this._current_animation.frames.length == 1 && num > 1) {
+		if (this._cur_anim.frames.length == 1 && num > 1) {
 			console.log("Error Chara.setCurAnimFrameNum: No other frame to set");
 			return;
 		}
-		num = num % this._current_animation.frames.length;
-		this._current_frame = num;
+		if (this._cur_anim.frames.length == num + 1 && this._cur_anim.loop === false) {
+			return;
+		}
+
+		num = num % this._cur_anim.frames.length;
+		this._cur_frame = num;
 		this._last_frame_update = this.age;
-		this.frame = this._current_animation.frames[num];
-	}
+		this.frame = this._cur_anim.frames[num] + this._cur_anim.df * this._cur_direction;
+		//console.log("Chara: setCurAnimFrameNum: " + this._cur_frame + " : " + this.frame + " : " + this.age);
+	},
 	setCurAnimNextFrame: function() {
-		setCurAnimFrameNum(this._current_frame + 1);
+		//console.log("Chara: setCurAnimNextFrame: " + this._cur_frame + " : " + this.age);
+		this.setCurAnimFrameNum(this._cur_frame + 1);
 	},
 	shouldPlayNextFrame: function() {
-		var next_frame = int((this.age % game.fps) 
-			/ game.fps * this._current_animation.fps);
-		return next_frame == this._current_frame ? true : false;
+		//console.log("Chara: shouldPlayNextFrame: " + this._cur_frame + " : " + this.age);
+		var next_frame = ~~((this.age % GAME.fps) 
+			/ GAME.fps * this._cur_anim.fps);
+		return next_frame == this._cur_frame ? true : false;
 	},
 }); 
 
 
 window.onload = function(){
-    var game = new Core(960, 960);
+    var game = new Core(480, 480);
     game.fps = 60;
     game.preload("img/chara1.png");
     game.preload([
@@ -192,24 +265,21 @@ window.onload = function(){
 		"img/unit/Unit_atk_3.png",
 		"img/unit/Unit_spc_3.png"
 	]);
+	GAME = game;
 
     game.onload = function(){
-
+		/*
 		var hero = new Sprite(48, 48);
-		hero.image = game.assets[
-			"img/unit/Unit_mov_109.png"
-		//	"img/unit/Unit_atk_109.png",
-		//	"img/unit/Unit_spc_109.png"
-		];
-
+		hero.image = game.assets["img/unit/Unit_mov_109.png"];
 		
 		hero.x = 0;
 		hero.y = 100;
 		hero.frame = 2;
-
+		*/
+		var hero = new Chara(240, 240);
+		
 		var map = new Sprite(480, 480);
 		map.image = game.assets["img/map/HM_1.png"];
-
 
 		var scene = new Group();
 
@@ -220,13 +290,13 @@ window.onload = function(){
         hero.addEventListener("enterframe", function(){
 			
 			// normal animation
-			var next_frame = (this.age % game.fps) / (game.fps / 2) + 2;
-			if (this.frame != next_frame) {
-				this.frame = next_frame;
-			}
+			//var next_frame = (this.age % game.fps) / (game.fps / 2) + 2;
+			//if (this.frame != next_frame) {
+			//	this.frame = next_frame;
+			//}
 			// TODO:
 			//if (this.shouldPlayNextFrame()) {
-			//	this.setNextFrame(cur_anim);
+			//	this.setCurAnimNextFrame();
 			//}
         });
 
