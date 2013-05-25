@@ -6,6 +6,28 @@ var RIGHT = 1;
 var UP = 2;
 var LEFT = 3;
 var SPEED = 2;
+var UNIT_STATUS = {
+	// common status
+	NORMAL: 0,
+	MOVED: 1,
+	ACTIONED: 2,
+	// extra
+	POISON: 11,
+		
+
+	// dead
+	DEAD: -1,
+};
+var	BATTLE_STATUS = {
+	INIT: 0,
+	SCENARIO: 1,
+	PLAYER_TURN: 100,
+	PLAYER_UNIT_MENU: 101,
+	PLAYER_UNIT_SHOW_RNG: 102,
+	PLAYER_UNIT_ACTION: 103,
+	ENEMY_TURN: 200,
+	ENEMY_UNIT_ACTION: 201
+};
 
 var Attr = enchant.Class.create({
 	name: null,
@@ -54,16 +76,18 @@ var Attr = enchant.Class.create({
 });
 
 var Chara = enchant.Class.create(enchant.Sprite, {
+	classname: "Chara",
 	initialize: function(x, y, attr) {
 		enchant.Sprite.call(this, x, y);
 		this.x = x;
 		this.y = y;
+		this._status = UNIT_STATUS["NORMAL"];
 		//this.image = game.assets['chara1.png'];
 		//this.frame = 5;
 		// TODO: to read these by config
 		this._anims = {
 			"ATTACK" : {
-				"asset" : "img/unit/Unit_atk_109.png",
+				"asset" : "img/unit/Unit_atk_" + attr.chara_id + ".png",
 				"frames" : [0, 0, 0, 0, 0, 1, 2, 3],
 				// df stand for direction factor
 				"df" : 4,
@@ -73,7 +97,7 @@ var Chara = enchant.Class.create(enchant.Sprite, {
 				"height" : 64
 			},
 			"MOVE" : {
-				"asset" : "img/unit/Unit_mov_109.png",
+				"asset" : "img/unit/Unit_mov_" + attr.chara_id + ".png",
 				"frames" : [0, 1],
 				"df" : 2,
 				"fps" : 2,
@@ -82,7 +106,7 @@ var Chara = enchant.Class.create(enchant.Sprite, {
 				"height" : 48
 			},
 			"WEAK" : {
-				"asset" : "img/unit/Unit_mov_109.png",
+				"asset" : "img/unit/Unit_mov_" + attr.chara_id + ".png",
 				"frames" : [6, 7],
 				"df" : 0,
 				"fps" : 2,
@@ -91,7 +115,7 @@ var Chara = enchant.Class.create(enchant.Sprite, {
 				"height" : 48
 			},
 			"STAND" : {
-				"asset" : "img/unit/Unit_spec_109.png",
+				"asset" : "img/unit/Unit_spec_" + attr.chara_id + ".png",
 				"frames" : [0],
 				"df" : 0,
 				"fps" : 0,
@@ -100,7 +124,7 @@ var Chara = enchant.Class.create(enchant.Sprite, {
 				"height" : 48
 			},
 			"DEFEND" : {
-				"asset" : "img/unit/Unit_spec_109.png",
+				"asset" : "img/unit/Unit_spec_" + attr.chara_id + ".png",
 				"frames" : [4],
 				"df" : 1,
 				"fps" : 0,
@@ -109,7 +133,7 @@ var Chara = enchant.Class.create(enchant.Sprite, {
 				"height" : 48
 			},
 			"HURT" : {
-				"asset" : "img/unit/Unit_spec_109.png",
+				"asset" : "img/unit/Unit_spec_" + attr.chara_id + ".png",
 				"frames" : [8],
 				"df" : 0,
 				"fps" : 0,
@@ -118,7 +142,7 @@ var Chara = enchant.Class.create(enchant.Sprite, {
 				"height" : 48
 			},
 			"WIN" : {
-				"asset" : "img/unit/Unit_spec_109.png",
+				"asset" : "img/unit/Unit_spec_" + attr.chara_id + ".png",
 				"frames" : [9],
 				"df" : 0,
 				"fps" : 0,
@@ -130,39 +154,37 @@ var Chara = enchant.Class.create(enchant.Sprite, {
 
 		this.setAnim("MOVE", LEFT);
 		//this.setAnim("ATTACK", RIGHT);
-		var self = this;
-		//this.tl.moveX(100, 50).action({
-		this.tl.action({
-			time: 60,
-			// action start
-			onactionstart: function(evt){
-				self.setAnim("ATTACK", LEFT);
-			}, 
-			// action tick
-			onactiontick: function(evt){
-		
-			}, 
-			// action end
-			onactionend: function(evt){
-				self.setAnim("MOVE", LEFT);
-			},
-			}
-		);
 		
 		this.addEventListener("enterframe", function(){
 			if (this.shouldPlayNextFrame()) {
 				this.setCurAnimNextFrame();
 			}
 		});
-
-		// for non-loop animation
-		// we should add a "animation complete" event
-		// to handle what to do next
-		// TODO: see ACTION & PARALELL ACTION
-	
-		//this.attr = new Attr(attr);
+		this.attr = new Attr(attr);
 		// init animations
-		GAME.rootScene.addChild(this);
+	},
+	isPlayerUnit: function() {
+		return true;
+		// TODO: this should be changed
+		if (this.attr.chara_id > 100) {
+			return true;
+		} else {
+			return false;
+		}
+	},
+	setStatus: function(st) {
+		if (UNIT_STATUS[st] === null) {
+			console.log("Chara: setStatus undefined status: " + st);
+		}
+		this._status = UNIT_STATUS[st];
+	},
+	canMove: function() {
+		if (this._status != UNIT_STATUS["MOVED"]
+		&& this._status != UNIT_STATUS["ACTIONED"]
+		&& this._status != UNIT_STATUS["DEAD"]) {
+			return true;
+		}
+		return false;
 	},
 	// change only direction but not animation
 	setDirection: function(direction) {
@@ -188,7 +210,7 @@ var Chara = enchant.Class.create(enchant.Sprite, {
 		this.y += (this.height - newHeight) / 2;
 		this.width = newWidth;
 		this.height = newHeight;
-		console.log(this.x + " : " + this.y + " : " + this.width + " : " + newWidth);
+		//console.log(this.x + " : " + this.y + " : " + this.width + " : " + newWidth);
 	},
 	// status, asset, fps, frame num should be assigned
 	setAnim: function(anim, direction, frame_num){
@@ -211,7 +233,7 @@ var Chara = enchant.Class.create(enchant.Sprite, {
 		}
 		// set first frame
 		this.frame = frames[frame_num];
-		this.adjustNewSize(this._anims[anim].width, this._anims[anim].height);
+		this._adjustNewSize(this._anims[anim].width, this._anims[anim].height);
 
 
 		this._cur_anim = this._anims[anim];
@@ -251,13 +273,196 @@ var Chara = enchant.Class.create(enchant.Sprite, {
 	},
 }); 
 
+var Battle = enchant.Class.create(enchant.Group, {
+	classname: "Battle",
+	initialize: function() {
+		enchant.Group.call(this);
+		this._status = BATTLE_STATUS["INIT"];
+		this.round = 1;
+		this.win_conds = [];
+		this.lose_conds = [];
+		this.scenario_conds = [];
+	
+		// Big Status Machine
+		this.addEventListener(enchant.Event.TOUCH_END, function(evt){
+			//console.log("Battle clicked: " + evt.x + " : " + evt.y + " : " + this._status);
+			if (this._status == BATTLE_STATUS["PLAYER_TURN"]) {
+				var units = this.getUnits(evt.x, evt.y);
+				// only map or exception
+				if (units.length <= 1) {
+					return;
+				} else {
+					for (var i = 0; i < units.length; i++) {
+						if (units[i].classname === "Chara") {
+							if (units[i].isPlayerUnit()) {
+								this.unitSelect(units[i]);
+							} else {
+								this.enemyUnitSelect(units[i]);
+							}
+							return;
+						}
+					}
+				}
+			}
+			else if (this._status == BATTLE_STATUS["PLAYER_UNIT_MENU"]) {
+				var units = this.getUnits(evt.x, evt.y);
+				// only map or exception
+				if (units.length <= 1) {
+					this.removeMenu();
+					this._status = BATTLE_STATUS["PLAYER_TURN"];
+					return;
+				}
+			}
+			// skip 
+			else {
+				console.log("Status: " + this._status + " can not handle this click, skip");
+			}
+		});
+	},
+	// status changes
+	start: function() {
+		this._status = BATTLE_STATUS["PLAYER_TURN"];
+	},	
+	sideChange: function() {
+		this._status = BATTLE_STATUS["ENEMY_TURN"];
+	},	
+	nextTurn: function() {
+		this._status = BATTLE_STATUS["PLAYER_TURN"];
+	},
+	win: function() {
+		this._status = BATTLE_STATUS["WIN"];
+	},
+	lose: function() {
+		this._status = BATTLE_STATUS["LOSE"];
+	},
+	conditionJudge: function(conds, callback) {
+		for (var i = 0; i < conds.length; i++) {
+			if (this.condReached(conds[i])) {
+				callback.call();
+				return;
+			}
+		}
+	},
+	condReached: function(cond) {
+		return true;
+	},
 
+
+	// map utilities
+	addMap: function(map) {
+		if (this._map) {
+			this.reomveChild(this._map);
+		}
+		this.addChild(map);
+		this._map = map;
+	},
+	isMap: function(target) {
+		return target === this._map ? true : false;
+	},
+	showMoveRng: function(chara) {
+		console.log("show move range");
+	},
+	showAtkRng: function(chara) {
+		console.log("show attack range");
+	},
+	showMenu: function(chara) {
+		console.log("showMenu called");
+		if (this._menu) {
+			this.removeMenu();
+		}
+		var self = this;
+		this._menu = new Group();
+		// TODO: the coordinate and menu layout should be changed
+		var atk_btn = new Sprite(32, 32);
+		atk_btn.image = GAME.assets["img/menu/atk.png"] 
+		atk_btn.moveBy(- 16 - 32, 0);
+		atk_btn.addEventListener(enchant.Event.TOUCH_END, function(){
+			self.removeMenu();
+			self.showAtkRng();
+			self._status = BATTLE_STATUS["PLAYER_UNIT_SHOW_RNG"];
+		});
+
+		var mov_btn = new Sprite(32, 32);
+		mov_btn.image = GAME.assets["img/menu/mov.png"];
+		mov_btn.moveBy(16, 0);
+		mov_btn.addEventListener(enchant.Event.TOUCH_END, function(){
+			self.removeMenu();
+			self.showMoveRng();
+			self._status = BATTLE_STATUS["PLAYER_UNIT_SHOW_RNG"];
+		});
+
+		this._menu.addChild(atk_btn);
+		this._menu.addChild(mov_btn);
+
+		this._menu.moveTo(~~(chara.x + chara.width / 2), ~~(chara.y - chara.height / 2));
+		this.addChild(this._menu);
+		this._status = BATTLE_STATUS["PLAYER_UNIT_MENU"];
+	},
+	removeMenu: function() {
+		this.removeChild(this._menu);
+	},
+	isMenu: function(target) {
+		return target === this._menu ? true : false;
+	},
+	calcRoute: function(chara, target) {
+	},
+
+	// Animation utilities
+	animCharaMove: function(chara, route) {
+		// for each waypoint
+		for (var i = 0; i < rouht.length; i++) {
+
+		}
+	},
+	animCharaAttack: function(action_script) {
+		// for each round
+		for (var i = 0; i < action_script.length; i++) {
+			
+		}
+	},
+	
+	// numberic calculations
+	calcAttack: function(attacker, defender) {
+		var action_script = [];
+		return action_script;
+	},
+	getUnits: function(x, y) {
+		var units = [];
+		for (var i = 0; i < this.childNodes.length; i++) {
+			var node = this.childNodes[i];
+			if (node.x <= x && x <= node.x + node.width
+				&& node.y <= y && y <= node.y + node.height) {
+				units.push(node);
+			}
+		}
+		return units;
+	},
+	unitSelect: function(unit) {
+		if (unit.canMove()) {
+			this.showMoveRng(unit);
+			this.showMenu(unit);
+		} else {
+			console.log("This unit can not move!");
+		}
+	},
+	enemyUnitSelect: function() {
+		// only show InfoBox
+	},
+	_nop: function(){
+	}
+});
+
+// ---------------------
+// Game Main
+// ---------------------
 window.onload = function(){
     var game = new Core(480, 480);
     game.fps = 60;
     game.preload("img/chara1.png");
     game.preload([
 		"img/map/HM_1.png", 
+		"img/menu/atk.png", 
+		"img/menu/mov.png", 
 		"img/unit/Unit_mov_109.png",
 		"img/unit/Unit_atk_109.png",
 		"img/unit/Unit_spc_109.png",
@@ -276,30 +481,38 @@ window.onload = function(){
 		hero.y = 100;
 		hero.frame = 2;
 		*/
-		var hero = new Chara(240, 240);
+		var hero = new Chara(240, 240, {chara_id: 109});
+		var enemy = new Chara(200, 200, {chara_id: 3});
 		
 		var map = new Sprite(480, 480);
 		map.image = game.assets["img/map/HM_1.png"];
 
-		var scene = new Group();
-
-		scene.addChild(map);
-		scene.addChild(hero);
-        game.rootScene.addChild(scene);
+		var scene = new Battle();
 		
-        hero.addEventListener("enterframe", function(){
-			
-			// normal animation
-			//var next_frame = (this.age % game.fps) / (game.fps / 2) + 2;
-			//if (this.frame != next_frame) {
-			//	this.frame = next_frame;
-			//}
-			// TODO:
-			//if (this.shouldPlayNextFrame()) {
-			//	this.setCurAnimNextFrame();
-			//}
-        });
+		scene.addMap(map);
+		scene.addChild(hero);
+		scene.addChild(enemy);
 
+        game.rootScene.addChild(scene);
+
+
+// Animation
+		scene.tl.action({
+			time: 60,
+			// action start
+			onactionstart: function(evt){
+				hero.setAnim("ATTACK", LEFT);
+			}, 
+			// action tick
+			onactiontick: function(evt){
+		
+			}, 
+			// action end
+			onactionend: function(evt){
+				hero.setAnim("MOVE", LEFT);
+				scene.start();
+			},
+		});
     };
     game.start();
 };
