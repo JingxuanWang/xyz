@@ -29,60 +29,67 @@ var	BATTLE_STATUS = {
 	ENEMY_UNIT_ACTION: 201
 };
 
+function bind(func, scope){
+	return function(){
+		return func.apply(scope, arguments);
+	}
+}
+
 // from arctic.js
-var Ajax = enchant.Class.create({
+var Ajax = enchant.Class.create(enchant.EventTarget, {
 	_method: 'GET', 
 	_params: null, 
 	_url: null,
 	_request: null, 
 	_jsonResponse: null, 
 
-	initialize:function(){
+	initialize: function(){
+		enchant.EventTarget.call(this);
 		this._request = new XMLHttpRequest();
+		this._loadedCallBack = bind(this._loaded, this);
 	},
-	load:function(url, params){
+	load: function(url, params){
 		this._url = url;
 		this._params = params;
 		this._request.open(this._method, this._url, true);
-		//this._request.onreadystatechange = bind(this._loaded, this);
-		this._request.addEventListener('readystatechange', this._loaded, false);
+		this._request.onreadystatechange = bind(this._loaded, this);
+		this._request.addEventListener('readystatechange', this._loadedCallback, false);
 		this._request.send(this._params);
 	},
-	_loaded:function(){
+	_loaded: function(){
 		if(this._request.readyState == 4){
 			if(this._request.status == 200 || this._request.status == 0){
-				this.dispatchEvent(enchant.Event.LOAD);
+				this.dispatchEvent(new enchant.Event(enchant.Event.LOAD));
 			} else {
-				this.dispatchEvent(enchant.Event.ERROR);
+				this.dispatchEvent(new enchant.Event(enchant.Event.ERROR));
 				throw new Error("Load Error : " + this._url);
 			}
 		}
 	},
-	unload:function(){
+	unload: function(){
 		this._request.abort();
 		this._jsonResponse = null;
-		this._request.removeEventListener('readystatechange', this._loaded, false);
+		this._request.removeEventListener('readystatechange', this_loadedCallback, false);
 	},
-	setMethod:function(method){
+	setMethod: function(method){
 		this._method = method;
 	},
-	getResponseText:function(){
+	getResponseText: function(){
 		return this._request.responseText;
 	},
-	getResponseJSON:function(){
+	getResponseJSON: function(){
 		if(!this._jsonResponse){
 			this._jsonResponse = JSON.parse(this._request.responseText);
 		}
 		return this._jsonResponse;
 	},
-	getURL:function(){
+	getURL: function(){
 		return this._url;
 	}
 });
 
 var Config = enchant.Class.create({
 	initialize: function(){
-		this._common = [];
 		this._directions = {
 			DOWN: 0,
 			RIGHT: 1,
@@ -110,10 +117,16 @@ var Config = enchant.Class.create({
 			ENEMY_TURN: 200,
 			ENEMY_UNIT_ACTION: 201
 		};
+		//this.load();
+	},
+	load: function(callback) {
+		var self = this;
 		var ajax = new Ajax();
 		ajax.addEventListener(enchant.Event.LOAD, function() {
-			console.log("load completed");
-			config._json = ajax.getReponseJSON();
+			self._all = ajax.getResponseJSON();
+			self._text = ajax.getResponseText();
+			console.log("load completed" + self.images());
+			callback.call();
 		});
 		ajax.load('js/data.json');
 	},
@@ -121,7 +134,10 @@ var Config = enchant.Class.create({
 		return this._directions[d];
 	},
 	common: function() {
-		return this._common;	
+		return;	
+	},
+	images: function() {
+		return this._all.image;
 	},
 	map: function() {
 	},
@@ -663,81 +679,72 @@ var Battle = enchant.Class.create(enchant.Group, {
 	}
 });
 
+
 // ---------------------
 // Game Main
 // ---------------------
 window.onload = function(){
-    var game = new Core(480, 480);
-    game.fps = 60;
 	var config = new Config();
-	// TODO: Don't use image file name directly
-	// bind thess with variables.
-	// For example:
-	//  config.map = "img/map/HM_1.png"
-    game.preload([
-		"img/menu/Mark_12-1.png",
-		"img/menu/blue.png",
-		"img/map/HM_1.png", 
-		"img/menu/atk.png", 
-		"img/menu/mov.png", 
-		"img/unit/Unit_mov_109.png",
-		"img/unit/Unit_atk_109.png",
-		"img/unit/Unit_spc_109.png",
-		"img/unit/Unit_mov_3.png",
-		"img/unit/Unit_atk_3.png",
-		"img/unit/Unit_spc_3.png"
-	]);
-	GAME = game;
+	config.load(function(){
+		var game = new Core(480, 480);
+		game.fps = 60;
+		GAME = game;
 
-    game.onload = function(){
-		/*
-		var hero = new Sprite(48, 48);
-		hero.image = game.assets["img/unit/Unit_mov_109.png"];
-		
-		hero.x = 0;
-		hero.y = 100;
-		hero.frame = 2;
-		*/
-		var hero = new Chara(240, 240, {chara_id: 109});
-		var enemy = new Chara(200, 200, {chara_id: 3});
-		
-		//var map = new Sprite(480, 480);
-		var map = new Map(48, 48);
-		map.image = game.assets["img/map/HM_1.png"];
-		var matrix = [];
-		for (var i = 0; i < 20; i++) {
-			matrix[i] = [];
-			for (var j = 0; j < 20; j++) {
-				matrix[i][j] = i * 20 + j;
+		//game.preload(config.test);
+		game.preload(config.images());
+		game.onload = function(){
+			//return;
+			/*
+			var hero = new Sprite(48, 48);
+			hero.image = game.assets["img/unit/Unit_mov_109.png"];
+			
+			hero.x = 0;
+			hero.y = 100;
+			hero.frame = 2;
+			*/
+			var hero = new Chara(240, 240, {chara_id: 109});
+			var enemy = new Chara(200, 200, {chara_id: 3});
+			
+			//var map = new Sprite(480, 480);
+			var map = new Map(48, 48);
+			map.image = game.assets["img/map/HM_1.png"];
+			var matrix = [];
+			for (var i = 0; i < 20; i++) {
+				matrix[i] = [];
+				for (var j = 0; j < 20; j++) {
+					matrix[i][j] = i * 20 + j;
+				}
 			}
-		}
-		map.loadData(matrix);
-		var scene = new Battle();
-		
-		scene.addMap(map);
-		scene.addChild(hero);
-		scene.addChild(enemy);
+			map.loadData(matrix);
+			var scene = new Battle();
+			
+			scene.addMap(map);
+			scene.addChild(hero);
+			scene.addChild(enemy);
 
-        game.rootScene.addChild(scene);
+			game.rootScene.addChild(scene);
 
 
-// Animation
-		scene.tl.action({
-			time: 60,
-			// action start
-			onactionstart: function(evt){
-				hero.setAnim("ATTACK", LEFT);
-			}, 
-			// action tick
-			onactiontick: function(evt){
-		
-			}, 
-			// action end
-			onactionend: function(evt){
-				hero.setAnim("MOVE", LEFT);
-				scene.start();
-			},
-		});
-    };
-    game.start();
+	// Animation
+			scene.tl.action({
+				time: 60,
+				// action start
+				onactionstart: function(evt){
+					hero.setAnim("ATTACK", LEFT);
+				}, 
+				// action tick
+				onactiontick: function(evt){
+			
+				}, 
+				// action end
+				onactionend: function(evt){
+					hero.setAnim("MOVE", LEFT);
+					scene.start();
+				},
+			});
+		};
+		game.start();
+
+
+	});
 };
