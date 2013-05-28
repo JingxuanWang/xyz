@@ -359,12 +359,122 @@ var Battle = enchant.Class.create(enchant.Group, {
 	isMap: function(target) {
 		return target === this._map ? true : false;
 	},
+	// BFS get available grids 
+	// according to chara position and range
+	_getAvailGrids: function(chara, rng) {
+		var src = {
+			x: chara.x,
+			y: chara.y,
+			r: rng,
+		};
+		var queue = [];
+		var avail_grids = [];
+		queue.push(src);
+		while(queue.length > 0) {
+			var cur = queue.shift();
+			if (cur != src) {
+				avail_grids.push(cur);
+			}
+			cur.route.push(cur);
+			var up = {
+				x: cur.x,
+				y: cur.y - chara.height,
+				r: cur.r - 1,
+				route: cur.route,
+			};
+			var down = {
+				x: cur.x,
+				y: cur.y + chara.height,
+				r: cur.r - 1,
+				route: cur.route,
+			};		
+			var left = {
+				x: cur.x - chara.width,
+				y: cur.y,
+				r: cur.r - 1,
+				route: cur.route,
+			};		
+			var right = {
+				x: cur.x + chara.width,
+				y: cur.y,
+				r: cur.r - 1,
+				route: cur.route.push,
+			};		
+			if (!this._map.hitTest(down.x, down.y) && down.r > 0) {
+				queue.push(down);
+			}
+			if (!this._map.hitTest(right.x, right.y) && right.r > 0) {
+				queue.push(right);
+			}
+			if (!this._map.hitTest(up.x, up.y) && up.r > 0) {
+				queue.push(up);
+			}
+			if (!this._map.hitTest(left.x, left.y) && left.r > 0) {
+				queue.push(left);
+			}
+		}
+		return avail_grids;
+	},
+	removeGrids: function() {
+		if (this._move_grids) {
+			for (var i = 0; i < this._move_grids; i++) {
+				this.removeChild(this._move_grids[i]);
+			}
+		}
+		if (this._atk_grids) {
+			for (var i = 0; i < this._atk_grids; i++) {
+				this.removeChild(this._atk_grids[i]);
+			}
+		}
+	}
 	showMoveRng: function(chara) {
 		console.log("show move range");
+		var self = this;
+		this._move_grids = this._getAvailGrids(chara, chara.mov);
+		this._atk_grids = this._getAvailGrids(chara, chara.rng);
+		for (var i = 0; i < this._move_grids.length; i++) {
+			var mov_shade = new Sprite(chara.width, chara.height);
+			mov_shade.moveTo(this._move_grids[i].x this._move_grids[i].y);
+			mov_shade.image = GAME.assets["img/menu/blue.png"];
+			mov_shade.addEventListener(enchant.Event.TOUCH_END, function(){
+				self.removeGrids();
+				self.move();
+				self._status = BATTLE_STATUS["PLAYER_UNIT_ACTION"];
+			});
+		}
+		for (var i = 0; i < this._atk_grids.length; i++) {
+			var atk_shade = new Sprite(chara.width, chara.height);
+			atk_shade.moveTo(this._move_grids[i].x this._move_grids[i].y);
+			atk_shade.image = GAME.assets["img/menu/Mark_12-1.png"]; 
+			atk_shade.addEventListener(enchant.Event.TOUCH_END, function(){
+				self.removeGrids();
+				self.move();
+				self._status = BATTLE_STATUS["PLAYER_UNIT_ACTION"];
+			});
+		}
 	},
 	showAtkRng: function(chara) {
 		console.log("show attack range");
+		var self = this;
+		this._atk_grids = this._getAvailGrids(chara, chara.rng);
+		for (var i = 0; i < this._atk_grids.length; i++) {
+			var atk_shade = new Sprite(chara.width, chara.height);
+			atk_shade.moveTo(this._move_grids[i].x this._move_grids[i].y);
+			atk_shade.image = GAME.assets["img/menu/blue.png"]; 
+			atk_shade.addEventListener(enchant.Event.TOUCH_END, function(){
+				self.removeGrids();
+				self.attack();
+				self._status = BATTLE_STATUS["PLAYER_UNIT_ACTION"];
+			});
+		}
 	},
+
+	attack: function(chara, enemy) {
+		var result = this.calcAttack(chara, enemy);
+		this.animCharaAttack(result);
+	},
+
+	// Menu
 	showMenu: function(chara) {
 		console.log("showMenu called");
 		if (this._menu) {
@@ -404,8 +514,6 @@ var Battle = enchant.Class.create(enchant.Group, {
 	isMenu: function(target) {
 		return target === this._menu ? true : false;
 	},
-	calcRoute: function(chara, target) {
-	},
 
 	// Animation utilities
 	animCharaMove: function(chara, route) {
@@ -422,6 +530,8 @@ var Battle = enchant.Class.create(enchant.Group, {
 	},
 	
 	// numberic calculations
+	calcRoute: function(chara, target) {
+	},
 	calcAttack: function(attacker, defender) {
 		var action_script = [];
 		return action_script;
@@ -458,8 +568,13 @@ var Battle = enchant.Class.create(enchant.Group, {
 window.onload = function(){
     var game = new Core(480, 480);
     game.fps = 60;
-    game.preload("img/chara1.png");
+	// TODO: Don't use image file name directly
+	// bind thess with variables.
+	// For example:
+	//  config.map = "img/map/HM_1.png"
     game.preload([
+		"img/menu/Mark_12-1.png",
+		"img/menu/blue.png",
 		"img/map/HM_1.png", 
 		"img/menu/atk.png", 
 		"img/menu/mov.png", 
