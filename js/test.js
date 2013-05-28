@@ -366,6 +366,7 @@ var Battle = enchant.Class.create(enchant.Group, {
 			x: chara.x,
 			y: chara.y,
 			r: rng,
+			route: [],
 		};
 		var queue = [];
 		var avail_grids = [];
@@ -426,7 +427,7 @@ var Battle = enchant.Class.create(enchant.Group, {
 				this.removeChild(this._atk_grids[i]);
 			}
 		}
-	}
+	},
 	showMoveRng: function(chara) {
 		console.log("show move range");
 		var self = this;
@@ -434,7 +435,7 @@ var Battle = enchant.Class.create(enchant.Group, {
 		this._atk_grids = this._getAvailGrids(chara, chara.rng);
 		for (var i = 0; i < this._move_grids.length; i++) {
 			var mov_shade = new Sprite(chara.width, chara.height);
-			mov_shade.moveTo(this._move_grids[i].x this._move_grids[i].y);
+			mov_shade.moveTo(this._move_grids[i].x, this._move_grids[i].y);
 			mov_shade.image = GAME.assets["img/menu/blue.png"];
 			mov_shade.addEventListener(enchant.Event.TOUCH_END, function(){
 				self.removeGrids();
@@ -444,7 +445,7 @@ var Battle = enchant.Class.create(enchant.Group, {
 		}
 		for (var i = 0; i < this._atk_grids.length; i++) {
 			var atk_shade = new Sprite(chara.width, chara.height);
-			atk_shade.moveTo(this._move_grids[i].x this._move_grids[i].y);
+			atk_shade.moveTo(this._move_grids[i].x, this._move_grids[i].y);
 			atk_shade.image = GAME.assets["img/menu/Mark_12-1.png"]; 
 			atk_shade.addEventListener(enchant.Event.TOUCH_END, function(){
 				self.removeGrids();
@@ -459,7 +460,7 @@ var Battle = enchant.Class.create(enchant.Group, {
 		this._atk_grids = this._getAvailGrids(chara, chara.rng);
 		for (var i = 0; i < this._atk_grids.length; i++) {
 			var atk_shade = new Sprite(chara.width, chara.height);
-			atk_shade.moveTo(this._move_grids[i].x this._move_grids[i].y);
+			atk_shade.moveTo(this._move_grids[i].x, this._move_grids[i].y);
 			atk_shade.image = GAME.assets["img/menu/blue.png"]; 
 			atk_shade.addEventListener(enchant.Event.TOUCH_END, function(){
 				self.removeGrids();
@@ -599,9 +600,21 @@ window.onload = function(){
 		var hero = new Chara(240, 240, {chara_id: 109});
 		var enemy = new Chara(200, 200, {chara_id: 3});
 		
-		var map = new Sprite(480, 480);
+		//var map = new Sprite(480, 480);
+		var map = new Map(48, 48);
 		map.image = game.assets["img/map/HM_1.png"];
-
+		map.loadData([
+			[0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+			[0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+			[1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+			[1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+			[1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+			[1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+			[1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+			[1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+			[1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+			[1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+		]);
 		var scene = new Battle();
 		
 		scene.addMap(map);
