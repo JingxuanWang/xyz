@@ -5,7 +5,7 @@ var DOWN = 0;
 var RIGHT = 1;
 var UP = 2;
 var LEFT = 3;
-var SPEED = 2;
+
 var UNIT_STATUS = {
 	// common status
 	NORMAL: 0,
@@ -28,6 +28,106 @@ var	BATTLE_STATUS = {
 	ENEMY_TURN: 200,
 	ENEMY_UNIT_ACTION: 201
 };
+
+// from arctic.js
+var Ajax = enchant.Class.create({
+	_method: 'GET', 
+	_params: null, 
+	_url: null,
+	_request: null, 
+	_jsonResponse: null, 
+
+	initialize:function(){
+		this._request = new XMLHttpRequest();
+	},
+	load:function(url, params){
+		this._url = url;
+		this._params = params;
+		this._request.open(this._method, this._url, true);
+		//this._request.onreadystatechange = bind(this._loaded, this);
+		this._request.addEventListener('readystatechange', this._loaded, false);
+		this._request.send(this._params);
+	},
+	_loaded:function(){
+		if(this._request.readyState == 4){
+			if(this._request.status == 200 || this._request.status == 0){
+				this.dispatchEvent(enchant.Event.LOAD);
+			} else {
+				this.dispatchEvent(enchant.Event.ERROR);
+				throw new Error("Load Error : " + this._url);
+			}
+		}
+	},
+	unload:function(){
+		this._request.abort();
+		this._jsonResponse = null;
+		this._request.removeEventListener('readystatechange', this._loaded, false);
+	},
+	setMethod:function(method){
+		this._method = method;
+	},
+	getResponseText:function(){
+		return this._request.responseText;
+	},
+	getResponseJSON:function(){
+		if(!this._jsonResponse){
+			this._jsonResponse = JSON.parse(this._request.responseText);
+		}
+		return this._jsonResponse;
+	},
+	getURL:function(){
+		return this._url;
+	}
+});
+
+var Config = enchant.Class.create({
+	initialize: function(){
+		this._common = [];
+		this._directions = {
+			DOWN: 0,
+			RIGHT: 1,
+			UP: 2,
+			LEFT: 3,
+		};
+		this._unit_status = {
+			// common status
+			NORMAL: 0,
+			MOVED: 1,
+			ACTIONED: 2,
+			// extra
+			POISON: 11,
+				
+			// dead
+			DEAD: -1,
+		};
+		this._battle_status = {
+			INIT: 0,
+			SCENARIO: 1,
+			PLAYER_TURN: 100,
+			PLAYER_UNIT_MENU: 101,
+			PLAYER_UNIT_SHOW_RNG: 102,
+			PLAYER_UNIT_ACTION: 103,
+			ENEMY_TURN: 200,
+			ENEMY_UNIT_ACTION: 201
+		};
+		var ajax = new Ajax();
+		ajax.addEventListener(enchant.Event.LOAD, function() {
+			console.log("load completed");
+			config._json = ajax.getReponseJSON();
+		});
+		ajax.load('js/data.json');
+	},
+	direction: function(d) {
+		return this._directions[d];
+	},
+	common: function() {
+		return this._common;	
+	},
+	map: function() {
+	},
+	// ajax utilities
+	_noop: function() {}
+});
 
 var Attr = enchant.Class.create({
 	name: null,
@@ -569,6 +669,7 @@ var Battle = enchant.Class.create(enchant.Group, {
 window.onload = function(){
     var game = new Core(480, 480);
     game.fps = 60;
+	var config = new Config();
 	// TODO: Don't use image file name directly
 	// bind thess with variables.
 	// For example:
@@ -603,18 +704,14 @@ window.onload = function(){
 		//var map = new Sprite(480, 480);
 		var map = new Map(48, 48);
 		map.image = game.assets["img/map/HM_1.png"];
-		map.loadData([
-			[0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
-			[0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
-			[1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-			[1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-			[1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-			[1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-			[1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-			[1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-			[1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-			[1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-		]);
+		var matrix = [];
+		for (var i = 0; i < 20; i++) {
+			matrix[i] = [];
+			for (var j = 0; j < 20; j++) {
+				matrix[i][j] = i * 20 + j;
+			}
+		}
+		map.loadData(matrix);
 		var scene = new Battle();
 		
 		scene.addMap(map);
