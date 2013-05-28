@@ -678,8 +678,6 @@ var Battle = enchant.Class.create(enchant.Group, {
 	}
 });
 
-
-
 // ---------------------
 // Game Main
 // ---------------------
