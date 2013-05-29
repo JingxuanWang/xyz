@@ -1,62 +1,17 @@
-var Attr = enchant.Class.create({
-	name: null,
-	chara_id : 0,
-	level: 0,
-	school: null,
-	rank: null,
-	hp: 0,
-	mp: 0,
-	atk: 0,
-	def: 0,
-	intl: 0,
-	dex: 0,
-	mor: 0,
-	mov: 0,
-	rng: 0,
-	
-	initialize: function(attr) {
-		this.chara_id = attr.chara_id;
-		this.name = attr.name;
-		this.level = attr.level;
-		this.school = attr.school;
-		this.rank = attr.rank;
-		this.hp = attr.hp;
-		this.mp = attr.mp;
-		this.atk = attr.atk;
-		this.def = attr.def;
-		this.intl = attr.intl;
-		this.dex = attr.dex;
-		this.mor = attr.mor;
-		this.mov = attr.mov;
-		this.rng = attr.rng;
-		this.exp = attr.exp ? attr.exp : 0;
-		this.cur_hp = attr.cur_hp ? attr.cur_hp : this.hp;
-		this.cur_mp = attr.cur_mp ? attr.cur_mp : this.mp;
-		this.cur_exp = attr.cur_exp;
-	},
-	compare: function(attr) {
-		for (var prop in this) {
-			if (this[prop] != attr.prop) {
-				return false;
-			}
-		}
-		return true;
-	}
-});
-
 var Chara = enchant.Class.create(enchant.Sprite, {
 	classname: "Chara",
-	initialize: function(x, y, attr) {
-		enchant.Sprite.call(this, x, y);
-		this.x = x;
-		this.y = y;
-		this._status = UNIT_STATUS["NORMAL"];
-		//this.image = game.assets['chara1.png'];
-		//this.frame = 5;
-		// TODO: to read these by config
+	initialize: function(conf) {
+		enchant.Sprite.call(
+			this, 
+			conf.position.i * CONFIG.getMap().tileWidth, 
+			conf.position.j * CONFIG.getMap().tileHeight
+		);
+		this._attr = new Attr(conf.attr);
+		this._status = CONSTS.getUnitStatus("NORMAL");
+		
 		this._anims = {
 			"ATTACK" : {
-				"asset" : "img/unit/Unit_atk_" + attr.chara_id + ".png",
+				"asset" : conf.resource.img_atk,
 				"frames" : [0, 0, 0, 0, 0, 1, 2, 3],
 				// df stand for direction factor
 				"df" : 4,
@@ -66,7 +21,7 @@ var Chara = enchant.Class.create(enchant.Sprite, {
 				"height" : 64
 			},
 			"MOVE" : {
-				"asset" : "img/unit/Unit_mov_" + attr.chara_id + ".png",
+				"asset" : conf.resource.img_mov,
 				"frames" : [0, 1],
 				"df" : 2,
 				"fps" : 2,
@@ -75,7 +30,7 @@ var Chara = enchant.Class.create(enchant.Sprite, {
 				"height" : 48
 			},
 			"WEAK" : {
-				"asset" : "img/unit/Unit_mov_" + attr.chara_id + ".png",
+				"asset" : conf.resource.img_mov,
 				"frames" : [6, 7],
 				"df" : 0,
 				"fps" : 2,
@@ -84,7 +39,7 @@ var Chara = enchant.Class.create(enchant.Sprite, {
 				"height" : 48
 			},
 			"STAND" : {
-				"asset" : "img/unit/Unit_spec_" + attr.chara_id + ".png",
+				"asset" : conf.resource.img_spc,
 				"frames" : [0],
 				"df" : 0,
 				"fps" : 0,
@@ -93,7 +48,7 @@ var Chara = enchant.Class.create(enchant.Sprite, {
 				"height" : 48
 			},
 			"DEFEND" : {
-				"asset" : "img/unit/Unit_spec_" + attr.chara_id + ".png",
+				"asset" : conf.resource.img_spc,
 				"frames" : [4],
 				"df" : 1,
 				"fps" : 0,
@@ -102,7 +57,7 @@ var Chara = enchant.Class.create(enchant.Sprite, {
 				"height" : 48
 			},
 			"HURT" : {
-				"asset" : "img/unit/Unit_spec_" + attr.chara_id + ".png",
+				"asset" : conf.resource.img_spc,
 				"frames" : [8],
 				"df" : 0,
 				"fps" : 0,
@@ -111,7 +66,7 @@ var Chara = enchant.Class.create(enchant.Sprite, {
 				"height" : 48
 			},
 			"WIN" : {
-				"asset" : "img/unit/Unit_spec_" + attr.chara_id + ".png",
+				"asset" : conf.resource.img_spc,
 				"frames" : [9],
 				"df" : 0,
 				"fps" : 0,
@@ -121,25 +76,13 @@ var Chara = enchant.Class.create(enchant.Sprite, {
 			}
 		};
 
-		this.setAnim("MOVE", LEFT);
-		//this.setAnim("ATTACK", RIGHT);
+		this.setAnim("MOVE", conf.position.d);
 		
 		this.addEventListener("enterframe", function(){
 			if (this.shouldPlayNextFrame()) {
 				this.setCurAnimNextFrame();
 			}
 		});
-		this.attr = new Attr(attr);
-		// init animations
-	},
-	isPlayerUnit: function() {
-		return true;
-		// TODO: this should be changed
-		if (this.attr.chara_id > 100) {
-			return true;
-		} else {
-			return false;
-		}
 	},
 	setStatus: function(st) {
 		if (UNIT_STATUS[st] === null) {
@@ -148,9 +91,9 @@ var Chara = enchant.Class.create(enchant.Sprite, {
 		this._status = UNIT_STATUS[st];
 	},
 	canMove: function() {
-		if (this._status != UNIT_STATUS["MOVED"]
-		&& this._status != UNIT_STATUS["ACTIONED"]
-		&& this._status != UNIT_STATUS["DEAD"]) {
+		if (this._status != CONSTS.getUnitStatus("MOVED")
+		&& this._status != CONSTS.getUnitStatus("ACTIONED")
+		&& this._status != CONSTS.getUnitStatus("DEAD")) {
 			return true;
 		}
 		return false;

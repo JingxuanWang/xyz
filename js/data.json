@@ -1,16 +1,15 @@
 {
-    "const" : {
-		"SIZE" : 48,
-		"MERGIN" : 8,
-		"system" : {
-			"width" : 960,
-			"height" : 960
-		}
+	"system" : {
+		"width" : 480,
+		"height" : 480
 	},
     "map" : {
 		"width" : 20,
 		"height" : 20,
-		"terrain" : [
+		"tileWidth" : 48,
+		"tileHeight" : 48,
+		"data" : [],
+		"collisionData" : [
 			[0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0], 
 			[0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0], 
 			[0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0], 
@@ -38,77 +37,76 @@
 				"110001" : 1
 			}
 		},
-		"image" : "img/map/HM_1.png",
-		"player_unit" : [
-			{
-				"attr" : {
-					"chara_id" : 110001,
-					"name": "项羽",
-					"lv" : 1,
-					"school" : "群雄",
-					"hp" : 110,
-					"mp" : 20,
-					"atk" : 30,
-					"def" : 10,
-					"intl" : 5,
-					"dex" : 15,
-					"mor" : 20,
-					"mov" : 5,
-					"rng" : 1,
-					"exp" : 100,
-					"cur_hp" : 110,
-					"cur_mp" : 20,
-					"cur_exp" : 30
-				},
-				"position" : {
-					"i" : 7,
-					"j" : 7,
-					"d" : 0
-				},
-				"resource" : {
-					"img_atk" : "img/unit/Unit_atk_109.png",	
-					"img_mov" : "img/unit/Unit_mov_109.png",	
-					"img_spc" : "img/unit/Unit_spc_109.png"
-				}
-			}
-		],
-		"allies_unit" : [
-		],
-		"enemy_unit" : [
-			{
-				"attr" : {
-					"chara_id" : 130001,
-					"name": "官兵",
-					"lv" : 1,
-					"school" : "轻步兵",
-					"hp" : 100,
-					"mp" : 10,
-					"atk" : 20,
-					"def" : 12,
-					"intl" : 15,
-					"dex" : 15,
-					"mor" : 20,
-					"mov" : 4,
-					"rng" : 1,
-					"exp" : 100,
-					"cur_hp" : 100,
-					"cur_mp" : 10,
-					"cur_exp" : 30
-				},
-				"position" : {
-					"i" : 9,
-					"j" : 9,
-					"d" : 3
-				},
-				"resource" : {
-					"img_atk" : "img/unit/Unit_atk_3.png",	
-					"img_mov" : "img/unit/Unit_mov_3.png",	
-					"img_spc" : "img/unit/Unit_spc_3.png"
-				},
-				"strategy" : "hold_position"
-			}
-		]
+		"image" : "img/map/HM_1.png"
 	},
+	"player_unit" : [
+		{
+			"attr" : {
+				"chara_id" : 110001,
+				"name": "项羽",
+				"lv" : 1,
+				"school" : "群雄",
+				"hp" : 110,
+				"mp" : 20,
+				"atk" : 30,
+				"def" : 10,
+				"intl" : 5,
+				"dex" : 15,
+				"mor" : 20,
+				"mov" : 5,
+				"rng" : 1,
+				"exp" : 100,
+				"cur_hp" : 110,
+				"cur_mp" : 20,
+				"cur_exp" : 30
+			},
+			"position" : {
+				"i" : 1,
+				"j" : 2,
+				"d" : 0
+			},
+			"resource" : {
+				"img_atk" : "img/unit/Unit_atk_109.png",	
+				"img_mov" : "img/unit/Unit_mov_109.png",	
+				"img_spc" : "img/unit/Unit_spc_109.png"
+			}
+		}
+	],
+	"allies_unit" : [],
+	"enemy_unit" : [
+		{
+			"attr" : {
+				"chara_id" : 130001,
+				"name": "官兵",
+				"lv" : 1,
+				"school" : "轻步兵",
+				"hp" : 100,
+				"mp" : 10,
+				"atk" : 20,
+				"def" : 12,
+				"intl" : 15,
+				"dex" : 15,
+				"mor" : 20,
+				"mov" : 4,
+				"rng" : 1,
+				"exp" : 100,
+				"cur_hp" : 100,
+				"cur_mp" : 10,
+				"cur_exp" : 30
+			},
+			"position" : {
+				"i" : 1,
+				"j" : 3,
+				"d" : 3
+			},
+			"resource" : {
+				"img_atk" : "img/unit/Unit_atk_3.png",	
+				"img_mov" : "img/unit/Unit_mov_3.png",	
+				"img_spc" : "img/unit/Unit_spc_3.png"
+			},
+			"strategy" : "hold_position"
+		}
+	],
 	"UI" : {
 		"mov_base" : "img/menu/blue.png", 
 		"img_menu_atk" : "img/menu/atk.png",

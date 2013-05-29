@@ -6,7 +6,11 @@ my $DRYRUN = 0;
 my $PATH = "../js";
 my $TARGET_FILE = "game.js";
 my @FILE_LIST = qw/
+	header.js
+	const.js
+	ajax.js
 	config.js
+	attr.js
 	chara.js
 	battle.js
 	entry.js

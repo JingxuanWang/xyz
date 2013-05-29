@@ -1,33 +1,8 @@
 enchant();
 
 var GAME;
-var DOWN = 0;
-var RIGHT = 1;
-var UP = 2;
-var LEFT = 3;
-
-var UNIT_STATUS = {
-	// common status
-	NORMAL: 0,
-	MOVED: 1,
-	ACTIONED: 2,
-	// extra
-	POISON: 11,
-		
-
-	// dead
-	DEAD: -1,
-};
-var	BATTLE_STATUS = {
-	INIT: 0,
-	SCENARIO: 1,
-	PLAYER_TURN: 100,
-	PLAYER_UNIT_MENU: 101,
-	PLAYER_UNIT_SHOW_RNG: 102,
-	PLAYER_UNIT_ACTION: 103,
-	ENEMY_TURN: 200,
-	ENEMY_UNIT_ACTION: 201
-};
+var CONFIG;
+var CONSTS;
 
 function bind(func, scope){
 	return function(){
@@ -35,7 +10,51 @@ function bind(func, scope){
 	}
 }
 
+var Consts = enchant.Class.create({
+	classname: "Consts",
+	initialize: function() {
+		this._directions = {
+			DOWN: 0,
+			RIGHT: 1,
+			UP: 2,
+			LEFT: 3,
+		};
+		this._unit_status = {
+			// common status
+			NORMAL: 0,
+			MOVED: 1,
+			ACTIONED: 2,
+			// extra
+			POISON: 11,
+				
+			// dead
+			DEAD: -1,
+		};
+		this._battle_status = {
+			INIT: 0,
+			SCENARIO: 1,
+			PLAYER_TURN: 100,
+			PLAYER_UNIT_MENU: 101,
+			PLAYER_UNIT_SHOW_RNG: 102,
+			PLAYER_UNIT_ACTION: 103,
+			ENEMY_TURN: 200,
+			ENEMY_UNIT_ACTION: 201
+		};
+	},
+	getDirection: function(d) {
+		return this._directions[d];
+	},
+	getUnitStatus: function(st) {
+		return this._unit_status[st];
+	},
+	getBattleStatus: function(st) {
+		return this._battle_status[st];
+	},
+
+	_noop: function(){}
+});
 var Ajax = enchant.Class.create(enchant.EventTarget, {
+	classname: "Ajax",
 	_method: 'GET', 
 	_params: null, 
 	_url: null,
@@ -86,37 +105,9 @@ var Ajax = enchant.Class.create(enchant.EventTarget, {
 		return this._url;
 	}
 });
-
 var Config = enchant.Class.create({
+	classname: "Config",
 	initialize: function(){
-		this._directions = {
-			DOWN: 0,
-			RIGHT: 1,
-			UP: 2,
-			LEFT: 3,
-		};
-		this._unit_status = {
-			// common status
-			NORMAL: 0,
-			MOVED: 1,
-			ACTIONED: 2,
-			// extra
-			POISON: 11,
-				
-			// dead
-			DEAD: -1,
-		};
-		this._battle_status = {
-			INIT: 0,
-			SCENARIO: 1,
-			PLAYER_TURN: 100,
-			PLAYER_UNIT_MENU: 101,
-			PLAYER_UNIT_SHOW_RNG: 102,
-			PLAYER_UNIT_ACTION: 103,
-			ENEMY_TURN: 200,
-			ENEMY_UNIT_ACTION: 201
-		};
-		//this.load();
 	},
 	load: function(callback) {
 		var self = this;
@@ -124,27 +115,34 @@ var Config = enchant.Class.create({
 		ajax.addEventListener(enchant.Event.LOAD, function() {
 			self._all = ajax.getResponseJSON();
 			self._text = ajax.getResponseText();
-			console.log("load completed" + self.images());
 			callback.call();
 		});
 		ajax.load('js/data.json');
 	},
-	direction: function(d) {
-		return this._directions[d];
-	},
-	common: function() {
-		return;	
-	},
 	images: function() {
-		return this._all.image;
+		return this._all['image'];
 	},
-	map: function() {
+	getMap: function() {
+		return this._all['map'];
+	},
+	getSystem: function() {
+		return this._all['system'];
+	},
+	getPlayerUnits: function() {
+		return this._all['player_unit'];
+	},
+	getAlliesUnits: function() {
+		return this._all['allies_unit'];
+	},
+	getEnemyUnits: function() {
+		return this._all['enemy_unit'];
 	},
 	// ajax utilities
 	_noop: function() {}
 });
 
 var Attr = enchant.Class.create({
+	classname: "Attr",
 	name: null,
 	chara_id : 0,
 	level: 0,
@@ -192,17 +190,18 @@ var Attr = enchant.Class.create({
 
 var Chara = enchant.Class.create(enchant.Sprite, {
 	classname: "Chara",
-	initialize: function(x, y, attr) {
-		enchant.Sprite.call(this, x, y);
-		this.x = x;
-		this.y = y;
-		this._status = UNIT_STATUS["NORMAL"];
-		//this.image = game.assets['chara1.png'];
-		//this.frame = 5;
-		// TODO: to read these by config
+	initialize: function(conf) {
+		enchant.Sprite.call(
+			this, 
+			conf.position.i * CONFIG.getMap().tileWidth, 
+			conf.position.j * CONFIG.getMap().tileHeight
+		);
+		this._attr = new Attr(conf.attr);
+		this._status = CONSTS.getUnitStatus("NORMAL");
+		
 		this._anims = {
 			"ATTACK" : {
-				"asset" : "img/unit/Unit_atk_" + attr.chara_id + ".png",
+				"asset" : conf.resource.img_atk,
 				"frames" : [0, 0, 0, 0, 0, 1, 2, 3],
 				// df stand for direction factor
 				"df" : 4,
@@ -212,7 +211,7 @@ var Chara = enchant.Class.create(enchant.Sprite, {
 				"height" : 64
 			},
 			"MOVE" : {
-				"asset" : "img/unit/Unit_mov_" + attr.chara_id + ".png",
+				"asset" : conf.resource.img_mov,
 				"frames" : [0, 1],
 				"df" : 2,
 				"fps" : 2,
@@ -221,7 +220,7 @@ var Chara = enchant.Class.create(enchant.Sprite, {
 				"height" : 48
 			},
 			"WEAK" : {
-				"asset" : "img/unit/Unit_mov_" + attr.chara_id + ".png",
+				"asset" : conf.resource.img_mov,
 				"frames" : [6, 7],
 				"df" : 0,
 				"fps" : 2,
@@ -230,7 +229,7 @@ var Chara = enchant.Class.create(enchant.Sprite, {
 				"height" : 48
 			},
 			"STAND" : {
-				"asset" : "img/unit/Unit_spec_" + attr.chara_id + ".png",
+				"asset" : conf.resource.img_spc,
 				"frames" : [0],
 				"df" : 0,
 				"fps" : 0,
@@ -239,7 +238,7 @@ var Chara = enchant.Class.create(enchant.Sprite, {
 				"height" : 48
 			},
 			"DEFEND" : {
-				"asset" : "img/unit/Unit_spec_" + attr.chara_id + ".png",
+				"asset" : conf.resource.img_spc,
 				"frames" : [4],
 				"df" : 1,
 				"fps" : 0,
@@ -248,7 +247,7 @@ var Chara = enchant.Class.create(enchant.Sprite, {
 				"height" : 48
 			},
 			"HURT" : {
-				"asset" : "img/unit/Unit_spec_" + attr.chara_id + ".png",
+				"asset" : conf.resource.img_spc,
 				"frames" : [8],
 				"df" : 0,
 				"fps" : 0,
@@ -257,7 +256,7 @@ var Chara = enchant.Class.create(enchant.Sprite, {
 				"height" : 48
 			},
 			"WIN" : {
-				"asset" : "img/unit/Unit_spec_" + attr.chara_id + ".png",
+				"asset" : conf.resource.img_spc,
 				"frames" : [9],
 				"df" : 0,
 				"fps" : 0,
@@ -267,25 +266,13 @@ var Chara = enchant.Class.create(enchant.Sprite, {
 			}
 		};
 
-		this.setAnim("MOVE", LEFT);
-		//this.setAnim("ATTACK", RIGHT);
+		this.setAnim("MOVE", conf.position.d);
 		
 		this.addEventListener("enterframe", function(){
 			if (this.shouldPlayNextFrame()) {
 				this.setCurAnimNextFrame();
 			}
 		});
-		this.attr = new Attr(attr);
-		// init animations
-	},
-	isPlayerUnit: function() {
-		return true;
-		// TODO: this should be changed
-		if (this.attr.chara_id > 100) {
-			return true;
-		} else {
-			return false;
-		}
 	},
 	setStatus: function(st) {
 		if (UNIT_STATUS[st] === null) {
@@ -294,9 +281,9 @@ var Chara = enchant.Class.create(enchant.Sprite, {
 		this._status = UNIT_STATUS[st];
 	},
 	canMove: function() {
-		if (this._status != UNIT_STATUS["MOVED"]
-		&& this._status != UNIT_STATUS["ACTIONED"]
-		&& this._status != UNIT_STATUS["DEAD"]) {
+		if (this._status != CONSTS.getUnitStatus("MOVED")
+		&& this._status != CONSTS.getUnitStatus("ACTIONED")
+		&& this._status != CONSTS.getUnitStatus("DEAD")) {
 			return true;
 		}
 		return false;
@@ -392,16 +379,19 @@ var Battle = enchant.Class.create(enchant.Group, {
 	classname: "Battle",
 	initialize: function() {
 		enchant.Group.call(this);
-		this._status = BATTLE_STATUS["INIT"];
+		this._status = CONSTS.getBattleStatus("INIT");
 		this.round = 1;
 		this.win_conds = [];
 		this.lose_conds = [];
 		this.scenario_conds = [];
+		this._player_units = [];
+		this._allies_units = [];
+		this._enemy_units = [];
 	
 		// Big Status Machine
 		this.addEventListener(enchant.Event.TOUCH_END, function(evt){
 			//console.log("Battle clicked: " + evt.x + " : " + evt.y + " : " + this._status);
-			if (this._status == BATTLE_STATUS["PLAYER_TURN"]) {
+			if (this._status == CONSTS.getBattleStatus("PLAYER_TURN")) {
 				var units = this.getUnits(evt.x, evt.y);
 				// only map or exception
 				if (units.length <= 1) {
@@ -409,22 +399,24 @@ var Battle = enchant.Class.create(enchant.Group, {
 				} else {
 					for (var i = 0; i < units.length; i++) {
 						if (units[i].classname === "Chara") {
-							if (units[i].isPlayerUnit()) {
-								this.unitSelect(units[i]);
-							} else {
+							if (this.isPlayerUnit(units[i])) {
+								this.playerUnitSelect(units[i]);
+							} else if (this.isEnemyUnit(units[i])) {
 								this.enemyUnitSelect(units[i]);
+							} else if (this.isAlliesUnit(units[i])) {
+								this.alliesUnitSelect(units[i]);
 							}
 							return;
 						}
 					}
 				}
 			}
-			else if (this._status == BATTLE_STATUS["PLAYER_UNIT_MENU"]) {
+			else if (this._status == CONSTS.getBattleStatus("PLAYER_UNIT_MENU")) {
 				var units = this.getUnits(evt.x, evt.y);
 				// only map or exception
 				if (units.length <= 1) {
 					this.removeMenu();
-					this._status = BATTLE_STATUS["PLAYER_TURN"];
+					this._status = CONSTS.getBattleStatus("PLAYER_TURN");
 					return;
 				}
 			}
@@ -436,19 +428,19 @@ var Battle = enchant.Class.create(enchant.Group, {
 	},
 	// status changes
 	start: function() {
-		this._status = BATTLE_STATUS["PLAYER_TURN"];
+		this._status = CONSTS.getBattleStatus("PLAYER_TURN");
 	},	
 	sideChange: function() {
-		this._status = BATTLE_STATUS["ENEMY_TURN"];
+		this._status = CONSTS.getBattleStatus("ENEMY_TURN");
 	},	
 	nextTurn: function() {
-		this._status = BATTLE_STATUS["PLAYER_TURN"];
+		this._status = CONSTS.getBattleStatus("PLAYER_TURN");
 	},
 	win: function() {
-		this._status = BATTLE_STATUS["WIN"];
+		this._status = CONSTS.getBattleStatus("WIN");
 	},
 	lose: function() {
-		this._status = BATTLE_STATUS["LOSE"];
+		this._status = CONSTS.getBattleStatus("LOSE");
 	},
 	conditionJudge: function(conds, callback) {
 		for (var i = 0; i < conds.length; i++) {
@@ -462,12 +454,81 @@ var Battle = enchant.Class.create(enchant.Group, {
 		return true;
 	},
 
+	// pre-assign units
+	// no animation here 
+	addPlayerUnits: function(units) {
+		for (var i = 0; i < units.length; i++) {
+			if (!units[i].hide) {
+				this.addChild(new Chara(units[i]));
+			}
+			this._player_units.push(units[i]);
+		}
+	},
+	addAlliesUnits: function(units) {
+		for (var i = 0; i < units.length; i++) {
+			if (!units[i].hide) {
+				this.addChild(new Chara(units[i]));
+			}
+			this._allies_units.push(units[i]);
+		}
+	},
+	addEnemyUnits: function(units) {
+		for (var i = 0; i < units.length; i++) {
+			if (!units[i].hide) {
+				this.addChild(new Chara(units[i]));
+			}
+			this._enemy_units.push(units[i]);
+		}
+	},
+	isPlayerUnit: function(unit) {
+		for (var i = 0; i < this._player_units.length; i++) {
+			if (this._player_units[i] === unit) {
+				return true;
+			}
+		}
+		return false;
+	},
+	isAlliesUnit: function(unit) {
+		for (var i = 0; i < this._allies_units.length; i++) {
+			if (this._allies_units[i] === unit) {
+				return true;
+			}
+		}
+		return false;
+	},
+	isEnemyUnit: function(unit) {
+		for (var i = 0; i < this._enemy_units.length; i++) {
+			if (this._enemy_units[i] === unit) {
+				return true;
+			}
+		}
+		return false;
+	},
 
 	// map utilities
-	addMap: function(map) {
+	addMap: function(conf) {
 		if (this._map) {
 			this.reomveChild(this._map);
 		}
+		
+		var map = new Map(conf.tileWidth, conf.tileHeight);
+		map.image = GAME.assets[conf.image];
+		if (conf.data.length > 0) {
+			map.loadData(conf.data);
+		} else {
+			var matrix = [];
+			for (var i = 0; i < conf.width; i++) {
+				matrix[i] = [];
+				for (var j = 0; j < conf.height; j++) {
+					matrix[i][j] = i * conf.width + j;
+				}
+			}
+			map.loadData(matrix);
+		}
+		if (conf.collisionData.length > 0) {
+			map.collisionData = conf.collisionData;
+		}
+
 		this.addChild(map);
 		this._map = map;
 	},
@@ -555,7 +616,7 @@ var Battle = enchant.Class.create(enchant.Group, {
 			mov_shade.addEventListener(enchant.Event.TOUCH_END, function(){
 				self.removeGrids();
 				self.move();
-				self._status = BATTLE_STATUS["PLAYER_UNIT_ACTION"];
+				self._status = CONSTS.getBattleStatus("PLAYER_UNIT_ACTION");
 			});
 		}
 		for (var i = 0; i < this._atk_grids.length; i++) {
@@ -565,7 +626,7 @@ var Battle = enchant.Class.create(enchant.Group, {
 			atk_shade.addEventListener(enchant.Event.TOUCH_END, function(){
 				self.removeGrids();
 				self.move();
-				self._status = BATTLE_STATUS["PLAYER_UNIT_ACTION"];
+				self._status = CONSTS.getBattleStatus("PLAYER_UNIT_ACTION");
 			});
 		}
 	},
@@ -580,7 +641,7 @@ var Battle = enchant.Class.create(enchant.Group, {
 			atk_shade.addEventListener(enchant.Event.TOUCH_END, function(){
 				self.removeGrids();
 				self.attack();
-				self._status = BATTLE_STATUS["PLAYER_UNIT_ACTION"];
+				self._status = CONSTS.getBattleStatus("PLAYER_UNIT_ACTION");
 			});
 		}
 	},
@@ -605,7 +666,7 @@ var Battle = enchant.Class.create(enchant.Group, {
 		atk_btn.addEventListener(enchant.Event.TOUCH_END, function(){
 			self.removeMenu();
 			self.showAtkRng();
-			self._status = BATTLE_STATUS["PLAYER_UNIT_SHOW_RNG"];
+			self._status = CONSTS.getBattleStatus("PLAYER_UNIT_SHOW_RNG");
 		});
 
 		var mov_btn = new Sprite(32, 32);
@@ -614,7 +675,7 @@ var Battle = enchant.Class.create(enchant.Group, {
 		mov_btn.addEventListener(enchant.Event.TOUCH_END, function(){
 			self.removeMenu();
 			self.showMoveRng();
-			self._status = BATTLE_STATUS["PLAYER_UNIT_SHOW_RNG"];
+			self._status = CONSTS.getBattleStatus("PLAYER_UNIT_SHOW_RNG");
 		});
 
 		this._menu.addChild(atk_btn);
@@ -622,7 +683,7 @@ var Battle = enchant.Class.create(enchant.Group, {
 
 		this._menu.moveTo(~~(chara.x + chara.width / 2), ~~(chara.y - chara.height / 2));
 		this.addChild(this._menu);
-		this._status = BATTLE_STATUS["PLAYER_UNIT_MENU"];
+		this._status = CONSTS.getBattleStatus("PLAYER_UNIT_MENU");
 	},
 	removeMenu: function() {
 		this.removeChild(this._menu);
@@ -634,7 +695,7 @@ var Battle = enchant.Class.create(enchant.Group, {
 	// Animation utilities
 	animCharaMove: function(chara, route) {
 		// for each waypoint
-		for (var i = 0; i < rouht.length; i++) {
+		for (var i = 0; i < route.length; i++) {
 
 		}
 	},
@@ -643,6 +704,15 @@ var Battle = enchant.Class.create(enchant.Group, {
 		for (var i = 0; i < action_script.length; i++) {
 			
 		}
+	},
+	animCharaAppear: function(chara) {
+
+	},
+	animCharaEscape: function(chara) {
+		
+	},
+	animCharaDie: function(chara) {
+
 	},
 	
 	// numberic calculations
@@ -663,13 +733,16 @@ var Battle = enchant.Class.create(enchant.Group, {
 		}
 		return units;
 	},
-	unitSelect: function(unit) {
+	playerUnitSelect: function(unit) {
 		if (unit.canMove()) {
 			this.showMoveRng(unit);
 			this.showMenu(unit);
 		} else {
 			console.log("This unit can not move!");
 		}
+	},
+	alliesUnitSelect: function() {
+
 	},
 	enemyUnitSelect: function() {
 		// only show InfoBox
@@ -682,67 +755,25 @@ var Battle = enchant.Class.create(enchant.Group, {
 // Game Main
 // ---------------------
 window.onload = function(){
-	var config = new Config();
-	config.load(function(){
-		var game = new Core(480, 480);
-		game.fps = 60;
-		GAME = game;
+	CONSTS = new Consts();
+	CONFIG = new Config();
+	CONFIG.load(function(){
+		GAME = new Core(CONFIG.getSystem.width, CONFIG.getSystem.height);
+		GAME.fps = 60;
 
-		//game.preload(config.test);
-		game.preload(config.images());
-		game.onload = function(){
-			//return;
-			/*
-			var hero = new Sprite(48, 48);
-			hero.image = game.assets["img/unit/Unit_mov_109.png"];
+		GAME.preload(CONFIG.images());
+		GAME.onload = function(){
+			var battle = new Battle();
 			
-			hero.x = 0;
-			hero.y = 100;
-			hero.frame = 2;
-			*/
-			var hero = new Chara(240, 240, {chara_id: 109});
-			var enemy = new Chara(200, 200, {chara_id: 3});
-			
-			//var map = new Sprite(480, 480);
-			var map = new Map(48, 48);
-			map.image = game.assets["img/map/HM_1.png"];
-			var matrix = [];
-			for (var i = 0; i < 20; i++) {
-				matrix[i] = [];
-				for (var j = 0; j < 20; j++) {
-					matrix[i][j] = i * 20 + j;
-				}
-			}
-			map.loadData(matrix);
-			var scene = new Battle();
-			
-			scene.addMap(map);
-			scene.addChild(hero);
-			scene.addChild(enemy);
+			battle.addMap(CONFIG.getMap());
+			battle.addPlayerUnits(CONFIG.getPlayerUnits());
+			battle.addAlliesUnits(CONFIG.getAlliesUnits());
+			battle.addEnemyUnits(CONFIG.getEnemyUnits());
 
-			game.rootScene.addChild(scene);
-
-
-	// Animation
-			scene.tl.action({
-				time: 60,
-				// action start
-				onactionstart: function(evt){
-					hero.setAnim("ATTACK", LEFT);
-				}, 
-				// action tick
-				onactiontick: function(evt){
+			GAME.rootScene.addChild(battle);
 			
-				}, 
-				// action end
-				onactionend: function(evt){
-					hero.setAnim("MOVE", LEFT);
-					scene.start();
-				},
-			});
+			battle.start();
 		};
-		game.start();
-
-
+		GAME.start();
 	});
 };
