@@ -13,9 +13,9 @@ window.onload = function(){
 			var battle = new Battle();
 			
 			battle.addMap(CONFIG.getMap());
-			battle.addPlayerUnits(CONFIG.getPlayerUnits());
-			battle.addAlliesUnits(CONFIG.getAlliesUnits());
-			battle.addEnemyUnits(CONFIG.getEnemyUnits());
+			battle.addPlayerUnits(CONFIG.playerUnits);
+			battle.addAlliesUnits(CONFIG.alliesUnits);
+			battle.addEnemyUnits(CONFIG.enemyUnits);
 
 			GAME.rootScene.addChild(battle);
 			

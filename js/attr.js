@@ -14,6 +14,7 @@ var Attr = enchant.Class.create({
 	mor: 0,
 	mov: 0,
 	rng: 0,
+	exp: 0,
 	
 	initialize: function(attr) {
 		this.chara_id = attr.chara_id;
@@ -31,9 +32,6 @@ var Attr = enchant.Class.create({
 		this.mov = attr.mov;
 		this.rng = attr.rng;
 		this.exp = attr.exp ? attr.exp : 0;
-		this.cur_hp = attr.cur_hp ? attr.cur_hp : this.hp;
-		this.cur_mp = attr.cur_mp ? attr.cur_mp : this.mp;
-		this.cur_exp = attr.cur_exp;
 	},
 	compare: function(attr) {
 		for (var prop in this) {

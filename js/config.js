@@ -21,14 +21,20 @@ var Config = enchant.Class.create({
 	getSystem: function() {
 		return this._all['system'];
 	},
-	getPlayerUnits: function() {
-		return this._all['player_unit'];
+	playerUnits: {
+		get: function() {
+			return this._all['player_unit'];
+		},
 	},
-	getAlliesUnits: function() {
-		return this._all['allies_unit'];
+	alliesUnits: {
+		get: function() {
+			return this._all['allies_unit'];
+		},
 	},
-	getEnemyUnits: function() {
-		return this._all['enemy_unit'];
+	enemyUnits: {
+		get: function() {
+			return this._all['enemy_unit'];
+		},
 	},
 	// ajax utilities
 	_noop: function() {}

@@ -29,15 +29,15 @@ var Consts = enchant.Class.create({
 			ENEMY_UNIT_ACTION: 201
 		};
 	},
-	getDirection: function(d) {
+	direction: function(d) {
 		return this._directions[d];
-	},
-	getUnitStatus: function(st) {
+	},	
+	unitStatus: function(st) {	
 		return this._unit_status[st];
-	},
-	getBattleStatus: function(st) {
+	},	
+	battleStatus: function(st) {
 		return this._battle_status[st];
-	},
+	},	
 
 	_noop: function(){}
 });

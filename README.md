@@ -1,6 +1,32 @@
 开发日志
 ========
 
+### 20130530
+
+* 看了一下ui.enchant.js感觉有一些还是可以用的。可以直接移植过来。
+* 现在的主要工作是把battle.js里的UI操作抽象成单独的类。为以后InfoBox的工作做准备
+
+### 20130529
+
+* 将大文件拆分成小文件。
+* 整理所有常数和配置，放于const.js和config.js
+* 关于UI可以先看一下enchant.js的相关插件
+* 改动了原来的部分逻辑，没有进行整体调试
+* 对于基本属性的操作最好也改成enchant.js中的get/set写法，例如：
+
+	text: {
+		get: function() {
+			return this._text;
+		},  
+		set: function(text) {
+			this._text = text;
+			if (!enchant.CanvasLayer) {
+				this._element.innerHTML = text;
+			}   
+		}   
+	},  
+
+
 ### 20130528
 
 * 重写了原来的移动阴影相关逻辑。现在会更简洁一些。(未debug)

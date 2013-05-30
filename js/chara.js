@@ -6,8 +6,17 @@ var Chara = enchant.Class.create(enchant.Sprite, {
 			conf.position.i * CONFIG.getMap().tileWidth, 
 			conf.position.j * CONFIG.getMap().tileHeight
 		);
-		this._attr = new Attr(conf.attr);
-		this._status = CONSTS.getUnitStatus("NORMAL");
+
+		this._masterattr = new Attr(conf.attr);
+		this._cur_attr = new Attr(conf.attr);
+
+		// should be initialized
+		this.x = conf.position.i * CONFIG.getMap().tileWidth, 
+		this.y = conf.position.j * CONFIG.getMap().tileHeight
+		this.width = 48;
+		this.height = 48;
+		//console.log("Chara.initialized:  x: " + this.x + " y: " + this.y + " width: " + this.width + " height: " + this.height);
+		this._status = CONSTS.unitStatus("NORMAL");
 		
 		this._anims = {
 			"ATTACK" : {
@@ -91,9 +100,9 @@ var Chara = enchant.Class.create(enchant.Sprite, {
 		this._status = UNIT_STATUS[st];
 	},
 	canMove: function() {
-		if (this._status != CONSTS.getUnitStatus("MOVED")
-		&& this._status != CONSTS.getUnitStatus("ACTIONED")
-		&& this._status != CONSTS.getUnitStatus("DEAD")) {
+		if (this._status != CONSTS.unitStatus("MOVED")
+		&& this._status != CONSTS.unitStatus("ACTIONED")
+		&& this._status != CONSTS.unitStatus("DEAD")) {
 			return true;
 		}
 		return false;
@@ -122,7 +131,7 @@ var Chara = enchant.Class.create(enchant.Sprite, {
 		this.y += (this.height - newHeight) / 2;
 		this.width = newWidth;
 		this.height = newHeight;
-		//console.log(this.x + " : " + this.y + " : " + this.width + " : " + newWidth);
+		//console.log("Chara._adjustNewSize: " + this.x + " : " + this.y + " : " + this.width + " : " + newWidth);
 	},
 	// status, asset, fps, frame num should be assigned
 	setAnim: function(anim, direction, frame_num){

@@ -2,7 +2,7 @@ var Battle = enchant.Class.create(enchant.Group, {
 	classname: "Battle",
 	initialize: function() {
 		enchant.Group.call(this);
-		this._status = CONSTS.getBattleStatus("INIT");
+		this._status = CONSTS.battleStatus("INIT");
 		this.round = 1;
 		this.win_conds = [];
 		this.lose_conds = [];
@@ -14,7 +14,7 @@ var Battle = enchant.Class.create(enchant.Group, {
 		// Big Status Machine
 		this.addEventListener(enchant.Event.TOUCH_END, function(evt){
 			//console.log("Battle clicked: " + evt.x + " : " + evt.y + " : " + this._status);
-			if (this._status == CONSTS.getBattleStatus("PLAYER_TURN")) {
+			if (this._status == CONSTS.battleStatus("PLAYER_TURN")) {
 				var units = this.getUnits(evt.x, evt.y);
 				// only map or exception
 				if (units.length <= 1) {
@@ -34,12 +34,12 @@ var Battle = enchant.Class.create(enchant.Group, {
 					}
 				}
 			}
-			else if (this._status == CONSTS.getBattleStatus("PLAYER_UNIT_MENU")) {
+			else if (this._status == CONSTS.battleStatus("PLAYER_UNIT_MENU")) {
 				var units = this.getUnits(evt.x, evt.y);
 				// only map or exception
 				if (units.length <= 1) {
 					this.removeMenu();
-					this._status = CONSTS.getBattleStatus("PLAYER_TURN");
+					this._status = CONSTS.battleStatus("PLAYER_TURN");
 					return;
 				}
 			}
@@ -51,19 +51,19 @@ var Battle = enchant.Class.create(enchant.Group, {
 	},
 	// status changes
 	start: function() {
-		this._status = CONSTS.getBattleStatus("PLAYER_TURN");
+		this._status = CONSTS.battleStatus("PLAYER_TURN");
 	},	
 	sideChange: function() {
-		this._status = CONSTS.getBattleStatus("ENEMY_TURN");
+		this._status = CONSTS.battleStatus("ENEMY_TURN");
 	},	
 	nextTurn: function() {
-		this._status = CONSTS.getBattleStatus("PLAYER_TURN");
+		this._status = CONSTS.battleStatus("PLAYER_TURN");
 	},
 	win: function() {
-		this._status = CONSTS.getBattleStatus("WIN");
+		this._status = CONSTS.battleStatus("WIN");
 	},
 	lose: function() {
-		this._status = CONSTS.getBattleStatus("LOSE");
+		this._status = CONSTS.battleStatus("LOSE");
 	},
 	conditionJudge: function(conds, callback) {
 		for (var i = 0; i < conds.length; i++) {
@@ -239,7 +239,7 @@ var Battle = enchant.Class.create(enchant.Group, {
 			mov_shade.addEventListener(enchant.Event.TOUCH_END, function(){
 				self.removeGrids();
 				self.move();
-				self._status = CONSTS.getBattleStatus("PLAYER_UNIT_ACTION");
+				self._status = CONSTS.battleStatus("PLAYER_UNIT_ACTION");
 			});
 		}
 		for (var i = 0; i < this._atk_grids.length; i++) {
@@ -249,7 +249,7 @@ var Battle = enchant.Class.create(enchant.Group, {
 			atk_shade.addEventListener(enchant.Event.TOUCH_END, function(){
 				self.removeGrids();
 				self.move();
-				self._status = CONSTS.getBattleStatus("PLAYER_UNIT_ACTION");
+				self._status = CONSTS.battleStatus("PLAYER_UNIT_ACTION");
 			});
 		}
 	},
@@ -264,7 +264,7 @@ var Battle = enchant.Class.create(enchant.Group, {
 			atk_shade.addEventListener(enchant.Event.TOUCH_END, function(){
 				self.removeGrids();
 				self.attack();
-				self._status = CONSTS.getBattleStatus("PLAYER_UNIT_ACTION");
+				self._status = CONSTS.battleStatus("PLAYER_UNIT_ACTION");
 			});
 		}
 	},
@@ -283,13 +283,13 @@ var Battle = enchant.Class.create(enchant.Group, {
 		var self = this;
 		this._menu = new Group();
 		// TODO: the coordinate and menu layout should be changed
-		var atk_btn = new Sprite(32, 32);
+		var atk_btn = new Sprite(33, 32);
 		atk_btn.image = GAME.assets["img/menu/atk.png"] 
 		atk_btn.moveBy(- 16 - 32, 0);
 		atk_btn.addEventListener(enchant.Event.TOUCH_END, function(){
 			self.removeMenu();
 			self.showAtkRng();
-			self._status = CONSTS.getBattleStatus("PLAYER_UNIT_SHOW_RNG");
+			self._status = CONSTS.battleStatus("PLAYER_UNIT_SHOW_RNG");
 		});
 
 		var mov_btn = new Sprite(32, 32);
@@ -298,7 +298,7 @@ var Battle = enchant.Class.create(enchant.Group, {
 		mov_btn.addEventListener(enchant.Event.TOUCH_END, function(){
 			self.removeMenu();
 			self.showMoveRng();
-			self._status = CONSTS.getBattleStatus("PLAYER_UNIT_SHOW_RNG");
+			self._status = CONSTS.battleStatus("PLAYER_UNIT_SHOW_RNG");
 		});
 
 		this._menu.addChild(atk_btn);
@@ -306,7 +306,7 @@ var Battle = enchant.Class.create(enchant.Group, {
 
 		this._menu.moveTo(~~(chara.x + chara.width / 2), ~~(chara.y - chara.height / 2));
 		this.addChild(this._menu);
-		this._status = CONSTS.getBattleStatus("PLAYER_UNIT_MENU");
+		this._status = CONSTS.battleStatus("PLAYER_UNIT_MENU");
 	},
 	removeMenu: function() {
 		this.removeChild(this._menu);

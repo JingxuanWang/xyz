@@ -41,15 +41,15 @@ var Consts = enchant.Class.create({
 			ENEMY_UNIT_ACTION: 201
 		};
 	},
-	getDirection: function(d) {
+	direction: function(d) {
 		return this._directions[d];
-	},
-	getUnitStatus: function(st) {
+	},	
+	unitStatus: function(st) {	
 		return this._unit_status[st];
-	},
-	getBattleStatus: function(st) {
+	},	
+	battleStatus: function(st) {
 		return this._battle_status[st];
-	},
+	},	
 
 	_noop: function(){}
 });
@@ -128,14 +128,20 @@ var Config = enchant.Class.create({
 	getSystem: function() {
 		return this._all['system'];
 	},
-	getPlayerUnits: function() {
-		return this._all['player_unit'];
+	playerUnits: {
+		get: function() {
+			return this._all['player_unit'];
+		},
 	},
-	getAlliesUnits: function() {
-		return this._all['allies_unit'];
+	alliesUnits: {
+		get: function() {
+			return this._all['allies_unit'];
+		},
 	},
-	getEnemyUnits: function() {
-		return this._all['enemy_unit'];
+	enemyUnits: {
+		get: function() {
+			return this._all['enemy_unit'];
+		},
 	},
 	// ajax utilities
 	_noop: function() {}
@@ -157,6 +163,7 @@ var Attr = enchant.Class.create({
 	mor: 0,
 	mov: 0,
 	rng: 0,
+	exp: 0,
 	
 	initialize: function(attr) {
 		this.chara_id = attr.chara_id;
@@ -174,9 +181,6 @@ var Attr = enchant.Class.create({
 		this.mov = attr.mov;
 		this.rng = attr.rng;
 		this.exp = attr.exp ? attr.exp : 0;
-		this.cur_hp = attr.cur_hp ? attr.cur_hp : this.hp;
-		this.cur_mp = attr.cur_mp ? attr.cur_mp : this.mp;
-		this.cur_exp = attr.cur_exp;
 	},
 	compare: function(attr) {
 		for (var prop in this) {
@@ -196,8 +200,17 @@ var Chara = enchant.Class.create(enchant.Sprite, {
 			conf.position.i * CONFIG.getMap().tileWidth, 
 			conf.position.j * CONFIG.getMap().tileHeight
 		);
-		this._attr = new Attr(conf.attr);
-		this._status = CONSTS.getUnitStatus("NORMAL");
+
+		this._masterattr = new Attr(conf.attr);
+		this._cur_attr = new Attr(conf.attr);
+
+		// should be initialized
+		this.x = conf.position.i * CONFIG.getMap().tileWidth, 
+		this.y = conf.position.j * CONFIG.getMap().tileHeight
+		this.width = 48;
+		this.height = 48;
+		//console.log("Chara.initialized:  x: " + this.x + " y: " + this.y + " width: " + this.width + " height: " + this.height);
+		this._status = CONSTS.unitStatus("NORMAL");
 		
 		this._anims = {
 			"ATTACK" : {
@@ -281,9 +294,9 @@ var Chara = enchant.Class.create(enchant.Sprite, {
 		this._status = UNIT_STATUS[st];
 	},
 	canMove: function() {
-		if (this._status != CONSTS.getUnitStatus("MOVED")
-		&& this._status != CONSTS.getUnitStatus("ACTIONED")
-		&& this._status != CONSTS.getUnitStatus("DEAD")) {
+		if (this._status != CONSTS.unitStatus("MOVED")
+		&& this._status != CONSTS.unitStatus("ACTIONED")
+		&& this._status != CONSTS.unitStatus("DEAD")) {
 			return true;
 		}
 		return false;
@@ -312,7 +325,7 @@ var Chara = enchant.Class.create(enchant.Sprite, {
 		this.y += (this.height - newHeight) / 2;
 		this.width = newWidth;
 		this.height = newHeight;
-		//console.log(this.x + " : " + this.y + " : " + this.width + " : " + newWidth);
+		//console.log("Chara._adjustNewSize: " + this.x + " : " + this.y + " : " + this.width + " : " + newWidth);
 	},
 	// status, asset, fps, frame num should be assigned
 	setAnim: function(anim, direction, frame_num){
@@ -379,7 +392,7 @@ var Battle = enchant.Class.create(enchant.Group, {
 	classname: "Battle",
 	initialize: function() {
 		enchant.Group.call(this);
-		this._status = CONSTS.getBattleStatus("INIT");
+		this._status = CONSTS.battleStatus("INIT");
 		this.round = 1;
 		this.win_conds = [];
 		this.lose_conds = [];
@@ -391,7 +404,7 @@ var Battle = enchant.Class.create(enchant.Group, {
 		// Big Status Machine
 		this.addEventListener(enchant.Event.TOUCH_END, function(evt){
 			//console.log("Battle clicked: " + evt.x + " : " + evt.y + " : " + this._status);
-			if (this._status == CONSTS.getBattleStatus("PLAYER_TURN")) {
+			if (this._status == CONSTS.battleStatus("PLAYER_TURN")) {
 				var units = this.getUnits(evt.x, evt.y);
 				// only map or exception
 				if (units.length <= 1) {
@@ -411,12 +424,12 @@ var Battle = enchant.Class.create(enchant.Group, {
 					}
 				}
 			}
-			else if (this._status == CONSTS.getBattleStatus("PLAYER_UNIT_MENU")) {
+			else if (this._status == CONSTS.battleStatus("PLAYER_UNIT_MENU")) {
 				var units = this.getUnits(evt.x, evt.y);
 				// only map or exception
 				if (units.length <= 1) {
 					this.removeMenu();
-					this._status = CONSTS.getBattleStatus("PLAYER_TURN");
+					this._status = CONSTS.battleStatus("PLAYER_TURN");
 					return;
 				}
 			}
@@ -428,19 +441,19 @@ var Battle = enchant.Class.create(enchant.Group, {
 	},
 	// status changes
 	start: function() {
-		this._status = CONSTS.getBattleStatus("PLAYER_TURN");
+		this._status = CONSTS.battleStatus("PLAYER_TURN");
 	},	
 	sideChange: function() {
-		this._status = CONSTS.getBattleStatus("ENEMY_TURN");
+		this._status = CONSTS.battleStatus("ENEMY_TURN");
 	},	
 	nextTurn: function() {
-		this._status = CONSTS.getBattleStatus("PLAYER_TURN");
+		this._status = CONSTS.battleStatus("PLAYER_TURN");
 	},
 	win: function() {
-		this._status = CONSTS.getBattleStatus("WIN");
+		this._status = CONSTS.battleStatus("WIN");
 	},
 	lose: function() {
-		this._status = CONSTS.getBattleStatus("LOSE");
+		this._status = CONSTS.battleStatus("LOSE");
 	},
 	conditionJudge: function(conds, callback) {
 		for (var i = 0; i < conds.length; i++) {
@@ -616,7 +629,7 @@ var Battle = enchant.Class.create(enchant.Group, {
 			mov_shade.addEventListener(enchant.Event.TOUCH_END, function(){
 				self.removeGrids();
 				self.move();
-				self._status = CONSTS.getBattleStatus("PLAYER_UNIT_ACTION");
+				self._status = CONSTS.battleStatus("PLAYER_UNIT_ACTION");
 			});
 		}
 		for (var i = 0; i < this._atk_grids.length; i++) {
@@ -626,7 +639,7 @@ var Battle = enchant.Class.create(enchant.Group, {
 			atk_shade.addEventListener(enchant.Event.TOUCH_END, function(){
 				self.removeGrids();
 				self.move();
-				self._status = CONSTS.getBattleStatus("PLAYER_UNIT_ACTION");
+				self._status = CONSTS.battleStatus("PLAYER_UNIT_ACTION");
 			});
 		}
 	},
@@ -641,7 +654,7 @@ var Battle = enchant.Class.create(enchant.Group, {
 			atk_shade.addEventListener(enchant.Event.TOUCH_END, function(){
 				self.removeGrids();
 				self.attack();
-				self._status = CONSTS.getBattleStatus("PLAYER_UNIT_ACTION");
+				self._status = CONSTS.battleStatus("PLAYER_UNIT_ACTION");
 			});
 		}
 	},
@@ -660,13 +673,13 @@ var Battle = enchant.Class.create(enchant.Group, {
 		var self = this;
 		this._menu = new Group();
 		// TODO: the coordinate and menu layout should be changed
-		var atk_btn = new Sprite(32, 32);
+		var atk_btn = new Sprite(33, 32);
 		atk_btn.image = GAME.assets["img/menu/atk.png"] 
 		atk_btn.moveBy(- 16 - 32, 0);
 		atk_btn.addEventListener(enchant.Event.TOUCH_END, function(){
 			self.removeMenu();
 			self.showAtkRng();
-			self._status = CONSTS.getBattleStatus("PLAYER_UNIT_SHOW_RNG");
+			self._status = CONSTS.battleStatus("PLAYER_UNIT_SHOW_RNG");
 		});
 
 		var mov_btn = new Sprite(32, 32);
@@ -675,7 +688,7 @@ var Battle = enchant.Class.create(enchant.Group, {
 		mov_btn.addEventListener(enchant.Event.TOUCH_END, function(){
 			self.removeMenu();
 			self.showMoveRng();
-			self._status = CONSTS.getBattleStatus("PLAYER_UNIT_SHOW_RNG");
+			self._status = CONSTS.battleStatus("PLAYER_UNIT_SHOW_RNG");
 		});
 
 		this._menu.addChild(atk_btn);
@@ -683,7 +696,7 @@ var Battle = enchant.Class.create(enchant.Group, {
 
 		this._menu.moveTo(~~(chara.x + chara.width / 2), ~~(chara.y - chara.height / 2));
 		this.addChild(this._menu);
-		this._status = CONSTS.getBattleStatus("PLAYER_UNIT_MENU");
+		this._status = CONSTS.battleStatus("PLAYER_UNIT_MENU");
 	},
 	removeMenu: function() {
 		this.removeChild(this._menu);
@@ -766,9 +779,9 @@ window.onload = function(){
 			var battle = new Battle();
 			
 			battle.addMap(CONFIG.getMap());
-			battle.addPlayerUnits(CONFIG.getPlayerUnits());
-			battle.addAlliesUnits(CONFIG.getAlliesUnits());
-			battle.addEnemyUnits(CONFIG.getEnemyUnits());
+			battle.addPlayerUnits(CONFIG.playerUnits);
+			battle.addAlliesUnits(CONFIG.alliesUnits);
+			battle.addEnemyUnits(CONFIG.enemyUnits);
 
 			GAME.rootScene.addChild(battle);
 			
