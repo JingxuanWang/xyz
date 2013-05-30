@@ -19,6 +19,11 @@ var Consts = enchant.Class.create({
 			UP: 2,
 			LEFT: 3,
 		};
+		this._side = {
+			PLAYER: 0,
+			ALLIES: 1,
+			ENEMY: 2,
+		};
 		this._unit_status = {
 			// common status
 			NORMAL: 0,
@@ -40,6 +45,9 @@ var Consts = enchant.Class.create({
 			ENEMY_TURN: 200,
 			ENEMY_UNIT_ACTION: 201
 		};
+	},
+	side: function(s) {
+		return this._side[s];
 	},
 	direction: function(d) {
 		return this._directions[d];
@@ -201,8 +209,8 @@ var Chara = enchant.Class.create(enchant.Sprite, {
 			conf.position.j * CONFIG.getMap().tileHeight
 		);
 
-		this._masterattr = new Attr(conf.attr);
-		this._cur_attr = new Attr(conf.attr);
+		this.masterAttr = new Attr(conf.attr);
+		this.curAttr = new Attr(conf.attr);
 
 		// should be initialized
 		this.x = conf.position.i * CONFIG.getMap().tileWidth, 
@@ -386,7 +394,351 @@ var Chara = enchant.Class.create(enchant.Sprite, {
 			/ GAME.fps * this._cur_anim.fps);
 		return next_frame == this._cur_frame ? true : false;
 	},
+	masterAttr: {
+		get: function() {
+			return this._master_attr;
+		},
+		set: function(attr) {
+			this._master_attr = attr;
+		},
+	},
+	lastAttr: {
+		get: function() {
+			return this._last_attr;
+		},
+		set: function(attr) {
+			this._last_attr = attr;
+		},
+	},
+	curAttr: {
+		get: function() {
+			return this._cur_attr;
+		},
+		set: function(attr) {
+			this._cur_attr = attr;
+		},
+	},
+	noop: function() {}
 }); 
+
+var MoveShade = enchant.Class.create(enchant.Sprite, {
+	classname: "MoveShade",
+	initialize: function(x, y, width, height, callback) {
+		enchant.Sprite.call(this, width, height);
+		this.moveTo(x, y);
+		this.image = GAME.assets[CONFIG.UI.mov_base];
+		this.addEventListener(enchant.Event.TOUCH_END, callback);
+
+	},
+	_noop: function() {}	
+});
+
+var AttackShade = enchant.Class.create(enchant.Sprite, {
+	classname: "AttackShade",
+	initialize: function(x, y, width, height, callback) {
+		enchant.Sprite.call(this, width, height);
+		this.moveTo(x, y);
+		this.image = GAME.assets[CONFIG.UI.ar];
+		this.addEventListener(enchant.Event.TOUCH_END, callback);
+	},
+
+	_noop: function() {}	
+});
+
+// containts button & label & image
+var Menu = enchant.Class.create(enchant.Group, {
+	classname: "Menu",
+	buttons: ["atk", "mov"];
+	initialize: function(x, y, chara, cb_list) {
+		this.drawBackround();
+		for (var i = 0; i < buttons.length; i ++) {
+			var type = buttons[i];
+			var cb = cb_list[type];
+			addButton(x, y, w, h, type, cb);
+		}
+	},
+	drawBackground: function() {
+		var bg = new Sprite(this.width, this.height);
+		if (image) {
+			bg.image = image;
+		} else {
+			bg.image.context.fillStyle = '#fff';
+			bg.image.context.fillRect(0, 0, this.width, this.height);
+		}
+		this.bg = bg;
+		this.addChild(bg);
+	},
+	addButton: function(type, cb) {
+		var button = new Button(x, y, w, h, type, cb);
+		this.addChild(button);
+	},
+	_noop: function() {}	
+});
+
+
+// a button contains a image and a lable
+var Button = enchant.Class.create(enchant.Group, {
+	classname: "Button",
+	initialize: function(x, y, image, text, cb) {
+		enchant.Group.call(this, w, h);
+		this.addLabel(text);
+		this.moveTo(x, y);
+		this.width = 40;
+		this.height = 40;
+		this.drawBackground();
+
+		if (type == "atk") {
+			addLabel(type);	
+			addImage(GAME.assets[CONFIG.UI.img_menu_atk]);
+		} else if (type == "mov") {
+			addLabel(type);	
+			addImage(GAME.assets[CONFIG.UI.img_menu_mov]);
+		} else {
+			console.log("invalide type");
+		}
+
+		this._pressed = false;
+		this.addEventListener(enchant.Event.TOUCH_START, function() {
+			this._pressed = true;
+			this.y++;
+			this.changeStyle();
+			callback.call();
+		});
+		this.addEventListener(enchant.Event.TOUCH_END, function() {
+			this._pressed = false;
+			this.y--;
+			this.changeStyle();
+			callback.call();
+		});
+	},
+	drawBackground: function(image) {
+		var bg = new Sprite(this.width, this.height);
+		if (image) {
+			bg.image = image;
+		} else {
+			bg.image.context.fillStyle = '#fff';
+			bg.image.context.fillRect(0, 0, this.width, this.height);
+		}
+		this.bg = bg;
+		this.addChild(bg);
+	},
+	changeStyle: function() {
+		// currently only the background
+		if (this._pressed === true) {
+			this.bg.image.context.fillStyle = '#fff';
+			this.bg.image.context.fillRect(0, 0, this.width, this.height);
+		} else {
+			this.bg.image.context.fillStyle = '#333';
+			this.bg.image.context.fillRect(0, 0, this.width, this.height);
+		}
+	},
+	addImage: function(image) {
+		// fixed width/height
+		var img = new Sprite(32, 32);
+		img.image = image;
+		img.moveTo(2, 2);
+		this.img = img;
+		this.addChild(img);
+	},
+	addLabel: function(text) {
+		var lb = new Label(text);
+		lb.moveTo(36, 2);
+		this.lb = lb;
+		this.addChild(lb); 
+	},
+	_noop: function() {}	
+
+});
+
+// contains hp/mp bar & label & image
+var InfoBox = enchant.Class.create(enchant.Group, {
+	classname: "InfoBox",
+	initialize: function(x, y, chara, type) {
+		enchant.Group.call(this, w, h);
+		this.chara = chara;
+		this.type = type;
+	
+		this.setBasePoint(chara.x, chara.y);	
+		this.drawBackground(CONFIG.Menu.base);
+
+		this.setName();
+		this.setSchool();
+		if (this.type == CONSTS.side("PLAYER")) {
+			this.setHpStat();
+			this.setMpStat();
+			this.setExpStat();
+		}
+
+	},
+	chara: {
+		get: function() {
+			return this._chara;
+		},
+		set: function(chara) {
+			return this._chara = chara;
+		}
+	},
+	type: {
+		get: function() {
+			return this._type;
+		},
+		set: function(type) {
+			return this._type = type;
+		}
+	},
+	change: function(hp, mp, exp, atk, def) {
+		this.hp_bar.value = hp;
+		this.mp_bar.value = mp;
+		this.exp_bar.value = exp;
+	},
+	drawBackground: function(image) {
+		var bg = new Sprite(this.width, this.height);
+		if (image) {
+			bg.image = image;
+		} else {
+			bg.image.context.fillStyle = '#fff';
+			bg.image.context.fillRect(0, 0, this.width, this.height);
+		}
+		this.bg = bg;
+		this.addChild(bg);
+	},
+	setBasePoint: function(x, y) {
+		if (x >= CONFIG.system.width / 2) {
+			this.setX(x - 4 * CONFIG.SIZE);
+		} else {
+			this.setX(x + CONFIG.SIZE);
+		}
+		if (y >= CONFIG.system.height / 2) {
+			if (this._type == 1 && this._style == 0) {
+				this.setY(y - 2 * CONFIG.SIZE);
+			} else {
+				this.setY(y - CONFIG.SIZE);
+			}
+		} else {
+			this.setY(y);
+		}
+	},
+	setName: function() {
+	},
+	setSchool: function() {
+	},
+	setLv: function() {
+	},
+	setHpStat: function() {
+		// image + bar + lable
+		// image
+		this.hp_img = new Sprite(16,)
+		this.hp_bar = new Bar(20, 100);
+		this.hp_bar.image = GAME.assets[CONFIG.Menu.bar.hp];
+		this.hp_bar.maxvalue = chara.masterAttr.hp;
+		this.hp_bar.value = chara.curAttr.hp;
+	},
+	setMpStat: function() {
+		this.mp_bar = new Bar(20, 100);
+		this.mp_bar.image = GAME.assets[CONFIG.Menu.bar.mp];
+		this.mp_bar.maxvalue = chara.masterAttr.mp;
+		this.mp_bar.value = chara.curAttr.mp;
+	},
+	setExpStat: function() {
+		this.exp_bar = new Bar(20, 100);
+		this.exp_bar.image = GAME.assets[CONFIG.Menu.bar.exp];
+		this.exp_bar.maxvalue = chara.masterAttr.exp;
+		this.exp_bar.value = chara.curAttr.exp;
+	},
+
+	_noop: function() {}	
+});
+
+/*
+   // Bar
+	var bar = new Bar(20, 100);
+	bar.image = game.assets["bar.png"];
+	bar.maxvalue = 200;
+	bar.value = 0;
+	bar.on("enterframe", function() {
+		if (this.age % 60 == 0) {
+			this.value = Math.random() * 200;
+		}   
+	}); 
+	game.rootScene.addChild(bar);
+*/
+var Bar = enchant.Class.create(enchant.Sprite, {
+    initialize: function(x, y) {
+        enchant.Sprite.call(this, 1, 16);
+        this.image = new enchant.Surface(1, 16);// Null用
+        this.image.context.fillColor = 'RGB(0, 0, 256)';
+        this.image.context.fillRect(0, 0, 1, 16);
+        this._direction = 'right';
+        this._origin = 0;
+        this._maxvalue = enchant.Game.instance.width;
+        this._lastvalue = 0;
+        this.value = 0;
+        this.easing = 5;
+        switch (arguments.length) {
+            case 2:
+                this.y = y;
+                this.x = x;
+                this._origin = x;
+                break;
+            case 1:
+                this.x = x;
+                this._origin = x;
+                break;
+            default:
+                break;
+        }
+        this.addEventListener('enterframe', function() {
+            if (this.value < 0) {
+                this.value = 0;
+            }
+            this._lastvalue += (this.value - this._lastvalue) / this.easing;
+            if (Math.abs(this._lastvalue - this.value) < 1.3) {
+                this._lastvalue = this.value;
+            }
+            this.width = (this._lastvalue) | 0;
+            if (this.width > this._maxvalue) {
+                this.width = this._maxvalue;
+            }
+            if (this._direction === 'left') {
+                this._x = this._origin - this.width;
+            } else {
+                this._x = this._origin;
+            }
+            this._updateCoordinate();
+        });
+    },
+    direction: {
+        get: function() {
+            return this._direction;
+        },
+        set: function(newdirection) {
+            if (newdirection !== 'right' && newdirection !== 'left') {
+                // ignore
+            } else {
+                this._direction = newdirection;
+            }
+        }
+    },
+    x: {
+        get: function() {
+            return this._origin;
+        },
+        set: function(x) {
+            this._x = x;
+            this._origin = x;
+            this._dirty = true;
+        }
+    },
+    maxvalue: {
+        get: function() {
+            return this._maxvalue;
+        },
+        set: function(val) {
+            this._maxvalue = val;
+        }
+    }
+});
+
 
 var Battle = enchant.Class.create(enchant.Group, {
 	classname: "Battle",
@@ -623,6 +975,20 @@ var Battle = enchant.Class.create(enchant.Group, {
 		this._move_grids = this._getAvailGrids(chara, chara.mov);
 		this._atk_grids = this._getAvailGrids(chara, chara.rng);
 		for (var i = 0; i < this._move_grids.length; i++) {
+			var shade = new MoveShade(
+				this._move_grids[i].x,
+				this._move_grids[i].y,
+				chara.width,
+				chara.height,
+				function() {
+					self.removeGrids();
+					self.move();
+					self._status = CONSTS.battleStatus("PLAYER_UNIT_ACTION");
+				}
+			);
+			this._shades.push(shade);
+			this.addChild(shade);
+/*
 			var mov_shade = new Sprite(chara.width, chara.height);
 			mov_shade.moveTo(this._move_grids[i].x, this._move_grids[i].y);
 			mov_shade.image = GAME.assets["img/menu/blue.png"];
@@ -631,8 +997,24 @@ var Battle = enchant.Class.create(enchant.Group, {
 				self.move();
 				self._status = CONSTS.battleStatus("PLAYER_UNIT_ACTION");
 			});
+*/
 		}
 		for (var i = 0; i < this._atk_grids.length; i++) {
+			var shade = new AttackShade(
+				this._move_grids[i].x,
+				this._move_grids[i].y,
+				chara.width,
+				chara.height,
+				function() {
+					self.removeGrids();
+					self.move();
+					self._status = CONSTS.battleStatus("PLAYER_UNIT_ACTION");
+				}
+			);
+			this._shades.push(shade);
+			this.addChild(shade);
+
+/*
 			var atk_shade = new Sprite(chara.width, chara.height);
 			atk_shade.moveTo(this._move_grids[i].x, this._move_grids[i].y);
 			atk_shade.image = GAME.assets["img/menu/Mark_12-1.png"]; 
@@ -641,6 +1023,7 @@ var Battle = enchant.Class.create(enchant.Group, {
 				self.move();
 				self._status = CONSTS.battleStatus("PLAYER_UNIT_ACTION");
 			});
+*/
 		}
 	},
 	showAtkRng: function(chara) {
@@ -648,6 +1031,21 @@ var Battle = enchant.Class.create(enchant.Group, {
 		var self = this;
 		this._atk_grids = this._getAvailGrids(chara, chara.rng);
 		for (var i = 0; i < this._atk_grids.length; i++) {
+			var shade = new AttackShade(
+				this._move_grids[i].x,
+				this._move_grids[i].y,
+				chara.width,
+				chara.height,
+				function() {
+					self.removeGrids();
+					self.move();
+					self._status = CONSTS.battleStatus("PLAYER_UNIT_ACTION");
+				}
+			);
+			this._shades.push(shade);
+			this.addChild(shade);
+
+/*
 			var atk_shade = new Sprite(chara.width, chara.height);
 			atk_shade.moveTo(this._move_grids[i].x, this._move_grids[i].y);
 			atk_shade.image = GAME.assets["img/menu/blue.png"]; 
@@ -656,6 +1054,7 @@ var Battle = enchant.Class.create(enchant.Group, {
 				self.attack();
 				self._status = CONSTS.battleStatus("PLAYER_UNIT_ACTION");
 			});
+*/
 		}
 	},
 
@@ -694,7 +1093,7 @@ var Battle = enchant.Class.create(enchant.Group, {
 		this._menu.addChild(atk_btn);
 		this._menu.addChild(mov_btn);
 
-		this._menu.moveTo(~~(chara.x + chara.width / 2), ~~(chara.y - chara.height / 2));
+		this._menu.moveTo(~~(chara.x + chara.width / 4), ~~(chara.y - chara.height / 2));
 		this.addChild(this._menu);
 		this._status = CONSTS.battleStatus("PLAYER_UNIT_MENU");
 	},

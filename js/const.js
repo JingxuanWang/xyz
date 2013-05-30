@@ -7,6 +7,11 @@ var Consts = enchant.Class.create({
 			UP: 2,
 			LEFT: 3,
 		};
+		this._side = {
+			PLAYER: 0,
+			ALLIES: 1,
+			ENEMY: 2,
+		};
 		this._unit_status = {
 			// common status
 			NORMAL: 0,
@@ -28,6 +33,9 @@ var Consts = enchant.Class.create({
 			ENEMY_TURN: 200,
 			ENEMY_UNIT_ACTION: 201
 		};
+	},
+	side: function(s) {
+		return this._side[s];
 	},
 	direction: function(d) {
 		return this._directions[d];

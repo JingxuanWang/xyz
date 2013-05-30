@@ -7,8 +7,8 @@ var Chara = enchant.Class.create(enchant.Sprite, {
 			conf.position.j * CONFIG.getMap().tileHeight
 		);
 
-		this._masterattr = new Attr(conf.attr);
-		this._cur_attr = new Attr(conf.attr);
+		this.masterAttr = new Attr(conf.attr);
+		this.curAttr = new Attr(conf.attr);
 
 		// should be initialized
 		this.x = conf.position.i * CONFIG.getMap().tileWidth, 
@@ -192,5 +192,30 @@ var Chara = enchant.Class.create(enchant.Sprite, {
 			/ GAME.fps * this._cur_anim.fps);
 		return next_frame == this._cur_frame ? true : false;
 	},
+	masterAttr: {
+		get: function() {
+			return this._master_attr;
+		},
+		set: function(attr) {
+			this._master_attr = attr;
+		},
+	},
+	lastAttr: {
+		get: function() {
+			return this._last_attr;
+		},
+		set: function(attr) {
+			this._last_attr = attr;
+		},
+	},
+	curAttr: {
+		get: function() {
+			return this._cur_attr;
+		},
+		set: function(attr) {
+			this._cur_attr = attr;
+		},
+	},
+	noop: function() {}
 }); 
 

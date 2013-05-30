@@ -233,6 +233,20 @@ var Battle = enchant.Class.create(enchant.Group, {
 		this._move_grids = this._getAvailGrids(chara, chara.mov);
 		this._atk_grids = this._getAvailGrids(chara, chara.rng);
 		for (var i = 0; i < this._move_grids.length; i++) {
+			var shade = new MoveShade(
+				this._move_grids[i].x,
+				this._move_grids[i].y,
+				chara.width,
+				chara.height,
+				function() {
+					self.removeGrids();
+					self.move();
+					self._status = CONSTS.battleStatus("PLAYER_UNIT_ACTION");
+				}
+			);
+			this._shades.push(shade);
+			this.addChild(shade);
+/*
 			var mov_shade = new Sprite(chara.width, chara.height);
 			mov_shade.moveTo(this._move_grids[i].x, this._move_grids[i].y);
 			mov_shade.image = GAME.assets["img/menu/blue.png"];
@@ -241,8 +255,24 @@ var Battle = enchant.Class.create(enchant.Group, {
 				self.move();
 				self._status = CONSTS.battleStatus("PLAYER_UNIT_ACTION");
 			});
+*/
 		}
 		for (var i = 0; i < this._atk_grids.length; i++) {
+			var shade = new AttackShade(
+				this._move_grids[i].x,
+				this._move_grids[i].y,
+				chara.width,
+				chara.height,
+				function() {
+					self.removeGrids();
+					self.move();
+					self._status = CONSTS.battleStatus("PLAYER_UNIT_ACTION");
+				}
+			);
+			this._shades.push(shade);
+			this.addChild(shade);
+
+/*
 			var atk_shade = new Sprite(chara.width, chara.height);
 			atk_shade.moveTo(this._move_grids[i].x, this._move_grids[i].y);
 			atk_shade.image = GAME.assets["img/menu/Mark_12-1.png"]; 
@@ -251,6 +281,7 @@ var Battle = enchant.Class.create(enchant.Group, {
 				self.move();
 				self._status = CONSTS.battleStatus("PLAYER_UNIT_ACTION");
 			});
+*/
 		}
 	},
 	showAtkRng: function(chara) {
@@ -258,6 +289,21 @@ var Battle = enchant.Class.create(enchant.Group, {
 		var self = this;
 		this._atk_grids = this._getAvailGrids(chara, chara.rng);
 		for (var i = 0; i < this._atk_grids.length; i++) {
+			var shade = new AttackShade(
+				this._move_grids[i].x,
+				this._move_grids[i].y,
+				chara.width,
+				chara.height,
+				function() {
+					self.removeGrids();
+					self.move();
+					self._status = CONSTS.battleStatus("PLAYER_UNIT_ACTION");
+				}
+			);
+			this._shades.push(shade);
+			this.addChild(shade);
+
+/*
 			var atk_shade = new Sprite(chara.width, chara.height);
 			atk_shade.moveTo(this._move_grids[i].x, this._move_grids[i].y);
 			atk_shade.image = GAME.assets["img/menu/blue.png"]; 
@@ -266,6 +312,7 @@ var Battle = enchant.Class.create(enchant.Group, {
 				self.attack();
 				self._status = CONSTS.battleStatus("PLAYER_UNIT_ACTION");
 			});
+*/
 		}
 	},
 
@@ -304,7 +351,7 @@ var Battle = enchant.Class.create(enchant.Group, {
 		this._menu.addChild(atk_btn);
 		this._menu.addChild(mov_btn);
 
-		this._menu.moveTo(~~(chara.x + chara.width / 2), ~~(chara.y - chara.height / 2));
+		this._menu.moveTo(~~(chara.x + chara.width / 4), ~~(chara.y - chara.height / 2));
 		this.addChild(this._menu);
 		this._status = CONSTS.battleStatus("PLAYER_UNIT_MENU");
 	},
