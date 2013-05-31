@@ -3,7 +3,7 @@ var MoveShade = enchant.Class.create(enchant.Sprite, {
 	initialize: function(x, y, width, height, callback) {
 		enchant.Sprite.call(this, width, height);
 		this.moveTo(x, y);
-		this.image = GAME.assets[CONFIG.UI.mov_base];
+		this.image = GAME.assets[CONFIG.get(["UI", "mov_base"])];
 		this.addEventListener(enchant.Event.TOUCH_END, callback);
 
 	},
@@ -15,7 +15,7 @@ var AttackShade = enchant.Class.create(enchant.Sprite, {
 	initialize: function(x, y, width, height, callback) {
 		enchant.Sprite.call(this, width, height);
 		this.moveTo(x, y);
-		this.image = GAME.assets[CONFIG.UI.ar];
+		this.image = GAME.assets[CONFIG.get(["UI", "ar"])];
 		this.addEventListener(enchant.Event.TOUCH_END, callback);
 	},
 
@@ -25,7 +25,7 @@ var AttackShade = enchant.Class.create(enchant.Sprite, {
 // containts button & label & image
 var Menu = enchant.Class.create(enchant.Group, {
 	classname: "Menu",
-	buttons: ["atk", "mov"];
+	buttons: ["atk", "mov"],
 	initialize: function(x, y, chara, cb_list) {
 		this.drawBackround();
 		for (var i = 0; i < buttons.length; i ++) {
@@ -66,10 +66,10 @@ var Button = enchant.Class.create(enchant.Group, {
 
 		if (type == "atk") {
 			addLabel(type);	
-			addImage(GAME.assets[CONFIG.UI.img_menu_atk]);
+			addImage(GAME.assets[CONFIG.get(["UI", "img_menu_atk"])]);
 		} else if (type == "mov") {
 			addLabel(type);	
-			addImage(GAME.assets[CONFIG.UI.img_menu_mov]);
+			addImage(GAME.assets[CONFIG.get(["UI", "img_menu_mov"])]);
 		} else {
 			console.log("invalide type");
 		}
@@ -136,7 +136,7 @@ var InfoBox = enchant.Class.create(enchant.Group, {
 		this.type = type;
 	
 		this.setBasePoint(chara.x, chara.y);	
-		this.drawBackground(CONFIG.Menu.base);
+		this.drawBackground(CONFIG.get(["Menu", "base"]));
 
 		this.setName();
 		this.setSchool();
@@ -152,7 +152,7 @@ var InfoBox = enchant.Class.create(enchant.Group, {
 			return this._chara;
 		},
 		set: function(chara) {
-			return this._chara = chara;
+			this._chara = chara;
 		}
 	},
 	type: {
@@ -160,7 +160,7 @@ var InfoBox = enchant.Class.create(enchant.Group, {
 			return this._type;
 		},
 		set: function(type) {
-			return this._type = type;
+			this._type = type;
 		}
 	},
 	change: function(hp, mp, exp, atk, def) {
@@ -180,13 +180,13 @@ var InfoBox = enchant.Class.create(enchant.Group, {
 		this.addChild(bg);
 	},
 	setBasePoint: function(x, y) {
-		if (x >= CONFIG.system.width / 2) {
+		if (x >= CONFIG.get(["system", "width"]) / 2) {
 			this.setX(x - 4 * CONFIG.SIZE);
 		} else {
 			this.setX(x + CONFIG.SIZE);
 		}
-		if (y >= CONFIG.system.height / 2) {
-			if (this._type == 1 && this._style == 0) {
+		if (y >= CONFIG.get(["system", "height"]) / 2) {
+			if (this._type === 1 && this._style === 0) {
 				this.setY(y - 2 * CONFIG.SIZE);
 			} else {
 				this.setY(y - CONFIG.SIZE);
@@ -204,21 +204,21 @@ var InfoBox = enchant.Class.create(enchant.Group, {
 	setHpStat: function() {
 		// image + bar + lable
 		// image
-		this.hp_img = new Sprite(16,)
+		this.hp_img = new Sprite(32, 32);
 		this.hp_bar = new Bar(20, 100);
-		this.hp_bar.image = GAME.assets[CONFIG.Menu.bar.hp];
+		this.hp_bar.image = GAME.assets[CONFIG.get(["Menu", "bar", "hp"])];
 		this.hp_bar.maxvalue = chara.masterAttr.hp;
 		this.hp_bar.value = chara.curAttr.hp;
 	},
 	setMpStat: function() {
 		this.mp_bar = new Bar(20, 100);
-		this.mp_bar.image = GAME.assets[CONFIG.Menu.bar.mp];
+		this.mp_bar.image = GAME.assets[CONFIG.get(["Menu", "bar", "mp"])];
 		this.mp_bar.maxvalue = chara.masterAttr.mp;
 		this.mp_bar.value = chara.curAttr.mp;
 	},
 	setExpStat: function() {
 		this.exp_bar = new Bar(20, 100);
-		this.exp_bar.image = GAME.assets[CONFIG.Menu.bar.exp];
+		this.exp_bar.image = GAME.assets[CONFIG.get(["Menu", "bar", "exp"])];
 		this.exp_bar.maxvalue = chara.masterAttr.exp;
 		this.exp_bar.value = chara.curAttr.exp;
 	},

@@ -7,6 +7,6 @@ var CONSTS;
 function bind(func, scope){
 	return function(){
 		return func.apply(scope, arguments);
-	}
+	};
 }
 

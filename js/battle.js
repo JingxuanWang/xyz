@@ -10,12 +10,14 @@ var Battle = enchant.Class.create(enchant.Group, {
 		this._player_units = [];
 		this._allies_units = [];
 		this._enemy_units = [];
+		this._shades = [];
 	
 		// Big Status Machine
 		this.addEventListener(enchant.Event.TOUCH_END, function(evt){
 			//console.log("Battle clicked: " + evt.x + " : " + evt.y + " : " + this._status);
+			var units = [];
 			if (this._status == CONSTS.battleStatus("PLAYER_TURN")) {
-				var units = this.getUnits(evt.x, evt.y);
+				units = this.getUnits(evt.x, evt.y);
 				// only map or exception
 				if (units.length <= 1) {
 					return;
@@ -35,7 +37,7 @@ var Battle = enchant.Class.create(enchant.Group, {
 				}
 			}
 			else if (this._status == CONSTS.battleStatus("PLAYER_UNIT_MENU")) {
-				var units = this.getUnits(evt.x, evt.y);
+				units = this.getUnits(evt.x, evt.y);
 				// only map or exception
 				if (units.length <= 1) {
 					this.removeMenu();
@@ -81,26 +83,29 @@ var Battle = enchant.Class.create(enchant.Group, {
 	// no animation here 
 	addPlayerUnits: function(units) {
 		for (var i = 0; i < units.length; i++) {
-			if (!units[i].hide) {
-				this.addChild(new Chara(units[i]));
+			var chara = new Chara(units[i]);
+			this._player_units.push(chara);
+			if (!chara.hide) {
+				this.addChild(chara);
 			}
-			this._player_units.push(units[i]);
 		}
 	},
 	addAlliesUnits: function(units) {
 		for (var i = 0; i < units.length; i++) {
-			if (!units[i].hide) {
-				this.addChild(new Chara(units[i]));
+			var chara = new Chara(units[i]);
+			this._allies_units.push(chara);
+			if (!chara.hide) {
+				this.addChild(chara);
 			}
-			this._allies_units.push(units[i]);
 		}
 	},
 	addEnemyUnits: function(units) {
 		for (var i = 0; i < units.length; i++) {
-			if (!units[i].hide) {
-				this.addChild(new Chara(units[i]));
+			var chara = new Chara(units[i]);
+			this._enemy_units.push(chara);
+			if (!chara.hide) {
+				this.addChild(chara);
 			}
-			this._enemy_units.push(units[i]);
 		}
 	},
 	isPlayerUnit: function(unit) {
@@ -175,7 +180,7 @@ var Battle = enchant.Class.create(enchant.Group, {
 			if (cur != src) {
 				avail_grids.push(cur);
 			}
-			cur.route.push(cur);
+			cur.route.push({x: cur.x, y: cur.y});
 			var up = {
 				x: cur.x,
 				y: cur.y - chara.height,
@@ -198,31 +203,32 @@ var Battle = enchant.Class.create(enchant.Group, {
 				x: cur.x + chara.width,
 				y: cur.y,
 				r: cur.r - 1,
-				route: cur.route.push,
+				route: cur.route,
 			};		
-			if (!this._map.hitTest(down.x, down.y) && down.r > 0) {
+			if (!this._map.hitTest(down.x, down.y) && down.r >= 0) {
 				queue.push(down);
 			}
-			if (!this._map.hitTest(right.x, right.y) && right.r > 0) {
+			if (!this._map.hitTest(right.x, right.y) && right.r >= 0) {
 				queue.push(right);
 			}
-			if (!this._map.hitTest(up.x, up.y) && up.r > 0) {
+			if (!this._map.hitTest(up.x, up.y) && up.r >= 0) {
 				queue.push(up);
 			}
-			if (!this._map.hitTest(left.x, left.y) && left.r > 0) {
+			if (!this._map.hitTest(left.x, left.y) && left.r >= 0) {
 				queue.push(left);
 			}
 		}
 		return avail_grids;
 	},
 	removeGrids: function() {
+		var i = 0;
 		if (this._move_grids) {
-			for (var i = 0; i < this._move_grids; i++) {
+			for (i = 0; i < this._move_grids; i++) {
 				this.removeChild(this._move_grids[i]);
 			}
 		}
 		if (this._atk_grids) {
-			for (var i = 0; i < this._atk_grids; i++) {
+			for (i = 0; i < this._atk_grids; i++) {
 				this.removeChild(this._atk_grids[i]);
 			}
 		}
@@ -230,93 +236,70 @@ var Battle = enchant.Class.create(enchant.Group, {
 	showMoveRng: function(chara) {
 		console.log("show move range");
 		var self = this;
+		var i = 0;
+		var shade;
 		this._move_grids = this._getAvailGrids(chara, chara.mov);
 		this._atk_grids = this._getAvailGrids(chara, chara.rng);
-		for (var i = 0; i < this._move_grids.length; i++) {
-			var shade = new MoveShade(
-				this._move_grids[i].x,
-				this._move_grids[i].y,
-				chara.width,
-				chara.height,
-				function() {
-					self.removeGrids();
-					self.move();
-					self._status = CONSTS.battleStatus("PLAYER_UNIT_ACTION");
-				}
-			);
-			this._shades.push(shade);
-			this.addChild(shade);
-/*
-			var mov_shade = new Sprite(chara.width, chara.height);
-			mov_shade.moveTo(this._move_grids[i].x, this._move_grids[i].y);
-			mov_shade.image = GAME.assets["img/menu/blue.png"];
-			mov_shade.addEventListener(enchant.Event.TOUCH_END, function(){
-				self.removeGrids();
-				self.move();
-				self._status = CONSTS.battleStatus("PLAYER_UNIT_ACTION");
-			});
-*/
-		}
-		for (var i = 0; i < this._atk_grids.length; i++) {
-			var shade = new AttackShade(
-				this._move_grids[i].x,
-				this._move_grids[i].y,
-				chara.width,
-				chara.height,
-				function() {
-					self.removeGrids();
-					self.move();
-					self._status = CONSTS.battleStatus("PLAYER_UNIT_ACTION");
-				}
-			);
-			this._shades.push(shade);
-			this.addChild(shade);
+	
+		var move_shade_cb = function() {
+			self.removeGrids();
+			self.move();
+			self._status = CONSTS.battleStatus("PLAYER_UNIT_ACTION");
+		};
 
-/*
-			var atk_shade = new Sprite(chara.width, chara.height);
-			atk_shade.moveTo(this._move_grids[i].x, this._move_grids[i].y);
-			atk_shade.image = GAME.assets["img/menu/Mark_12-1.png"]; 
-			atk_shade.addEventListener(enchant.Event.TOUCH_END, function(){
-				self.removeGrids();
-				self.move();
-				self._status = CONSTS.battleStatus("PLAYER_UNIT_ACTION");
-			});
-*/
+		for (i = 0; i < this._move_grids.length; i++) {
+			shade = new MoveShade(
+				this._move_grids[i].x,
+				this._move_grids[i].y,
+				chara.width,
+				chara.height,
+				move_shade_cb
+			);
+			this._shades.push(shade);
+			this.addChild(shade);
+		}
+		var atk_shade_cb = function() {
+			self.removeGrids();
+			self.move();
+			self._status = CONSTS.battleStatus("PLAYER_UNIT_ACTION");
+		};
+
+		for (i = 0; i < this._atk_grids.length; i++) {
+			shade = new AttackShade(
+				this._atk_grids[i].x,
+				this._atk_grids[i].y,
+				chara.width,
+				chara.height,
+				atk_shade_cb
+			);
+			this._shades.push(shade);
+			this.addChild(shade);
 		}
 	},
 	showAtkRng: function(chara) {
-		console.log("show attack range");
 		var self = this;
-		this._atk_grids = this._getAvailGrids(chara, chara.rng);
+		this._atk_grids = this._getAvailGrids(chara, chara.curAttr.rng);
+		console.log("show attack range" + this._atk_grids);
+		var atk_shade_cb = function() {
+			self.removeGrids();
+			self.attack(chara, shade.x, shade.y);
+			self._status = CONSTS.battleStatus("PLAYER_UNIT_ACTION");
+		};
 		for (var i = 0; i < this._atk_grids.length; i++) {
 			var shade = new AttackShade(
-				this._move_grids[i].x,
-				this._move_grids[i].y,
+				this._atk_grids[i].x,
+				this._atk_grids[i].y,
 				chara.width,
 				chara.height,
-				function() {
-					self.removeGrids();
-					self.move();
-					self._status = CONSTS.battleStatus("PLAYER_UNIT_ACTION");
-				}
+				atk_shade_cb
 			);
 			this._shades.push(shade);
 			this.addChild(shade);
-
-/*
-			var atk_shade = new Sprite(chara.width, chara.height);
-			atk_shade.moveTo(this._move_grids[i].x, this._move_grids[i].y);
-			atk_shade.image = GAME.assets["img/menu/blue.png"]; 
-			atk_shade.addEventListener(enchant.Event.TOUCH_END, function(){
-				self.removeGrids();
-				self.attack();
-				self._status = CONSTS.battleStatus("PLAYER_UNIT_ACTION");
-			});
-*/
 		}
 	},
 
-	attack: function(chara, enemy) {
+	attack: function(chara, x, y) {
+		var enemy = this.getChara(x, y);
 		var result = this.calcAttack(chara, enemy);
 		this.animCharaAttack(result);
 	},
@@ -331,11 +314,11 @@ var Battle = enchant.Class.create(enchant.Group, {
 		this._menu = new Group();
 		// TODO: the coordinate and menu layout should be changed
 		var atk_btn = new Sprite(33, 32);
-		atk_btn.image = GAME.assets["img/menu/atk.png"] 
+		atk_btn.image = GAME.assets["img/menu/atk.png"]; 
 		atk_btn.moveBy(- 16 - 32, 0);
 		atk_btn.addEventListener(enchant.Event.TOUCH_END, function(){
 			self.removeMenu();
-			self.showAtkRng();
+			self.showAtkRng(chara);
 			self._status = CONSTS.battleStatus("PLAYER_UNIT_SHOW_RNG");
 		});
 
@@ -344,7 +327,7 @@ var Battle = enchant.Class.create(enchant.Group, {
 		mov_btn.moveBy(16, 0);
 		mov_btn.addEventListener(enchant.Event.TOUCH_END, function(){
 			self.removeMenu();
-			self.showMoveRng();
+			self.showMoveRng(chara);
 			self._status = CONSTS.battleStatus("PLAYER_UNIT_SHOW_RNG");
 		});
 
@@ -392,12 +375,15 @@ var Battle = enchant.Class.create(enchant.Group, {
 		var action_script = [];
 		return action_script;
 	},
+	getChara: function(x, y) {
+
+	},
 	getUnits: function(x, y) {
 		var units = [];
 		for (var i = 0; i < this.childNodes.length; i++) {
 			var node = this.childNodes[i];
-			if (node.x <= x && x <= node.x + node.width
-				&& node.y <= y && y <= node.y + node.height) {
+			if (node.x <= x && x <= node.x + node.width && 
+				node.y <= y && y <= node.y + node.height) {
 				units.push(node);
 			}
 		}

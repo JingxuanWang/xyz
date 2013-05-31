@@ -21,7 +21,7 @@ var Ajax = enchant.Class.create(enchant.EventTarget, {
 	},
 	_loaded: function(){
 		if(this._request.readyState == 4){
-			if(this._request.status == 200 || this._request.status == 0){
+			if(this._request.status == 200 || this._request.status === 0){
 				this.dispatchEvent(new enchant.Event(enchant.Event.LOAD));
 			} else {
 				this.dispatchEvent(new enchant.Event(enchant.Event.ERROR));

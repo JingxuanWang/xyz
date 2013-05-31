@@ -3,16 +3,16 @@ var Chara = enchant.Class.create(enchant.Sprite, {
 	initialize: function(conf) {
 		enchant.Sprite.call(
 			this, 
-			conf.position.i * CONFIG.getMap().tileWidth, 
-			conf.position.j * CONFIG.getMap().tileHeight
+			conf.position.i * CONFIG.get(["map", "tileWidth"]),
+			conf.position.j * CONFIG.get(["map", "tileHeight"])
 		);
 
 		this.masterAttr = new Attr(conf.attr);
 		this.curAttr = new Attr(conf.attr);
 
 		// should be initialized
-		this.x = conf.position.i * CONFIG.getMap().tileWidth, 
-		this.y = conf.position.j * CONFIG.getMap().tileHeight
+		this.x = conf.position.i * CONFIG.get(["map", "tileWidth"]); 
+		this.y = conf.position.j * CONFIG.get(["map", "tileHeight"]);
 		this.width = 48;
 		this.height = 48;
 		//console.log("Chara.initialized:  x: " + this.x + " y: " + this.y + " width: " + this.width + " height: " + this.height);
@@ -100,9 +100,9 @@ var Chara = enchant.Class.create(enchant.Sprite, {
 		this._status = UNIT_STATUS[st];
 	},
 	canMove: function() {
-		if (this._status != CONSTS.unitStatus("MOVED")
-		&& this._status != CONSTS.unitStatus("ACTIONED")
-		&& this._status != CONSTS.unitStatus("DEAD")) {
+		if (this._status != CONSTS.unitStatus("MOVED") && 
+			this._status != CONSTS.unitStatus("ACTIONED") && 
+			this._status != CONSTS.unitStatus("DEAD")) {
 			return true;
 		}
 		return false;
@@ -116,8 +116,7 @@ var Chara = enchant.Class.create(enchant.Sprite, {
 		var frames = [];
 		// change direction for each frame
 		for (var i = 0; i < this._cur_anim.frames.length; i++) {
-			frames[i] = this._cur_anim.frames[i] 
-				+ this._cur_anim.df * direction;
+			frames[i] = this._cur_anim.frames[i] + this._cur_anim.df * direction;
 		}
 		// set first frame
 		this.frame = frames[this._cur_frame];
@@ -144,8 +143,7 @@ var Chara = enchant.Class.create(enchant.Sprite, {
 		var frames = [];
 		// change direction for each frame
 		for (var i = 0; i < this._anims[anim].frames.length; i++) {
-			frames[i] = this._anims[anim].frames[i] 
-				+ this._anims[anim].df * direction;
+			frames[i] = this._anims[anim].frames[i] + this._anims[anim].df * direction;
 		}
 		if (!frame_num) {
 			frame_num = 0;
@@ -164,8 +162,7 @@ var Chara = enchant.Class.create(enchant.Sprite, {
 		//console.log("Chara: setAnim: " + this._cur_frame + " : " + frames.length);
 	},
 	getCurAnimTotalFrameNum: function() {
-		return this._cur_anim.frames.length === null 
-			? this._cur_anim.frames.length : 0;	
+		return this._cur_anim.frames.length === null ? this._cur_anim.frames.length : 0;	
 	},
 	setCurAnimFrameNum: function(num) {
 		if (this._cur_anim.frames.length == 1 && num > 1) {
@@ -188,8 +185,7 @@ var Chara = enchant.Class.create(enchant.Sprite, {
 	},
 	shouldPlayNextFrame: function() {
 		//console.log("Chara: shouldPlayNextFrame: " + this._cur_frame + " : " + this.age);
-		var next_frame = ~~((this.age % GAME.fps) 
-			/ GAME.fps * this._cur_anim.fps);
+		var next_frame = ~~((this.age % GAME.fps) / GAME.fps * this._cur_anim.fps);
 		return next_frame == this._cur_frame ? true : false;
 	},
 	masterAttr: {
