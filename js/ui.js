@@ -1,10 +1,12 @@
 var MoveShade = enchant.Class.create(enchant.Sprite, {
 	classname: "MoveShade",
-	initialize: function(x, y, width, height, callback) {
+	initialize: function(grid, width, height, callback) {
 		enchant.Sprite.call(this, width, height);
-		this.moveTo(x, y);
+		this.moveTo(grid.x, grid.y);
 		this.image = GAME.assets[CONFIG.get(["UI", "mov_base"])];
-		this.addEventListener(enchant.Event.TOUCH_END, callback);
+		this.addEventListener(enchant.Event.TOUCH_END, function() {
+			callback.call(this, grid);
+		});
 
 	},
 	_noop: function() {}	
@@ -145,7 +147,6 @@ var InfoBox = enchant.Class.create(enchant.Group, {
 			this.setMpStat();
 			this.setExpStat();
 		}
-
 	},
 	chara: {
 		get: function() {
@@ -181,23 +182,29 @@ var InfoBox = enchant.Class.create(enchant.Group, {
 	},
 	setBasePoint: function(x, y) {
 		if (x >= CONFIG.get(["system", "width"]) / 2) {
-			this.setX(x - 4 * CONFIG.SIZE);
+			this.x = x - 4 * CONFIG.get(["map", "tileWidth"]);
 		} else {
-			this.setX(x + CONFIG.SIZE);
+			this.x = x + CONFIG.get(["map", "tileWidth"]);
 		}
 		if (y >= CONFIG.get(["system", "height"]) / 2) {
 			if (this._type === 1 && this._style === 0) {
-				this.setY(y - 2 * CONFIG.SIZE);
+				this.y = y - 2 * CONFIG.get(["map", "tileHeight"]);
 			} else {
-				this.setY(y - CONFIG.SIZE);
+				this.y = y - CONFIG.get(["map", "tileHeight"]);
 			}
 		} else {
-			this.setY(y);
+			this.y = y;
 		}
 	},
 	setName: function() {
+		this.name = new Label(chara.curAttr.name);
+		this.name.moveTo(4, 4);
+		this.addChild(this.name);
 	},
 	setSchool: function() {
+		this.school = new Label(chara.curAttr.school);
+		this.school.moveTo(4, 30);
+		this.addChild(this.school);
 	},
 	setLv: function() {
 	},
