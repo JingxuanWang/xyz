@@ -11,6 +11,8 @@ var Consts = enchant.Class.create({
 			PLAYER: 0,
 			ALLIES: 1,
 			ENEMY: 2,
+			ENEMY_ALLIES: 3,
+			NUTRUAL: 4,
 		};
 		this._unit_status = {
 			// common status

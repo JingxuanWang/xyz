@@ -14,11 +14,13 @@ var MoveShade = enchant.Class.create(enchant.Sprite, {
 
 var AttackShade = enchant.Class.create(enchant.Sprite, {
 	classname: "AttackShade",
-	initialize: function(x, y, width, height, callback) {
+	initialize: function(grid, width, height, callback) {
 		enchant.Sprite.call(this, width, height);
-		this.moveTo(x, y);
+		this.moveTo(grid.x, grid.y);
 		this.image = GAME.assets[CONFIG.get(["UI", "ar"])];
-		this.addEventListener(enchant.Event.TOUCH_END, callback);
+		this.addEventListener(enchant.Event.TOUCH_END, function() {
+			callback.call(this, grid);
+		});
 	},
 
 	_noop: function() {}	

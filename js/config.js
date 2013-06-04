@@ -10,7 +10,7 @@ var Config = enchant.Class.create({
 			self._text = ajax.getResponseText();
 			callback.call();
 		});
-		ajax.load('js/data.json');
+		ajax.load('js/xyz.json');
 	},
 	get: function(arr) {
 		var a = this._all;
