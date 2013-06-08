@@ -35,6 +35,33 @@ var Consts = enchant.Class.create({
 			ENEMY_TURN: 200,
 			ENEMY_UNIT_ACTION: 201
 		};
+		this._atk_types = {
+			NONE: 0,
+
+			RANGE_1: 1,
+			RANGE_2: 2,
+			RANGE_3: 3,
+			RANGE_4: 4,
+			RANGE_5: 5,
+			
+			ARCHER_1: 11,
+			ARCHER_2: 12,
+			ARCHER_3: 13,
+
+			LANCER_1: 21,
+			LANCER_2: 22,
+			LANCER_3: 23,
+
+			CATAPULT_1: 31, 	
+			CATAPULT_2: 32, 	
+			CATAPULT_3: 33, 	
+
+			MAGIC_1: 91,
+			MAGIC_2: 92,
+			MAGIC_3: 93,
+		
+			FULL_SCREEN: 99,
+		};
 	},
 	side: function(s) {
 		return this._side[s];
@@ -48,6 +75,9 @@ var Consts = enchant.Class.create({
 	battleStatus: function(st) {
 		return this._battle_status[st];
 	},	
+	attack_type: function(type) {
+		return this._atk_types[type];
+	},
 
 	_noop: function(){}
 });

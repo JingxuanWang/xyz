@@ -85,7 +85,7 @@ var Battle = enchant.Class.create(enchant.Group, {
 	},
 	isUnit: function(unit, side) {
 		var units = this._units[side];
-		if (units === null) {
+		if (units == null) {
 			return false;
 		}
 		for (var i = 0; i < units.length; i++) {
@@ -128,7 +128,7 @@ var Battle = enchant.Class.create(enchant.Group, {
 	},
 	// BFS get available grids 
 	// according to chara position and range
-	_getAvailGrids: function(chara, rng) {
+	_getAvailGrids: function(chara, rng, type) {
 		var src = {
 			x: ~~(chara.x),
 			y: ~~(chara.y),
@@ -152,7 +152,7 @@ var Battle = enchant.Class.create(enchant.Group, {
 			if (cur.r < 0) {
 				return false;
 			}
-			if (self.hitUnit(cur.x, cur.y, "ENEMY")) {
+			if (type == "MOV" && self.hitUnit(cur.x, cur.y, "ENEMY")) {
 				return false;
 			}
 
@@ -214,6 +214,14 @@ var Battle = enchant.Class.create(enchant.Group, {
 		}
 		return avail_grids;
 	},
+	_getAvailAtkGrids: function(chara, type) {
+		if (type === CONSTS.attack_type("NONE")) {
+			return [];
+		}
+		else if (type <= CONSTS.attack_type("RANGE_5")) {
+			return this._getAvailGrids(chara, type, "ATK");			
+		}
+	},
 	removeShades: function() {
 		this.removeChild(this._atk_shade);
 		this.removeChild(this._mov_shade);
@@ -225,8 +233,9 @@ var Battle = enchant.Class.create(enchant.Group, {
 		var self = this;
 		var i = 0;
 		var shade;
-		this._move_grids = this._getAvailGrids(chara, chara.curAttr.mov);
-		this._atk_grids = this._getAvailGrids(chara, chara.curAttr.rng);
+		this._move_grids = this._getAvailGrids(chara, chara.curAttr.mov, "MOV");
+		//this._atk_grids = this._getAvailGrids(chara, chara.curAttr.rng, "ATK");
+		this._atk_grids = this._getAvailGrids(chara, chara.curAttr.rng, "ATK");
 		this._atk_shade = new Group();
 		this._mov_shade = new Group();
 	
@@ -257,6 +266,7 @@ var Battle = enchant.Class.create(enchant.Group, {
 				this._atk_grids[i],
 				chara.width,
 				chara.height,
+				"MOV",
 				atk_shade_cb
 			);
 			this._mov_shade.addChild(shade);
@@ -266,10 +276,10 @@ var Battle = enchant.Class.create(enchant.Group, {
 	showAtkRng: function(chara) {
 		console.log("show attack range" + this._atk_grids);
 		var self = this;
-		this._atk_grids = this._getAvailGrids(chara, chara.curAttr.rng);
-		var atk_shade_cb = function() {
+		this._atk_grids = this._getAvailAtkGrids(chara, chara.curAttr.rng);
+		var atk_shade_cb = function(grid) {
 			self.removeShades();
-			self.attack(chara, shade.x, shade.y);
+			self.attack(chara, grid);
 		};
 		this._atk_shade = new Group();
 		for (var i = 0; i < this._atk_grids.length; i++) {
@@ -277,6 +287,7 @@ var Battle = enchant.Class.create(enchant.Group, {
 				this._atk_grids[i],
 				chara.width,
 				chara.height,
+				"ATK",
 				atk_shade_cb
 			);
 			this._atk_shade.addChild(shade);
@@ -284,6 +295,10 @@ var Battle = enchant.Class.create(enchant.Group, {
 		this.addChild(this._atk_shade);
 	},
 	move: function(chara, shade) {
+		if (this.getUnit(shade.x, shade.y)) {
+			console.log("那里有其他单位不能移动");
+			return;
+		}	
 		console.log("move " + shade.x + " : " + shade.y);
 		//var route = this.calcRoute(chara, shade);
 		var route = shade.route;
@@ -292,8 +307,16 @@ var Battle = enchant.Class.create(enchant.Group, {
 			this._status = CONSTS.battleStatus("PLAYER_TURN");
 		}
 	},
-	attack: function(chara, x, y) {
-		var enemy = this.getChara(x, y);
+	attack: function(chara, grid) {
+		var enemy = this.getUnit(grid.x, grid.y);
+		if (chara == null) {
+			console.log("攻击者不存在");
+			return;
+		}
+		if (enemy == null) {
+			console.log("没有攻击对象");
+			return;
+		}
 		var result = this.calcAttack(chara, enemy);
 		this.animCharaAttack(result);
 		this._status = CONSTS.battleStatus("PLAYER_TURN");
@@ -368,9 +391,41 @@ var Battle = enchant.Class.create(enchant.Group, {
 		});
 	},
 	animCharaAttack: function(action_script) {
+		if (action_script == null) {
+			console.log("empty action_script");
+			return;
+		}
 		// for each round
 		for (var i = 0; i < action_script.length; i++) {
-			
+			var attacker = action_script[i].a;
+			var defender = action_script[i].d;
+			var damage = action_script.atk_dmg;
+			var type = action_script[i].t; 
+			var exp = action_script.atk_exp;
+			var d = this.calcDirection(attacker, defender);
+			var atl = attacker.tl;
+			var dtl = defender.tl;
+			if (type === "ATTACK") {
+				atl = atl.action({
+					time: 60,
+					onactionstart: function() {
+						attacker.setAnim("ATTACK", d);
+					},
+					onactionend: function() {
+						//defender.setAnim("HURT", defender.d);
+						defender.hurt(damage);
+					}
+				});
+					
+				atl = atl.delay(20).then(function() {
+					attacker.resume();
+					defender.resume();
+					//attacker.setAnim("MOVE", attacker.d);
+					//defender.setAnim("MOVE", defender.d);
+				});
+			}
+			// show defender infobox
+			// show attacker infobox
 		}
 	},
 	animCharaAppear: function(chara) {
@@ -410,12 +465,56 @@ var Battle = enchant.Class.create(enchant.Group, {
 			chara.setAnim
 		}
 	},
+	// TODO: this will be a server request in the future
 	calcAttack: function(attacker, defender) {
+		if (attacker == null || defender == null) {
+			console.log("Error Parameter" + attacker + " : " + defender);
+			return;
+		}
 		var action_script = [];
+		// attack
+		var atk_dmg = this.calcAtkDamage(attacker, defender, "ATTACK");
+		var atk_exp = this.calcExp(attacker, defender, atk_dmg);
+		action_script.push({
+			t: "ATTACK",
+			a: attacker,
+			d: defender,
+			ad: atk_dmg,
+			ae: atk_exp
+		})
+		// 可以封杀反击...
+		if (false) {
+			// retaliate
+			atk_dmg = this.calcAtkDamage(defender, attacker, "RETALIATE");
+			atk_exp = this.calcExp(attacker, defender, atk_dmg);
+			action_script.push({
+				t: "RETALIATE",
+				a: defender,
+				d: attacker,
+				rd: atk_dmg,
+				re: atk_exp
+			});
+		}
 		return action_script;
 	},
-	getChara: function(x, y) {
-
+	calcDirection: function(attacker, defender) {
+		if (defender.x > attacker.x) {
+			return CONSTS.direction("RIGHT");
+		} else if (defender.x < attacker.x) {
+			return CONSTS.direction("LEFT");
+		} else {
+			if (defender.y < attacker.y) {
+				return CONSTS.direction("UP");
+			} else {
+				return CONSTS.direction("DOWN");
+			}
+		}
+	},
+	calcAtkDamage: function(attacker, defender) {
+		return 50;
+	},
+	calcExp: function(attacker, defender, damage) {
+		return 10;
 	},
 	// get all objects on this point
 	// including map

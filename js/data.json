@@ -111,6 +111,7 @@
 	},
 	"UI" : {
 		"mov_base" : "img/menu/blue.png", 
+		"atk_base" : "img/menu/red.png", 
 		"img_menu_atk" : "img/menu/atk.png",
 		"img_menu_mov" : "img/menu/mov.png",
 		"ar" : "img/menu/Mark_12-1.png"
@@ -168,6 +169,7 @@
 		"img/menu/Mark_14-1.png",
 		"img/menu/black.png",
 		"img/menu/blue.png",
+		"img/menu/red.png",
 		"img/menu/green.png",
 		"img/menu/atk.png",
 		"img/menu/mov.png",

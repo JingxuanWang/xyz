@@ -518,6 +518,12 @@ sub image_base {
 			width => 48,
 			height => 48,
 		},
+		+{
+			color => 'red3',
+			size => '48x48',
+			width => 48,
+			height => 48,
+		},
 	];
 	for my $conf (@{$config}) {
 		my $outputPNG = "$conf->{color}.png";
@@ -577,7 +583,7 @@ sub batch_convert {
 #unit_mov($CONFIG->{UNIT_MOV});
 #unit_spc($CONFIG->{UNIT_SPC});
 
-#image_base();
+image_base();
 
-batch_convert(@ARGV);
+#batch_convert(@ARGV);
 

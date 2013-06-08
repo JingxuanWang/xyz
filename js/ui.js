@@ -14,10 +14,15 @@ var MoveShade = enchant.Class.create(enchant.Sprite, {
 
 var AttackShade = enchant.Class.create(enchant.Sprite, {
 	classname: "AttackShade",
-	initialize: function(grid, width, height, callback) {
+	initialize: function(grid, width, height, type, callback) {
 		enchant.Sprite.call(this, width, height);
 		this.moveTo(grid.x, grid.y);
-		this.image = GAME.assets[CONFIG.get(["UI", "ar"])];
+		if (type === "ATK") {
+			this.image = GAME.assets[CONFIG.get(["UI", "atk_base"])];
+			//this.image = GAME.assets[CONFIG.get(["UI", "mov_base"])];
+		} else {
+			this.image = GAME.assets[CONFIG.get(["UI", "ar"])];
+		}
 		this.addEventListener(enchant.Event.TOUCH_END, function() {
 			callback.call(this, grid);
 		});
