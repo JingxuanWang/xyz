@@ -73,13 +73,14 @@ var Battle = enchant.Class.create(enchant.Group, {
 	// no animation here 
 	addUnits: function(units, side) {
 		for (var i = 0; i < units.length; i++) {
-			var chara = new Chara(units[i]);
+			//var chara = new Chara(units[i]);
+			var unit = new Unit(units[i]);
 			if (!this._units[side]) {
 				this._units[side] = [];
 			}
-			this._units[side].push(chara);
-			if (!chara.hide) {
-				this.addChild(chara);
+			this._units[side].push(unit);
+			if (!unit.hide) {
+				this.addChild(unit);
 			}
 		}
 	},
@@ -127,11 +128,11 @@ var Battle = enchant.Class.create(enchant.Group, {
 		return target === this._map ? true : false;
 	},
 	// BFS get available grids 
-	// according to chara position and range
-	_getAvailGrids: function(chara, rng, type) {
+	// according to unit position and range
+	_getAvailGrids: function(unit, rng, type) {
 		var src = {
-			x: ~~(chara.x),
-			y: ~~(chara.y),
+			x: ~~(unit.x),
+			y: ~~(unit.y),
 			r: rng,
 			route: [],
 		};
@@ -173,27 +174,27 @@ var Battle = enchant.Class.create(enchant.Group, {
 			}
 			var up = {
 				x: ~~(cur.x),
-				y: ~~(cur.y - chara.height),
+				y: ~~(cur.y - unit.height),
 				r: ~~(cur.r - 1),
 				d: CONSTS.direction("UP"),
 				route: cur.route.slice(),
 			};
 			var down = {
 				x: ~~(cur.x),
-				y: ~~(cur.y + chara.height),
+				y: ~~(cur.y + unit.height),
 				r: ~~(cur.r - 1),
 				d: CONSTS.direction("DOWN"),
 				route: cur.route.slice(),
 			};		
 			var left = {
-				x: ~~(cur.x - chara.width),
+				x: ~~(cur.x - unit.width),
 				y: ~~(cur.y),
 				r: ~~(cur.r - 1),
 				d: CONSTS.direction("LEFT"),
 				route: cur.route.slice(),
 			};		
 			var right = {
-				x: ~~(cur.x + chara.width),
+				x: ~~(cur.x + unit.width),
 				y: ~~(cur.y),
 				r: ~~(cur.r - 1),
 				d: CONSTS.direction("RIGHT"),
@@ -214,12 +215,12 @@ var Battle = enchant.Class.create(enchant.Group, {
 		}
 		return avail_grids;
 	},
-	_getAvailAtkGrids: function(chara, type) {
+	_getAvailAtkGrids: function(unit, type) {
 		if (type === CONSTS.attack_type("NONE")) {
 			return [];
 		}
 		else if (type <= CONSTS.attack_type("RANGE_5")) {
-			return this._getAvailGrids(chara, type, "ATK");			
+			return this._getAvailGrids(unit, type, "ATK");			
 		}
 	},
 	removeShades: function() {
@@ -228,28 +229,28 @@ var Battle = enchant.Class.create(enchant.Group, {
 		this._atk_shade = null;
 		this._mov_shade = null;
 	},
-	showMoveRng: function(chara, bind_callback) {
+	showMoveRng: function(unit, bind_callback) {
 		console.log("show move range");
 		var self = this;
 		var i = 0;
 		var shade;
-		this._move_grids = this._getAvailGrids(chara, chara.curAttr.mov, "MOV");
-		//this._atk_grids = this._getAvailGrids(chara, chara.curAttr.rng, "ATK");
-		this._atk_grids = this._getAvailGrids(chara, chara.curAttr.rng, "ATK");
+		this._move_grids = this._getAvailGrids(unit, unit.curAttr.mov, "MOV");
+		//this._atk_grids = this._getAvailGrids(unit, unit.curAttr.rng, "ATK");
+		this._atk_grids = this._getAvailGrids(unit, unit.curAttr.rng, "ATK");
 		this._atk_shade = new Group();
 		this._mov_shade = new Group();
 	
 		// TODO: this should be rewritten
 		var move_shade_cb = function(grid) {
 			self.removeShades();
-			self.move(chara, grid);
+			self.move(unit, grid);
 		};
 
 		for (i = 0; i < this._move_grids.length; i++) {
 			shade = new MoveShade(
 				this._move_grids[i],
-				chara.width,
-				chara.height,
+				unit.width,
+				unit.height,
 				move_shade_cb
 			);
 			this._atk_shade.addChild(shade);
@@ -258,14 +259,14 @@ var Battle = enchant.Class.create(enchant.Group, {
 		
 		var atk_shade_cb = function(grid) {
 			self.removeShades();
-			self.move(chara, grid);
+			self.move(unit, grid);
 		};
 
 		for (i = 0; i < this._atk_grids.length; i++) {
 			shade = new AttackShade(
 				this._atk_grids[i],
-				chara.width,
-				chara.height,
+				unit.width,
+				unit.height,
 				"MOV",
 				atk_shade_cb
 			);
@@ -273,20 +274,20 @@ var Battle = enchant.Class.create(enchant.Group, {
 		}
 		this.addChild(this._mov_shade);
 	},
-	showAtkRng: function(chara) {
+	showAtkRng: function(unit) {
 		console.log("show attack range" + this._atk_grids);
 		var self = this;
-		this._atk_grids = this._getAvailAtkGrids(chara, chara.curAttr.rng);
+		this._atk_grids = this._getAvailAtkGrids(unit, unit.curAttr.rng);
 		var atk_shade_cb = function(grid) {
 			self.removeShades();
-			self.attack(chara, grid);
+			self.attack(unit, grid);
 		};
 		this._atk_shade = new Group();
 		for (var i = 0; i < this._atk_grids.length; i++) {
 			var shade = new AttackShade(
 				this._atk_grids[i],
-				chara.width,
-				chara.height,
+				unit.width,
+				unit.height,
 				"ATK",
 				atk_shade_cb
 			);
@@ -294,22 +295,21 @@ var Battle = enchant.Class.create(enchant.Group, {
 		}
 		this.addChild(this._atk_shade);
 	},
-	move: function(chara, shade) {
+	move: function(unit, shade) {
 		if (this.getUnit(shade.x, shade.y)) {
 			console.log("那里有其他单位不能移动");
 			return;
 		}	
 		console.log("move " + shade.x + " : " + shade.y);
-		//var route = this.calcRoute(chara, shade);
 		var route = shade.route;
 		if (route) {
-			this.animCharaMove(chara, route);
+			this.animCharaMove(unit, route);
 			this._status = CONSTS.battleStatus("PLAYER_TURN");
 		}
 	},
-	attack: function(chara, grid) {
+	attack: function(unit, grid) {
 		var enemy = this.getUnit(grid.x, grid.y);
-		if (chara == null) {
+		if (unit == null) {
 			console.log("攻击者不存在");
 			return;
 		}
@@ -317,13 +317,13 @@ var Battle = enchant.Class.create(enchant.Group, {
 			console.log("没有攻击对象");
 			return;
 		}
-		var result = this.calcAttack(chara, enemy);
+		var result = this.calcAttack(unit, enemy);
 		this.animCharaAttack(result);
 		this._status = CONSTS.battleStatus("PLAYER_TURN");
 	},
 
 	// Menu
-	showMenu: function(chara) {
+	showMenu: function(unit) {
 		console.log("showMenu called");
 		if (this._menu) {
 			this.removeMenu();
@@ -337,7 +337,7 @@ var Battle = enchant.Class.create(enchant.Group, {
 		atk_btn.addEventListener(enchant.Event.TOUCH_END, function(){
 			self.removeMenu();
 			self.removeShades();
-			self.showAtkRng(chara);
+			self.showAtkRng(unit);
 		});
 
 		var mov_btn = new Sprite(32, 32);
@@ -346,13 +346,13 @@ var Battle = enchant.Class.create(enchant.Group, {
 		mov_btn.addEventListener(enchant.Event.TOUCH_END, function(){
 			self.removeMenu();
 			self.removeShades();
-			self.showMoveRng(chara);
+			self.showMoveRng(unit);
 		});
 
 		this._menu.addChild(atk_btn);
 		this._menu.addChild(mov_btn);
 
-		this._menu.moveTo(~~(chara.x + chara.width / 4), ~~(chara.y - chara.height / 2));
+		this._menu.moveTo(~~(unit.x + unit.width / 4), ~~(unit.y - unit.height / 2));
 		this.addChild(this._menu);
 		this._status = CONSTS.battleStatus("PLAYER_UNIT_MENU");
 	},
@@ -364,10 +364,10 @@ var Battle = enchant.Class.create(enchant.Group, {
 	},
 
 	// Animation utilities
-	animCharaMove: function(chara, route) {
+	animCharaMove: function(unit, route) {
 		// for each waypoint
-		var tl = chara.tl;
-		var d = chara._cur_direction;
+		var tl = unit.tl;
+		var d = unit._cur_direction;
 		var c = 0;
 		for (var i = 0; i < route.length; i++) {
 			var d = route[i].d;
@@ -377,17 +377,17 @@ var Battle = enchant.Class.create(enchant.Group, {
 				time: 0,
 				onactionstart: function() {
 					console.log("onactinostart :" + d + " : " + route[c].d);
-					chara.setAnim("MOVE", route[c].d);
+					unit.move(route[c].d);
 					++c;
 				},
 			}).moveTo(route[i].x, route[i].y, 20);
 		}
 		var self = this;
 		tl = tl.then(function() {
-			chara.moveTo(Math.round(chara.x), Math.round(chara.y));
+			unit.moveTo(Math.round(unit.x), Math.round(unit.y));
 		});
 		tl = tl.then(function() {
-			self.showMenu(chara);
+			self.showMenu(unit);
 		});
 	},
 	animCharaAttack: function(action_script) {
@@ -399,9 +399,9 @@ var Battle = enchant.Class.create(enchant.Group, {
 		for (var i = 0; i < action_script.length; i++) {
 			var attacker = action_script[i].a;
 			var defender = action_script[i].d;
-			var damage = action_script.atk_dmg;
+			var damage = action_script[i].ad;
 			var type = action_script[i].t; 
-			var exp = action_script.atk_exp;
+			var exp = action_script[i].ae;
 			var d = this.calcDirection(attacker, defender);
 			var atl = attacker.tl;
 			var dtl = defender.tl;
@@ -409,37 +409,34 @@ var Battle = enchant.Class.create(enchant.Group, {
 				atl = atl.action({
 					time: 60,
 					onactionstart: function() {
-						attacker.setAnim("ATTACK", d);
+						attacker.attack(d);
 					},
 					onactionend: function() {
-						//defender.setAnim("HURT", defender.d);
 						defender.hurt(damage);
 					}
 				});
 					
-				atl = atl.delay(20).then(function() {
+				atl = atl.delay(30).then(function() {
 					attacker.resume();
 					defender.resume();
-					//attacker.setAnim("MOVE", attacker.d);
-					//defender.setAnim("MOVE", defender.d);
 				});
 			}
 			// show defender infobox
 			// show attacker infobox
 		}
 	},
-	animCharaAppear: function(chara) {
+	animCharaAppear: function(unit) {
 
 	},
-	animCharaEscape: function(chara) {
+	animCharaEscape: function(unit) {
 		
 	},
-	animCharaDie: function(chara) {
+	animCharaDie: function(unit) {
 
 	},
 	
 	// numberic calculations
-	calcRoute: function(chara, target) {
+	calcRoute: function(unit, target) {
 		var judgeDirection = function(src, dst) {
 			if (src.x == dst.x && src.y > dst.y) {
 				return CONSTS.direction("DOWN");
@@ -455,14 +452,13 @@ var Battle = enchant.Class.create(enchant.Group, {
 			}
 		}
 		var cur = {
-			x: chara.x,
-			y: chara.y
+			x: unit.x,
+			y: unit.y
 		};
 		// return animation script	
 		while (target.length > 0) {
 			var next = target.shift();
 			var d = judgeDirection(cur, next);
-			chara.setAnim
 		}
 	},
 	// TODO: this will be a server request in the future
@@ -535,7 +531,7 @@ var Battle = enchant.Class.create(enchant.Group, {
 			var node = this.childNodes[i];
 			if (node.x <= x && x < node.x + node.width && 
 				node.y <= y && y < node.y + node.height && 
-				node.classname === "Chara") {
+				node.classname === "Unit") {
 				return node;
 			}
 		}

@@ -1,10 +1,99 @@
 // include chara and chara effect
-var CharaGroup = enchant.Class.create(enchant.Group, {
-	classname: "CharaGroup",
+var Unit = enchant.Class.create(enchant.Group, {
+	classname: "Unit",
 	initialize: function(conf) {
 		enchant.Group.call(this);
+		this.x = conf.position.i * CONFIG.get(["map", "tileWidth"]); 
+		this.y = conf.position.j * CONFIG.get(["map", "tileHeight"]);
+		this.width = CONFIG.get(["map", "tileWidth"]);
+		this.height = CONFIG.get(["map", "tileHeight"]);
+
+		this.masterAttr = new Attr(conf.attr);
+		this.curAttr = new Attr(conf.attr);
+		this._status = CONSTS.unitStatus("NORMAL");
+
 		this.chara = new Chara(conf);
-		this.text = new Lable();
+		this.label = new Label("");
+		this.label.color = '#ffffff';
+		this.addChild(this.chara);
+		this.addChild(this.label);
+	},
+	i: {
+		get: function() {
+			return Math.round(this.x / this.width);
+		},
+		set: function(ti) {
+			this.x = ti * this.width;
+		}
+	},
+	j: {
+		get: function() {
+			return Math.round(this.y / this.height);
+		},
+		set: function(tj) {
+			this.y = tj * this.height;
+		}
+	},
+	d: {
+		get: function() {
+			return this.chara.d;
+		},
+		set: function(td) {
+			this.chara.d = td;
+		}
+	},
+
+	setStatus: function(st) {
+		if (UNIT_STATUS[st] == null) {
+			console.log("Chara: setStatus undefined status: " + st);
+		}
+		this._status = UNIT_STATUS[st];
+	},
+	canMove: function() {
+		if (this._status != CONSTS.unitStatus("MOVED") && 
+			this._status != CONSTS.unitStatus("ACTIONED") && 
+			this._status != CONSTS.unitStatus("DEAD")) {
+			return true;
+		}
+		return false;
+	},
+	attack: function(d) {
+		this.chara.setAnim("ATTACK", d);
+	},
+	move: function(d) {
+		this.chara.setAnim("MOVE", d);
+	},
+	resume: function() {
+		this.chara.setAnim("MOVE", this.d);
+		this.label.text = "";
+	},
+	hurt: function(damage) {
+		this.chara.setAnim("HURT", this.d);
+		this.label.text = damage;
+	},
+	masterAttr: {
+		get: function() {
+			return this._master_attr;
+		},
+		set: function(attr) {
+			this._master_attr = attr;
+		},
+	},
+	lastAttr: {
+		get: function() {
+			return this._last_attr;
+		},
+		set: function(attr) {
+			this._last_attr = attr;
+		},
+	},
+	curAttr: {
+		get: function() {
+			return this._cur_attr;
+		},
+		set: function(attr) {
+			this._cur_attr = attr;
+		},
 	},
 
 	_noop: function() {
@@ -25,20 +114,20 @@ var Chara = enchant.Class.create(enchant.Sprite, {
 		this.curAttr = new Attr(conf.attr);
 
 		// should be initialized
-		this.x = conf.position.i * CONFIG.get(["map", "tileWidth"]); 
-		this.y = conf.position.j * CONFIG.get(["map", "tileHeight"]);
-		this.width = 48;
-		this.height = 48;
+		//this.x = conf.position.i * CONFIG.get(["map", "tileWidth"]); 
+		//this.y = conf.position.j * CONFIG.get(["map", "tileHeight"]);
+		this.width = CONFIG.get(["map", "tileWidth"]);
+		this.height = CONFIG.get(["map", "tileHeight"]);
 		//console.log("Chara.initialized:  x: " + this.x + " y: " + this.y + " width: " + this.width + " height: " + this.height);
 		this._status = CONSTS.unitStatus("NORMAL");
 		
 		this._anims = {
 			"ATTACK" : {
 				"asset" : conf.resource.img_atk,
-				"frames" : [0, 0, 0, 0, 0, 1, 2, 3],
+				"frames" : [0, 0, 1, 2, 3, 3],
 				// df stand for direction factor
 				"df" : 4,
-				"fps" : 16,
+				"fps" : 12,
 				"loop" : false,
 				"width" : 64,
 				"height" : 64
@@ -131,20 +220,6 @@ var Chara = enchant.Class.create(enchant.Sprite, {
 			this._cur_direction = td;
 		}
 	},
-	setStatus: function(st) {
-		if (UNIT_STATUS[st] == null) {
-			console.log("Chara: setStatus undefined status: " + st);
-		}
-		this._status = UNIT_STATUS[st];
-	},
-	canMove: function() {
-		if (this._status != CONSTS.unitStatus("MOVED") && 
-			this._status != CONSTS.unitStatus("ACTIONED") && 
-			this._status != CONSTS.unitStatus("DEAD")) {
-			return true;
-		}
-		return false;
-	},
 	// change only direction but not animation
 	setDirection: function(direction) {
 		if (direction == this.d) {
@@ -229,15 +304,6 @@ var Chara = enchant.Class.create(enchant.Sprite, {
 		//console.log("Chara: shouldPlayNextFrame: " + this._cur_frame + " : " + this.age);
 		var next_frame = ~~((this.age % GAME.fps) / GAME.fps * this._cur_anim.fps);
 		return next_frame == this._cur_frame ? true : false;
-	},
-	resume: function() {
-		this.setAnim("MOVE", this.d);
-		//this.removeChild(this.damage_text);
-	},
-	hurt: function(damage) {
-		this.setAnim("HURT", this.d);
-		//this.damage_text = new Label(damage);
-		//this.addChild(this.damage_text);
 	},
 	masterAttr: {
 		get: function() {
