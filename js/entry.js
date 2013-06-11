@@ -10,14 +10,16 @@ window.onload = function(){
 
 		GAME.preload(CONFIG.get(["image"]));
 		GAME.onload = function(){
-			var battle = new Battle();
-			
+			var battle = new BattleScene();
+
+			// this should be moved into
+			// battle.onEnter function 			
 			battle.addMap(CONFIG.get(["map"]));
 			battle.addUnits(CONFIG.get(["player_unit"]), "PLAYER");
 			battle.addUnits(CONFIG.get(["allies_unit"]), "ALIIES");
 			battle.addUnits(CONFIG.get(["enemy_unit"]), "ENEMY");
 
-			GAME.rootScene.addChild(battle);
+			GAME.pushScene(battle);
 			
 			battle.start();
 		};

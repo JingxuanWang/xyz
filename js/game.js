@@ -229,8 +229,8 @@ var Unit = enchant.Class.create(enchant.Group, {
 		this.width = CONFIG.get(["map", "tileWidth"]);
 		this.height = CONFIG.get(["map", "tileHeight"]);
 
-		this.masterAttr = new Attr(conf.attr);
-		this.curAttr = new Attr(conf.attr);
+		this.master_attr = new Attr(conf.attr);
+		this.cur_attr = new Attr(conf.attr);
 		this._status = CONSTS.unitStatus("NORMAL");
 
 		this.chara = new Chara(conf);
@@ -292,7 +292,7 @@ var Unit = enchant.Class.create(enchant.Group, {
 		this.chara.setAnim("HURT", this.d);
 		this.label.text = damage;
 	},
-	masterAttr: {
+	master_attr: {
 		get: function() {
 			return this._master_attr;
 		},
@@ -300,7 +300,7 @@ var Unit = enchant.Class.create(enchant.Group, {
 			this._master_attr = attr;
 		},
 	},
-	lastAttr: {
+	last_attr: {
 		get: function() {
 			return this._last_attr;
 		},
@@ -308,7 +308,7 @@ var Unit = enchant.Class.create(enchant.Group, {
 			this._last_attr = attr;
 		},
 	},
-	curAttr: {
+	cur_attr: {
 		get: function() {
 			return this._cur_attr;
 		},
@@ -331,8 +331,8 @@ var Chara = enchant.Class.create(enchant.Sprite, {
 			conf.position.j * CONFIG.get(["map", "tileHeight"])
 		);
 
-		this.masterAttr = new Attr(conf.attr);
-		this.curAttr = new Attr(conf.attr);
+		this.master_attr = new Attr(conf.attr);
+		this.cur_attr = new Attr(conf.attr);
 
 		// should be initialized
 		//this.x = conf.position.i * CONFIG.get(["map", "tileWidth"]); 
@@ -526,7 +526,7 @@ var Chara = enchant.Class.create(enchant.Sprite, {
 		var next_frame = ~~((this.age % GAME.fps) / GAME.fps * this._cur_anim.fps);
 		return next_frame == this._cur_frame ? true : false;
 	},
-	masterAttr: {
+	master_attr: {
 		get: function() {
 			return this._master_attr;
 		},
@@ -534,7 +534,7 @@ var Chara = enchant.Class.create(enchant.Sprite, {
 			this._master_attr = attr;
 		},
 	},
-	lastAttr: {
+	last_attr: {
 		get: function() {
 			return this._last_attr;
 		},
@@ -542,7 +542,7 @@ var Chara = enchant.Class.create(enchant.Sprite, {
 			this._last_attr = attr;
 		},
 	},
-	curAttr: {
+	cur_attr: {
 		get: function() {
 			return this._cur_attr;
 		},
@@ -574,7 +574,6 @@ var AttackShade = enchant.Class.create(enchant.Sprite, {
 		this.moveTo(grid.x, grid.y);
 		if (type === "ATK") {
 			this.image = GAME.assets[CONFIG.get(["UI", "atk_base"])];
-			//this.image = GAME.assets[CONFIG.get(["UI", "mov_base"])];
 		} else {
 			this.image = GAME.assets[CONFIG.get(["UI", "ar"])];
 		}
@@ -694,21 +693,24 @@ var Button = enchant.Class.create(enchant.Group, {
 // contains hp/mp bar & label & image
 var InfoBox = enchant.Class.create(enchant.Group, {
 	classname: "InfoBox",
-	initialize: function(x, y, chara, type) {
-		enchant.Group.call(this, w, h);
+	initialize: function(chara, type) {
+		enchant.Group.call(this);
 		this.chara = chara;
 		this.type = type;
-	
-		this.setBasePoint(chara.x, chara.y);	
-		this.drawBackground(CONFIG.get(["Menu", "base"]));
+		this.width = 192;
+		this.height = 96;
+
+		this.setBasePoint(chara.x, chara.y);
+		this.drawBackground(GAME.assets[CONFIG.get(["Menu", "base"])]);
 
 		this.setName();
+		this.setLevel();
 		this.setSchool();
-		if (this.type == CONSTS.side("PLAYER")) {
+		//if (this.type == CONSTS.side("PLAYER")) {
 			this.setHpStat();
 			this.setMpStat();
 			this.setExpStat();
-		}
+		//}
 	},
 	chara: {
 		get: function() {
@@ -726,10 +728,10 @@ var InfoBox = enchant.Class.create(enchant.Group, {
 			this._type = type;
 		}
 	},
-	change: function(hp, mp, exp, atk, def) {
-		this.hp_bar.value = hp;
-		this.mp_bar.value = mp;
-		this.exp_bar.value = exp;
+	change: function(attr) {
+		this.hp_stat.value = attr.hp;
+	},
+	syncHp: function() {
 	},
 	drawBackground: function(image) {
 		var bg = new Sprite(this.width, this.height);
@@ -759,37 +761,49 @@ var InfoBox = enchant.Class.create(enchant.Group, {
 		}
 	},
 	setName: function() {
-		this.name = new Label(chara.curAttr.name);
-		this.name.moveTo(4, 4);
+		this.name = new Label(this.chara.cur_attr.name);
+		this.name.color = '#ffffff';
+		this.name.moveTo(10, 5);
 		this.addChild(this.name);
 	},
+	setLevel: function() {
+		this.level = new Label("Lv. " + this.chara.cur_attr.level);
+		this.level.color = '#ffffff';
+		this.level.moveTo(60, 5);
+		this.addChild(this.level);
+	},
 	setSchool: function() {
-		this.school = new Label(chara.curAttr.school);
-		this.school.moveTo(4, 30);
+		this.school = new Label(this.chara.cur_attr.school);
+		this.school.color = '#ffffff';
+		this.school.moveTo(130, 5);
 		this.addChild(this.school);
 	},
-	setLv: function() {
-	},
 	setHpStat: function() {
-		// image + bar + lable
 		// image
-		this.hp_img = new Sprite(32, 32);
-		this.hp_bar = new Bar(20, 100);
-		this.hp_bar.image = GAME.assets[CONFIG.get(["Menu", "bar", "hp"])];
-		this.hp_bar.maxvalue = chara.masterAttr.hp;
-		this.hp_bar.value = chara.curAttr.hp;
+		this.hp_img = new Sprite(24, 24);
+		this.hp_img.image = GAME.assets[CONFIG.get(["Menu", "icon", "hp"])];
+		this.hp_img.moveTo(10, 32 - 5);
+		this.addChild(this.hp_img);
+/*
+		// bar & lable
+		this.hp_stat = new TextBar(20, 100, 
+			this.chara.cur_attr.hp, 
+			this.chara.master_attr.hp
+		);
+
+		this.hp_stat.bar.image = GAME.assets[CONFIG.get(["Menu", "bar", "hp"])];
+		this.hp_img.moveTo(45, 32 + 3);
+
+		this.addChild(this.hp_stat);
+*/
 	},
 	setMpStat: function() {
-		this.mp_bar = new Bar(20, 100);
-		this.mp_bar.image = GAME.assets[CONFIG.get(["Menu", "bar", "mp"])];
-		this.mp_bar.maxvalue = chara.masterAttr.mp;
-		this.mp_bar.value = chara.curAttr.mp;
+		//this.mp_img = new Sprite(24, 24);
+		//this.mp_img.image = GAME.assets[CONFIG.get(["Menu", "icon", "mp"])];
 	},
 	setExpStat: function() {
-		this.exp_bar = new Bar(20, 100);
-		this.exp_bar.image = GAME.assets[CONFIG.get(["Menu", "bar", "exp"])];
-		this.exp_bar.maxvalue = chara.masterAttr.exp;
-		this.exp_bar.value = chara.curAttr.exp;
+		//this.exp_img = new Sprite(24, 24);
+		//this.exp_img.image = GAME.assets[CONFIG.get(["Menu", "icon", "exp"])];
 	},
 
 	_noop: function() {}	
@@ -808,6 +822,29 @@ var InfoBox = enchant.Class.create(enchant.Group, {
 	}); 
 	game.rootScene.addChild(bar);
 */
+var TextBar = enchant.Class.create(enchant.Group, {
+	initialize: function(w, h, curVal, maxVal) {
+        enchant.Group.call(this);
+		this.bar = new Bar(w, h);
+		this.bar.value = curVal;
+		this.bar.maxvalue = maxVal;
+
+		this.label = new Label(curVal + " / " + maxVal);
+		this.label.color = '#ffffff';
+		this.label.textAlign = 'right';
+		this.label.font = '14pt Helvetica';
+		this.label.moveTo(30, 0);
+		// move label to the middle of the bar
+
+		this.addChild(this.bar);
+		this.addChild(this.label);
+
+		this.addEventListener('enterframe', function() {
+			this.label.text = this.bar.curvalue + " / " + this.bar.maxvalue;
+		});
+	}
+});
+
 var Bar = enchant.Class.create(enchant.Sprite, {
     initialize: function(x, y) {
         enchant.Sprite.call(this, 1, 16);
@@ -882,14 +919,21 @@ var Bar = enchant.Class.create(enchant.Sprite, {
         set: function(val) {
             this._maxvalue = val;
         }
-    }
+    },
+	// readonly 
+	// returns current value
+	curvalue: {
+		get: function() {
+			return this._lastvalue;
+		}
+	}
 });
 
 
-var Battle = enchant.Class.create(enchant.Group, {
-	classname: "Battle",
+var BattleScene = enchant.Class.create(enchant.Scene, {
+	classname: "BattleScene",
 	initialize: function() {
-		enchant.Group.call(this);
+		enchant.Scene.call(this);
 		this._status = CONSTS.battleStatus("INIT");
 		this.round = 1;
 		this.win_conds = [];
@@ -1122,9 +1166,9 @@ var Battle = enchant.Class.create(enchant.Group, {
 		var self = this;
 		var i = 0;
 		var shade;
-		this._move_grids = this._getAvailGrids(unit, unit.curAttr.mov, "MOV");
-		//this._atk_grids = this._getAvailGrids(unit, unit.curAttr.rng, "ATK");
-		this._atk_grids = this._getAvailGrids(unit, unit.curAttr.rng, "ATK");
+		this._move_grids = this._getAvailGrids(unit, unit.cur_attr.mov, "MOV");
+		//this._atk_grids = this._getAvailGrids(unit, unit.cur_attr.rng, "ATK");
+		this._atk_grids = this._getAvailGrids(unit, unit.cur_attr.rng, "ATK");
 		this._atk_shade = new Group();
 		this._mov_shade = new Group();
 	
@@ -1165,7 +1209,7 @@ var Battle = enchant.Class.create(enchant.Group, {
 	showAtkRng: function(unit) {
 		console.log("show attack range" + this._atk_grids);
 		var self = this;
-		this._atk_grids = this._getAvailAtkGrids(unit, unit.curAttr.rng);
+		this._atk_grids = this._getAvailAtkGrids(unit, unit.cur_attr.rng);
 		var atk_shade_cb = function(grid) {
 			self.removeShades();
 			self.attack(unit, grid);
@@ -1249,6 +1293,17 @@ var Battle = enchant.Class.create(enchant.Group, {
 	},
 	isMenu: function(target) {
 		return target === this._menu ? true : false;
+	},
+
+	// infobox
+	showInfoBox: function(unit, side) {
+		this.infobox = new InfoBox(unit);
+		this.addChild(this.infobox);
+	},
+	removeInfoBox: function(unit, side) {
+		if (this.infobox != null) {
+			this.removeChild(this.infobox);
+		}	
 	},
 
 	// Animation utilities
@@ -1441,6 +1496,8 @@ var Battle = enchant.Class.create(enchant.Group, {
 			} else {
 				console.log("This unit can not move!");
 			}
+		} else if (side == "ENEMY") {
+			this.showInfoBox(unit, side);
 		}
 	},
 	_nop: function(){
@@ -1459,14 +1516,16 @@ window.onload = function(){
 
 		GAME.preload(CONFIG.get(["image"]));
 		GAME.onload = function(){
-			var battle = new Battle();
-			
+			var battle = new BattleScene();
+
+			// this should be moved into
+			// battle.onEnter function 			
 			battle.addMap(CONFIG.get(["map"]));
 			battle.addUnits(CONFIG.get(["player_unit"]), "PLAYER");
 			battle.addUnits(CONFIG.get(["allies_unit"]), "ALIIES");
 			battle.addUnits(CONFIG.get(["enemy_unit"]), "ENEMY");
 
-			GAME.rootScene.addChild(battle);
+			GAME.pushScene(battle);
 			
 			battle.start();
 		};

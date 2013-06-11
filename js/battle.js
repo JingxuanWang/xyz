@@ -1,7 +1,7 @@
-var Battle = enchant.Class.create(enchant.Group, {
-	classname: "Battle",
+var BattleScene = enchant.Class.create(enchant.Scene, {
+	classname: "BattleScene",
 	initialize: function() {
-		enchant.Group.call(this);
+		enchant.Scene.call(this);
 		this._status = CONSTS.battleStatus("INIT");
 		this.round = 1;
 		this.win_conds = [];
@@ -234,9 +234,9 @@ var Battle = enchant.Class.create(enchant.Group, {
 		var self = this;
 		var i = 0;
 		var shade;
-		this._move_grids = this._getAvailGrids(unit, unit.curAttr.mov, "MOV");
-		//this._atk_grids = this._getAvailGrids(unit, unit.curAttr.rng, "ATK");
-		this._atk_grids = this._getAvailGrids(unit, unit.curAttr.rng, "ATK");
+		this._move_grids = this._getAvailGrids(unit, unit.cur_attr.mov, "MOV");
+		//this._atk_grids = this._getAvailGrids(unit, unit.cur_attr.rng, "ATK");
+		this._atk_grids = this._getAvailGrids(unit, unit.cur_attr.rng, "ATK");
 		this._atk_shade = new Group();
 		this._mov_shade = new Group();
 	
@@ -277,7 +277,7 @@ var Battle = enchant.Class.create(enchant.Group, {
 	showAtkRng: function(unit) {
 		console.log("show attack range" + this._atk_grids);
 		var self = this;
-		this._atk_grids = this._getAvailAtkGrids(unit, unit.curAttr.rng);
+		this._atk_grids = this._getAvailAtkGrids(unit, unit.cur_attr.rng);
 		var atk_shade_cb = function(grid) {
 			self.removeShades();
 			self.attack(unit, grid);
@@ -361,6 +361,17 @@ var Battle = enchant.Class.create(enchant.Group, {
 	},
 	isMenu: function(target) {
 		return target === this._menu ? true : false;
+	},
+
+	// infobox
+	showInfoBox: function(unit, side) {
+		this.infobox = new InfoBox(unit);
+		this.addChild(this.infobox);
+	},
+	removeInfoBox: function(unit, side) {
+		if (this.infobox != null) {
+			this.removeChild(this.infobox);
+		}	
 	},
 
 	// Animation utilities
@@ -553,6 +564,8 @@ var Battle = enchant.Class.create(enchant.Group, {
 			} else {
 				console.log("This unit can not move!");
 			}
+		} else if (side == "ENEMY") {
+			this.showInfoBox(unit, side);
 		}
 	},
 	_nop: function(){

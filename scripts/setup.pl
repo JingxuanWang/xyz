@@ -18,6 +18,9 @@ my @FILE_LIST = qw/
 /;
 
 sub main {
+	if ($ARGV[0]) {
+		$PATH = $ARGV[0];
+	}
 	_runCmd("rm $PATH/$TARGET_FILE");
 	for my $file (@FILE_LIST) {
 		_runCmd("cat $PATH/$file >> $PATH/$TARGET_FILE");	

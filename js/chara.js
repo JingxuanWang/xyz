@@ -8,8 +8,8 @@ var Unit = enchant.Class.create(enchant.Group, {
 		this.width = CONFIG.get(["map", "tileWidth"]);
 		this.height = CONFIG.get(["map", "tileHeight"]);
 
-		this.masterAttr = new Attr(conf.attr);
-		this.curAttr = new Attr(conf.attr);
+		this.master_attr = new Attr(conf.attr);
+		this.cur_attr = new Attr(conf.attr);
 		this._status = CONSTS.unitStatus("NORMAL");
 
 		this.chara = new Chara(conf);
@@ -71,7 +71,7 @@ var Unit = enchant.Class.create(enchant.Group, {
 		this.chara.setAnim("HURT", this.d);
 		this.label.text = damage;
 	},
-	masterAttr: {
+	master_attr: {
 		get: function() {
 			return this._master_attr;
 		},
@@ -79,7 +79,7 @@ var Unit = enchant.Class.create(enchant.Group, {
 			this._master_attr = attr;
 		},
 	},
-	lastAttr: {
+	last_attr: {
 		get: function() {
 			return this._last_attr;
 		},
@@ -87,7 +87,7 @@ var Unit = enchant.Class.create(enchant.Group, {
 			this._last_attr = attr;
 		},
 	},
-	curAttr: {
+	cur_attr: {
 		get: function() {
 			return this._cur_attr;
 		},
@@ -110,8 +110,8 @@ var Chara = enchant.Class.create(enchant.Sprite, {
 			conf.position.j * CONFIG.get(["map", "tileHeight"])
 		);
 
-		this.masterAttr = new Attr(conf.attr);
-		this.curAttr = new Attr(conf.attr);
+		this.master_attr = new Attr(conf.attr);
+		this.cur_attr = new Attr(conf.attr);
 
 		// should be initialized
 		//this.x = conf.position.i * CONFIG.get(["map", "tileWidth"]); 
@@ -305,7 +305,7 @@ var Chara = enchant.Class.create(enchant.Sprite, {
 		var next_frame = ~~((this.age % GAME.fps) / GAME.fps * this._cur_anim.fps);
 		return next_frame == this._cur_frame ? true : false;
 	},
-	masterAttr: {
+	master_attr: {
 		get: function() {
 			return this._master_attr;
 		},
@@ -313,7 +313,7 @@ var Chara = enchant.Class.create(enchant.Sprite, {
 			this._master_attr = attr;
 		},
 	},
-	lastAttr: {
+	last_attr: {
 		get: function() {
 			return this._last_attr;
 		},
@@ -321,7 +321,7 @@ var Chara = enchant.Class.create(enchant.Sprite, {
 			this._last_attr = attr;
 		},
 	},
-	curAttr: {
+	cur_attr: {
 		get: function() {
 			return this._cur_attr;
 		},

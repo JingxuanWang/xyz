@@ -105,7 +105,7 @@ sub output_method {
 }
 
 sub main {
-	my $dHash = loadFile($PATH);
+	my $dHash = loadFile($ARGV[0] ? $ARGV[0] : $PATH);
 	#print Dumper $class_tree;
 	output_dfs('Class', 0);
 }
