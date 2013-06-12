@@ -224,27 +224,40 @@ var InfoBox = enchant.Class.create(enchant.Group, {
 		this.addChild(this.school);
 	},
 	setHpStat: function() {
+		var bl = 32
 		// image
 		this.hp_img = new Sprite(24, 24);
 		this.hp_img.image = GAME.assets[CONFIG.get(["Menu", "icon", "hp"])];
-		this.hp_img.moveTo(10, 32 - 5);
+		this.hp_img.moveTo(10, bl - 5);
 		this.addChild(this.hp_img);
-/*
 		// bar & lable
-		this.hp_stat = new TextBar(20, 100, 
+		this.hp_stat = new TextBar(130, 8, 
 			this.chara.cur_attr.hp, 
 			this.chara.master_attr.hp
 		);
 
 		this.hp_stat.bar.image = GAME.assets[CONFIG.get(["Menu", "bar", "hp"])];
-		this.hp_img.moveTo(45, 32 + 3);
+		this.hp_stat.moveTo(45, bl - 5);
 
 		this.addChild(this.hp_stat);
-*/
 	},
 	setMpStat: function() {
-		//this.mp_img = new Sprite(24, 24);
-		//this.mp_img.image = GAME.assets[CONFIG.get(["Menu", "icon", "mp"])];
+		var bl = 57;
+		// image
+		this.mp_img = new Sprite(24, 24);
+		this.mp_img.image = GAME.assets[CONFIG.get(["Menu", "icon", "mp"])];
+		this.mp_img.moveTo(10, bl - 5);
+		this.addChild(this.mp_img);
+		// bar & lable
+		this.mp_stat = new TextBar(130, 8, 
+			this.chara.cur_attr.mp, 
+			this.chara.master_attr.mp
+		);
+
+		this.mp_stat.bar.image = GAME.assets[CONFIG.get(["Menu", "bar", "mp"])];
+		this.mp_stat.moveTo(45, bl - 5);
+
+		this.addChild(this.mp_stat);
 	},
 	setExpStat: function() {
 		//this.exp_img = new Sprite(24, 24);
@@ -270,51 +283,40 @@ var InfoBox = enchant.Class.create(enchant.Group, {
 var TextBar = enchant.Class.create(enchant.Group, {
 	initialize: function(w, h, curVal, maxVal) {
         enchant.Group.call(this);
-		this.bar = new Bar(w, h);
-		this.bar.value = curVal;
-		this.bar.maxvalue = maxVal;
+		this.bar = new Bar(w, h, w, curVal, maxVal);
+		this.bar.moveTo(10, 5);
 
-		this.label = new Label(curVal + " / " + maxVal);
+		this.label = new Label(Math.round(curVal) + " / " + Math.round(maxVal));
 		this.label.color = '#ffffff';
 		this.label.textAlign = 'right';
+		this.label.width = w - 40;
 		this.label.font = '14pt Helvetica';
-		this.label.moveTo(30, 0);
+		this.label.moveTo(20, 0);
 		// move label to the middle of the bar
 
 		this.addChild(this.bar);
 		this.addChild(this.label);
 
 		this.addEventListener('enterframe', function() {
-			this.label.text = this.bar.curvalue + " / " + this.bar.maxvalue;
+			this.label.text = Math.round(this.bar.curvalue) + 
+				" / " + Math.round(this.bar.maxvalue);
 		});
 	}
 });
 
 var Bar = enchant.Class.create(enchant.Sprite, {
-    initialize: function(x, y) {
-        enchant.Sprite.call(this, 1, 16);
-        this.image = new enchant.Surface(1, 16);// Null用
+    initialize: function(w, h, maxwidth, curVal, maxVal) {
+        enchant.Sprite.call(this, w, h);
+        this.image = new enchant.Surface(w, h);// Null用
         this.image.context.fillColor = 'RGB(0, 0, 256)';
-        this.image.context.fillRect(0, 0, 1, 16);
+        this.image.context.fillRect(0, 0, w, h);
         this._direction = 'right';
         this._origin = 0;
-        this._maxvalue = enchant.Game.instance.width;
-        this._lastvalue = 0;
-        this.value = 0;
+        this._maxvalue = maxVal;
+        this._lastvalue = curVal;
+        this.value = curVal;
         this.easing = 5;
-        switch (arguments.length) {
-            case 2:
-                this.y = y;
-                this.x = x;
-                this._origin = x;
-                break;
-            case 1:
-                this.x = x;
-                this._origin = x;
-                break;
-            default:
-                break;
-        }
+		this._maxwidth = maxwidth;
         this.addEventListener('enterframe', function() {
             if (this.value < 0) {
                 this.value = 0;
@@ -323,9 +325,9 @@ var Bar = enchant.Class.create(enchant.Sprite, {
             if (Math.abs(this._lastvalue - this.value) < 1.3) {
                 this._lastvalue = this.value;
             }
-            this.width = (this._lastvalue) | 0;
-            if (this.width > this._maxvalue) {
-                this.width = this._maxvalue;
+            this.width = Math.round((this._lastvalue / this._maxvalue) * this._maxwidth) | 0;
+            if (this.width > this._maxwidth) {
+                this.width = this._maxwidth;
             }
             if (this._direction === 'left') {
                 this._x = this._origin - this.width;
@@ -370,7 +372,10 @@ var Bar = enchant.Class.create(enchant.Sprite, {
 	curvalue: {
 		get: function() {
 			return this._lastvalue;
-		}
+		},
+		set: function(val) {
+			this._lastvalue = val;
+		},
 	}
 });
 

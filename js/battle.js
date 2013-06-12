@@ -11,36 +11,119 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 		this._player_units = [];
 		this._allies_units = [];
 		this._enemy_units = [];
-	
-		// Big Status Machine
-		this.addEventListener(enchant.Event.TOUCH_END, function(evt){
-			//console.log("Battle clicked: " + evt.x + " : " + evt.y + " : " + this._status);
-			var unit;
-			if (this._status == CONSTS.battleStatus("PLAYER_TURN")) {
-				unit = this.getUnit(evt.x, evt.y);
-				// only map or exception
-				if (unit != null) {
-					if (this.isUnit(unit, "PLAYER")) {
-						this.onUnitSelect(unit, "PLAYER");
-					} else if (this.isUnit(unit, "ENEMY")) {
-						this.onUnitSelect(unit, "ENEMY");
-					}
-				}
-			}
-			else if (this._status == CONSTS.battleStatus("PLAYER_UNIT_MENU")) {
-				unit = this.getUnit(evt.x, evt.y);
-				// only map or exception
-				if (unit != null) {
-					this.removeMenu();
-					this._status = CONSTS.battleStatus("PLAYER_TURN");
-				}
-			}
-			// skip 
-			else {
-				console.log("Status: " + this._status + " can not handle this click, skip");
-			}
-		});
+		this._touch_origin_x = 0;
+		this._touch_origin_y = 0;
+
+		this.map_max_x = CONFIG.get(["map", "tileWidth"]) * CONFIG.get(["map", "width"]);
+		this.map_max_y = CONFIG.get(["map", "tileHeight"]) * CONFIG.get(["map", "height"]);
+		this.map_min_x = 0;
+		this.map_min_y = 0;
+
+		this.min_x = CONFIG.get(["system", "width"]) - this.map_max_x;
+		this.min_y = CONFIG.get(["system", "height"]) -  this.map_max_y;
+		this.max_x = 0;
+		this.max_y = 0;
+
+		// these layers are difference from 
+		// the ones defined in enchant.js
+		// here are only big childs 
+		// that used for determine children depth
+		this.map_layer = new Group();
+		this.effect_layer = new Group();
+		this.unit_layer = new Group();
+		this.ui_layer = new Group();
+
+		this.addChild(this.map_layer);
+		this.addChild(this.effect_layer);
+		this.addChild(this.unit_layer);
+		this.addChild(this.ui_layer);
+
+		this.addMap(CONFIG.get(["map"]));
+		this.addUnits(CONFIG.get(["player_unit"]), "PLAYER");
+		this.addUnits(CONFIG.get(["allies_unit"]), "ALIIES");
+		this.addUnits(CONFIG.get(["enemy_unit"]), "ENEMY");
+
+		this.addEventListener(enchant.Event.TOUCH_START, this.onTouchStart);
+		this.addEventListener(enchant.Event.TOUCH_MOVE, this.onTouchMove);
+		this.addEventListener(enchant.Event.TOUCH_END, this.onTouchEnd);
+
+		this.addEventListener(enchant.Event.ENTER, this.onEnter);
+		this.addEventListener(enchant.Event.EXIT, this.onExit);
 	},
+	// scene methods
+	// these do not override default ones
+	onEnter: function() {
+		// enter and re-enter
+		// pop push will trigger this 
+	},
+	onExit: function() {
+		// pop push will trigger this 
+	},
+
+	// method that handle click events
+	onTouchStart: function(evt) {
+		// status check
+		if (false) {
+			return; 
+		}
+
+		this._touch_origin_x = evt.x;
+		this._touch_origin_y = evt.y;
+		this._origin_x = this.x;
+		this._origin_y = this.y;
+	},
+	onTouchMove: function(evt) {
+		// status check
+		if (false) {
+			return; 
+		}
+
+		this.x = this._origin_x + evt.x - this._touch_origin_x;
+		this.y = this._origin_y + evt.y - this._touch_origin_y;
+		
+		// border check
+		if (this.x < this.min_x){
+			this.x = this.min_x;
+		}
+		if (this.x > this.max_x){
+			this.x = this.max_x;
+		}
+		if (this.y < this.min_y){
+			this.y = this.min_y;
+		}
+		if (this.y > this.max_y){
+			this.y = this.max_y;
+		}
+	},
+	onTouchEnd: function(evt) {
+		// Big Status Machine
+		//console.log("Battle clicked: " + evt.x + " : " + evt.y + " : " + this._status);
+		var unit;
+		if (this._status == CONSTS.battleStatus("PLAYER_TURN")) {
+			unit = this.getUnit(evt.x, evt.y);
+			// only map or exception
+			if (unit != null) {
+				if (this.isUnit(unit, "PLAYER")) {
+					this.onUnitSelect(unit, "PLAYER");
+				} else if (this.isUnit(unit, "ENEMY")) {
+					this.onUnitSelect(unit, "ENEMY");
+				}
+			}
+		}
+		else if (this._status == CONSTS.battleStatus("PLAYER_UNIT_MENU")) {
+			unit = this.getUnit(evt.x, evt.y);
+			// only map or exception
+			if (unit != null) {
+				this.removeMenu();
+				this._status = CONSTS.battleStatus("PLAYER_TURN");
+			}
+		}
+		// skip 
+		else {
+			console.log("Status: " + this._status + " can not handle this click, skip");
+		}
+	},
+
 	// status changes
 	start: function() {
 		this._status = CONSTS.battleStatus("PLAYER_TURN");
@@ -80,7 +163,7 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 			}
 			this._units[side].push(unit);
 			if (!unit.hide) {
-				this.addChild(unit);
+				this.unit_layer.addChild(unit);
 			}
 		}
 	},
@@ -121,7 +204,7 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 			map.collisionData = conf.collisionData;
 		}
 
-		this.addChild(map);
+		this.map_layer.addChild(map);
 		this._map = map;
 	},
 	isMap: function(target) {
@@ -141,16 +224,17 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 		var self = this;
 
 		var isValid = function (cur) {
-			// TODO: this may be changed according to map settsings	
-			if (cur.x < 0 || cur.y < 0 || 
-				cur.x > CONFIG.get(["system", "width"]) || 
-				cur.y > CONFIG.get(["system", "height"])) {
+			if (cur.x < this.map_min_x || cur.y < this.map_min_y || 
+				cur.x > this.map_max_x || cur.y > this.map_max_y) {
 				return false;
 			}
 			if (cur.x == src.x && cur.y == src.y) {
 				return false;
 			}
 			if (cur.r < 0) {
+				return false;
+			}
+			if (this._map.hitTest(cur.x, cur.y)) {
 				return false;
 			}
 			if (type == "MOV" && self.hitUnit(cur.x, cur.y, "ENEMY")) {
@@ -224,8 +308,8 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 		}
 	},
 	removeShades: function() {
-		this.removeChild(this._atk_shade);
-		this.removeChild(this._mov_shade);
+		this.effect_layer.removeChild(this._atk_shade);
+		this.effect_layer.removeChild(this._mov_shade);
 		this._atk_shade = null;
 		this._mov_shade = null;
 	},
@@ -255,7 +339,7 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 			);
 			this._atk_shade.addChild(shade);
 		}
-		this.addChild(this._atk_shade);
+		this.effect_layer.addChild(this._atk_shade);
 		
 		var atk_shade_cb = function(grid) {
 			self.removeShades();
@@ -272,7 +356,7 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 			);
 			this._mov_shade.addChild(shade);
 		}
-		this.addChild(this._mov_shade);
+		this.effect_layer.addChild(this._mov_shade);
 	},
 	showAtkRng: function(unit) {
 		console.log("show attack range" + this._atk_grids);
@@ -293,7 +377,7 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 			);
 			this._atk_shade.addChild(shade);
 		}
-		this.addChild(this._atk_shade);
+		this.effect_layer.addChild(this._atk_shade);
 	},
 	move: function(unit, shade) {
 		if (this.getUnit(shade.x, shade.y)) {
@@ -353,11 +437,11 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 		this._menu.addChild(mov_btn);
 
 		this._menu.moveTo(~~(unit.x + unit.width / 4), ~~(unit.y - unit.height / 2));
-		this.addChild(this._menu);
+		this.ui_layer.addChild(this._menu);
 		this._status = CONSTS.battleStatus("PLAYER_UNIT_MENU");
 	},
 	removeMenu: function() {
-		this.removeChild(this._menu);
+		this.ui_layer.removeChild(this._menu);
 	},
 	isMenu: function(target) {
 		return target === this._menu ? true : false;
@@ -366,15 +450,16 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 	// infobox
 	showInfoBox: function(unit, side) {
 		this.infobox = new InfoBox(unit);
-		this.addChild(this.infobox);
+		this.ui_layer.addChild(this.infobox);
 	},
 	removeInfoBox: function(unit, side) {
 		if (this.infobox != null) {
-			this.removeChild(this.infobox);
+			this.ui_layer.removeChild(this.infobox);
 		}	
 	},
 
 	// Animation utilities
+	// TODO: move this into Chara Class
 	animCharaMove: function(unit, route) {
 		// for each waypoint
 		var tl = unit.tl;
@@ -538,8 +623,8 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 	},
 	// get only units on this point
 	getUnit: function(x, y, side) {
-		for (var i = 0; i < this.childNodes.length; i++) {
-			var node = this.childNodes[i];
+		for (var i = 0; i < this.unit_layer.childNodes.length; i++) {
+			var node = this.unit_layer.childNodes[i];
 			if (node.x <= x && x < node.x + node.width && 
 				node.y <= y && y < node.y + node.height && 
 				node.classname === "Unit") {

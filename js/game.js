@@ -779,27 +779,40 @@ var InfoBox = enchant.Class.create(enchant.Group, {
 		this.addChild(this.school);
 	},
 	setHpStat: function() {
+		var bl = 32
 		// image
 		this.hp_img = new Sprite(24, 24);
 		this.hp_img.image = GAME.assets[CONFIG.get(["Menu", "icon", "hp"])];
-		this.hp_img.moveTo(10, 32 - 5);
+		this.hp_img.moveTo(10, bl - 5);
 		this.addChild(this.hp_img);
-/*
 		// bar & lable
-		this.hp_stat = new TextBar(20, 100, 
+		this.hp_stat = new TextBar(130, 8, 
 			this.chara.cur_attr.hp, 
 			this.chara.master_attr.hp
 		);
 
 		this.hp_stat.bar.image = GAME.assets[CONFIG.get(["Menu", "bar", "hp"])];
-		this.hp_img.moveTo(45, 32 + 3);
+		this.hp_stat.moveTo(45, bl - 5);
 
 		this.addChild(this.hp_stat);
-*/
 	},
 	setMpStat: function() {
-		//this.mp_img = new Sprite(24, 24);
-		//this.mp_img.image = GAME.assets[CONFIG.get(["Menu", "icon", "mp"])];
+		var bl = 57;
+		// image
+		this.mp_img = new Sprite(24, 24);
+		this.mp_img.image = GAME.assets[CONFIG.get(["Menu", "icon", "mp"])];
+		this.mp_img.moveTo(10, bl - 5);
+		this.addChild(this.mp_img);
+		// bar & lable
+		this.mp_stat = new TextBar(130, 8, 
+			this.chara.cur_attr.mp, 
+			this.chara.master_attr.mp
+		);
+
+		this.mp_stat.bar.image = GAME.assets[CONFIG.get(["Menu", "bar", "mp"])];
+		this.mp_stat.moveTo(45, bl - 5);
+
+		this.addChild(this.mp_stat);
 	},
 	setExpStat: function() {
 		//this.exp_img = new Sprite(24, 24);
@@ -825,51 +838,40 @@ var InfoBox = enchant.Class.create(enchant.Group, {
 var TextBar = enchant.Class.create(enchant.Group, {
 	initialize: function(w, h, curVal, maxVal) {
         enchant.Group.call(this);
-		this.bar = new Bar(w, h);
-		this.bar.value = curVal;
-		this.bar.maxvalue = maxVal;
+		this.bar = new Bar(w, h, w, curVal, maxVal);
+		this.bar.moveTo(10, 5);
 
-		this.label = new Label(curVal + " / " + maxVal);
+		this.label = new Label(Math.round(curVal) + " / " + Math.round(maxVal));
 		this.label.color = '#ffffff';
 		this.label.textAlign = 'right';
+		this.label.width = w - 40;
 		this.label.font = '14pt Helvetica';
-		this.label.moveTo(30, 0);
+		this.label.moveTo(20, 0);
 		// move label to the middle of the bar
 
 		this.addChild(this.bar);
 		this.addChild(this.label);
 
 		this.addEventListener('enterframe', function() {
-			this.label.text = this.bar.curvalue + " / " + this.bar.maxvalue;
+			this.label.text = Math.round(this.bar.curvalue) + 
+				" / " + Math.round(this.bar.maxvalue);
 		});
 	}
 });
 
 var Bar = enchant.Class.create(enchant.Sprite, {
-    initialize: function(x, y) {
-        enchant.Sprite.call(this, 1, 16);
-        this.image = new enchant.Surface(1, 16);// Null用
+    initialize: function(w, h, maxwidth, curVal, maxVal) {
+        enchant.Sprite.call(this, w, h);
+        this.image = new enchant.Surface(w, h);// Null用
         this.image.context.fillColor = 'RGB(0, 0, 256)';
-        this.image.context.fillRect(0, 0, 1, 16);
+        this.image.context.fillRect(0, 0, w, h);
         this._direction = 'right';
         this._origin = 0;
-        this._maxvalue = enchant.Game.instance.width;
-        this._lastvalue = 0;
-        this.value = 0;
+        this._maxvalue = maxVal;
+        this._lastvalue = curVal;
+        this.value = curVal;
         this.easing = 5;
-        switch (arguments.length) {
-            case 2:
-                this.y = y;
-                this.x = x;
-                this._origin = x;
-                break;
-            case 1:
-                this.x = x;
-                this._origin = x;
-                break;
-            default:
-                break;
-        }
+		this._maxwidth = maxwidth;
         this.addEventListener('enterframe', function() {
             if (this.value < 0) {
                 this.value = 0;
@@ -878,9 +880,9 @@ var Bar = enchant.Class.create(enchant.Sprite, {
             if (Math.abs(this._lastvalue - this.value) < 1.3) {
                 this._lastvalue = this.value;
             }
-            this.width = (this._lastvalue) | 0;
-            if (this.width > this._maxvalue) {
-                this.width = this._maxvalue;
+            this.width = Math.round((this._lastvalue / this._maxvalue) * this._maxwidth) | 0;
+            if (this.width > this._maxwidth) {
+                this.width = this._maxwidth;
             }
             if (this._direction === 'left') {
                 this._x = this._origin - this.width;
@@ -925,7 +927,10 @@ var Bar = enchant.Class.create(enchant.Sprite, {
 	curvalue: {
 		get: function() {
 			return this._lastvalue;
-		}
+		},
+		set: function(val) {
+			this._lastvalue = val;
+		},
 	}
 });
 
@@ -943,36 +948,119 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 		this._player_units = [];
 		this._allies_units = [];
 		this._enemy_units = [];
-	
-		// Big Status Machine
-		this.addEventListener(enchant.Event.TOUCH_END, function(evt){
-			//console.log("Battle clicked: " + evt.x + " : " + evt.y + " : " + this._status);
-			var unit;
-			if (this._status == CONSTS.battleStatus("PLAYER_TURN")) {
-				unit = this.getUnit(evt.x, evt.y);
-				// only map or exception
-				if (unit != null) {
-					if (this.isUnit(unit, "PLAYER")) {
-						this.onUnitSelect(unit, "PLAYER");
-					} else if (this.isUnit(unit, "ENEMY")) {
-						this.onUnitSelect(unit, "ENEMY");
-					}
-				}
-			}
-			else if (this._status == CONSTS.battleStatus("PLAYER_UNIT_MENU")) {
-				unit = this.getUnit(evt.x, evt.y);
-				// only map or exception
-				if (unit != null) {
-					this.removeMenu();
-					this._status = CONSTS.battleStatus("PLAYER_TURN");
-				}
-			}
-			// skip 
-			else {
-				console.log("Status: " + this._status + " can not handle this click, skip");
-			}
-		});
+		this._touch_origin_x = 0;
+		this._touch_origin_y = 0;
+
+		this.map_max_x = CONFIG.get(["map", "tileWidth"]) * CONFIG.get(["map", "width"]);
+		this.map_max_y = CONFIG.get(["map", "tileHeight"]) * CONFIG.get(["map", "height"]);
+		this.map_min_x = 0;
+		this.map_min_y = 0;
+
+		this.min_x = CONFIG.get(["system", "width"]) - this.map_max_x;
+		this.min_y = CONFIG.get(["system", "height"]) -  this.map_max_y;
+		this.max_x = 0;
+		this.max_y = 0;
+
+		// these layers are difference from 
+		// the ones defined in enchant.js
+		// here are only big childs 
+		// that used for determine children depth
+		this.map_layer = new Group();
+		this.effect_layer = new Group();
+		this.unit_layer = new Group();
+		this.ui_layer = new Group();
+
+		this.addChild(this.map_layer);
+		this.addChild(this.effect_layer);
+		this.addChild(this.unit_layer);
+		this.addChild(this.ui_layer);
+
+		this.addMap(CONFIG.get(["map"]));
+		this.addUnits(CONFIG.get(["player_unit"]), "PLAYER");
+		this.addUnits(CONFIG.get(["allies_unit"]), "ALIIES");
+		this.addUnits(CONFIG.get(["enemy_unit"]), "ENEMY");
+
+		this.addEventListener(enchant.Event.TOUCH_START, this.onTouchStart);
+		this.addEventListener(enchant.Event.TOUCH_MOVE, this.onTouchMove);
+		this.addEventListener(enchant.Event.TOUCH_END, this.onTouchEnd);
+
+		this.addEventListener(enchant.Event.ENTER, this.onEnter);
+		this.addEventListener(enchant.Event.EXIT, this.onExit);
 	},
+	// scene methods
+	// these do not override default ones
+	onEnter: function() {
+		// enter and re-enter
+		// pop push will trigger this 
+	},
+	onExit: function() {
+		// pop push will trigger this 
+	},
+
+	// method that handle click events
+	onTouchStart: function(evt) {
+		// status check
+		if (false) {
+			return; 
+		}
+
+		this._touch_origin_x = evt.x;
+		this._touch_origin_y = evt.y;
+		this._origin_x = this.x;
+		this._origin_y = this.y;
+	},
+	onTouchMove: function(evt) {
+		// status check
+		if (false) {
+			return; 
+		}
+
+		this.x = this._origin_x + evt.x - this._touch_origin_x;
+		this.y = this._origin_y + evt.y - this._touch_origin_y;
+		
+		// border check
+		if (this.x < this.min_x){
+			this.x = this.min_x;
+		}
+		if (this.x > this.max_x){
+			this.x = this.max_x;
+		}
+		if (this.y < this.min_y){
+			this.y = this.min_y;
+		}
+		if (this.y > this.max_y){
+			this.y = this.max_y;
+		}
+	},
+	onTouchEnd: function(evt) {
+		// Big Status Machine
+		//console.log("Battle clicked: " + evt.x + " : " + evt.y + " : " + this._status);
+		var unit;
+		if (this._status == CONSTS.battleStatus("PLAYER_TURN")) {
+			unit = this.getUnit(evt.x, evt.y);
+			// only map or exception
+			if (unit != null) {
+				if (this.isUnit(unit, "PLAYER")) {
+					this.onUnitSelect(unit, "PLAYER");
+				} else if (this.isUnit(unit, "ENEMY")) {
+					this.onUnitSelect(unit, "ENEMY");
+				}
+			}
+		}
+		else if (this._status == CONSTS.battleStatus("PLAYER_UNIT_MENU")) {
+			unit = this.getUnit(evt.x, evt.y);
+			// only map or exception
+			if (unit != null) {
+				this.removeMenu();
+				this._status = CONSTS.battleStatus("PLAYER_TURN");
+			}
+		}
+		// skip 
+		else {
+			console.log("Status: " + this._status + " can not handle this click, skip");
+		}
+	},
+
 	// status changes
 	start: function() {
 		this._status = CONSTS.battleStatus("PLAYER_TURN");
@@ -1012,7 +1100,7 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 			}
 			this._units[side].push(unit);
 			if (!unit.hide) {
-				this.addChild(unit);
+				this.unit_layer.addChild(unit);
 			}
 		}
 	},
@@ -1053,7 +1141,7 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 			map.collisionData = conf.collisionData;
 		}
 
-		this.addChild(map);
+		this.map_layer.addChild(map);
 		this._map = map;
 	},
 	isMap: function(target) {
@@ -1073,16 +1161,17 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 		var self = this;
 
 		var isValid = function (cur) {
-			// TODO: this may be changed according to map settsings	
-			if (cur.x < 0 || cur.y < 0 || 
-				cur.x > CONFIG.get(["system", "width"]) || 
-				cur.y > CONFIG.get(["system", "height"])) {
+			if (cur.x < this.map_min_x || cur.y < this.map_min_y || 
+				cur.x > this.map_max_x || cur.y > this.map_max_y) {
 				return false;
 			}
 			if (cur.x == src.x && cur.y == src.y) {
 				return false;
 			}
 			if (cur.r < 0) {
+				return false;
+			}
+			if (this._map.hitTest(cur.x, cur.y)) {
 				return false;
 			}
 			if (type == "MOV" && self.hitUnit(cur.x, cur.y, "ENEMY")) {
@@ -1156,8 +1245,8 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 		}
 	},
 	removeShades: function() {
-		this.removeChild(this._atk_shade);
-		this.removeChild(this._mov_shade);
+		this.effect_layer.removeChild(this._atk_shade);
+		this.effect_layer.removeChild(this._mov_shade);
 		this._atk_shade = null;
 		this._mov_shade = null;
 	},
@@ -1187,7 +1276,7 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 			);
 			this._atk_shade.addChild(shade);
 		}
-		this.addChild(this._atk_shade);
+		this.effect_layer.addChild(this._atk_shade);
 		
 		var atk_shade_cb = function(grid) {
 			self.removeShades();
@@ -1204,7 +1293,7 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 			);
 			this._mov_shade.addChild(shade);
 		}
-		this.addChild(this._mov_shade);
+		this.effect_layer.addChild(this._mov_shade);
 	},
 	showAtkRng: function(unit) {
 		console.log("show attack range" + this._atk_grids);
@@ -1225,7 +1314,7 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 			);
 			this._atk_shade.addChild(shade);
 		}
-		this.addChild(this._atk_shade);
+		this.effect_layer.addChild(this._atk_shade);
 	},
 	move: function(unit, shade) {
 		if (this.getUnit(shade.x, shade.y)) {
@@ -1285,11 +1374,11 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 		this._menu.addChild(mov_btn);
 
 		this._menu.moveTo(~~(unit.x + unit.width / 4), ~~(unit.y - unit.height / 2));
-		this.addChild(this._menu);
+		this.ui_layer.addChild(this._menu);
 		this._status = CONSTS.battleStatus("PLAYER_UNIT_MENU");
 	},
 	removeMenu: function() {
-		this.removeChild(this._menu);
+		this.ui_layer.removeChild(this._menu);
 	},
 	isMenu: function(target) {
 		return target === this._menu ? true : false;
@@ -1298,15 +1387,16 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 	// infobox
 	showInfoBox: function(unit, side) {
 		this.infobox = new InfoBox(unit);
-		this.addChild(this.infobox);
+		this.ui_layer.addChild(this.infobox);
 	},
 	removeInfoBox: function(unit, side) {
 		if (this.infobox != null) {
-			this.removeChild(this.infobox);
+			this.ui_layer.removeChild(this.infobox);
 		}	
 	},
 
 	// Animation utilities
+	// TODO: move this into Chara Class
 	animCharaMove: function(unit, route) {
 		// for each waypoint
 		var tl = unit.tl;
@@ -1470,8 +1560,8 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 	},
 	// get only units on this point
 	getUnit: function(x, y, side) {
-		for (var i = 0; i < this.childNodes.length; i++) {
-			var node = this.childNodes[i];
+		for (var i = 0; i < this.unit_layer.childNodes.length; i++) {
+			var node = this.unit_layer.childNodes[i];
 			if (node.x <= x && x < node.x + node.width && 
 				node.y <= y && y < node.y + node.height && 
 				node.classname === "Unit") {
@@ -1511,22 +1601,13 @@ window.onload = function(){
 	CONSTS = new Consts();
 	CONFIG = new Config();
 	CONFIG.load(function(){
-		GAME = new Core(CONFIG.get(["System", "width"]), CONFIG.get(["System", "height"]));
+		GAME = new Core(CONFIG.get(["system", "width"]), CONFIG.get(["system", "height"]));
 		GAME.fps = 60;
 
 		GAME.preload(CONFIG.get(["image"]));
 		GAME.onload = function(){
 			var battle = new BattleScene();
-
-			// this should be moved into
-			// battle.onEnter function 			
-			battle.addMap(CONFIG.get(["map"]));
-			battle.addUnits(CONFIG.get(["player_unit"]), "PLAYER");
-			battle.addUnits(CONFIG.get(["allies_unit"]), "ALIIES");
-			battle.addUnits(CONFIG.get(["enemy_unit"]), "ENEMY");
-
 			GAME.pushScene(battle);
-			
 			battle.start();
 		};
 		GAME.start();
