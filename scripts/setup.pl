@@ -10,6 +10,7 @@ my @FILE_LIST = qw/
 	const.js
 	ajax.js
 	config.js
+	map.js
 	attr.js
 	chara.js
 	ui.js

@@ -182,130 +182,16 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 
 	// map utilities
 	addMap: function(conf) {
-		if (this._map) {
-			this.reomveChild(this._map);
+		if (this.map) {
+			this.reomveChild(this.map);
 		}
-		
-		var map = new Map(conf.tileWidth, conf.tileHeight);
-		map.image = GAME.assets[conf.image];
-		if (conf.data.length > 0) {
-			map.loadData(conf.data);
-		} else {
-			var matrix = [];
-			for (var i = 0; i < conf.width; i++) {
-				matrix[i] = [];
-				for (var j = 0; j < conf.height; j++) {
-					matrix[i][j] = i * conf.width + j;
-				}
-			}
-			map.loadData(matrix);
-		}
-		if (conf.collisionData.length > 0) {
-			map.collisionData = conf.collisionData;
-		}
-
+		var map = new xyzMap(conf);
 		this.map_layer.addChild(map);
-		this._map = map;
+		map.battle = this;
+		this.map = map;
 	},
 	isMap: function(target) {
-		return target === this._map ? true : false;
-	},
-	// BFS get available grids 
-	// according to unit position and range
-	_getAvailGrids: function(unit, rng, type) {
-		var src = {
-			x: ~~(unit.x),
-			y: ~~(unit.y),
-			r: rng,
-			route: [],
-		};
-		var queue = [];
-		var avail_grids = [];
-		var self = this;
-
-		var isValid = function (cur) {
-			if (cur.x < this.map_min_x || cur.y < this.map_min_y || 
-				cur.x > this.map_max_x || cur.y > this.map_max_y) {
-				return false;
-			}
-			if (cur.x == src.x && cur.y == src.y) {
-				return false;
-			}
-			if (cur.r < 0) {
-				return false;
-			}
-			if (this._map.hitTest(cur.x, cur.y)) {
-				return false;
-			}
-			if (type == "MOV" && self.hitUnit(cur.x, cur.y, "ENEMY")) {
-				return false;
-			}
-
-			for (var i = 0; i < avail_grids.length; i++) {
-				if (avail_grids[i].x == cur.x && avail_grids[i].y == cur.y) {
-					return false;
-				}
-			}
-			return true;
-		};
-
-		queue.push(src);
-		while(queue.length > 0) {
-			var cur = queue.shift();
-			if (isValid(cur)) {
-				cur.route.push({x: ~~(cur.x), y: ~~(cur.y), d: cur.d});
-				avail_grids.push(cur);
-			}
-			var up = {
-				x: ~~(cur.x),
-				y: ~~(cur.y - unit.height),
-				r: ~~(cur.r - 1),
-				d: CONSTS.direction("UP"),
-				route: cur.route.slice(),
-			};
-			var down = {
-				x: ~~(cur.x),
-				y: ~~(cur.y + unit.height),
-				r: ~~(cur.r - 1),
-				d: CONSTS.direction("DOWN"),
-				route: cur.route.slice(),
-			};		
-			var left = {
-				x: ~~(cur.x - unit.width),
-				y: ~~(cur.y),
-				r: ~~(cur.r - 1),
-				d: CONSTS.direction("LEFT"),
-				route: cur.route.slice(),
-			};		
-			var right = {
-				x: ~~(cur.x + unit.width),
-				y: ~~(cur.y),
-				r: ~~(cur.r - 1),
-				d: CONSTS.direction("RIGHT"),
-				route: cur.route.slice(),
-			};		
-			if (isValid(down)) {
-				queue.push(down);
-			}
-			if (isValid(right)) {
-				queue.push(right);
-			}
-			if (isValid(up)) {
-				queue.push(up);
-			}
-			if (isValid(left)) {
-				queue.push(left);
-			}
-		}
-		return avail_grids;
-	},
-	_getAvailAtkGrids: function(unit, type) {
-		if (type === CONSTS.attack_type("NONE")) {
-			return [];
-		}
-		else if (type <= CONSTS.attack_type("RANGE_5")) {
-			return this._getAvailGrids(unit, type, "ATK");			
-		}
+		return target === this.map;
 	},
 	removeShades: function() {
 		this.effect_layer.removeChild(this._atk_shade);
@@ -318,9 +204,8 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 		var self = this;
 		var i = 0;
 		var shade;
-		this._move_grids = this._getAvailGrids(unit, unit.cur_attr.mov, "MOV");
-		//this._atk_grids = this._getAvailGrids(unit, unit.cur_attr.rng, "ATK");
-		this._atk_grids = this._getAvailGrids(unit, unit.cur_attr.rng, "ATK");
+		this._move_grids = this.map.getAvailGrids(unit, unit.cur_attr.mov, "MOV");
+		this._atk_grids = this.map.getAvailAtkGrids(unit, unit.cur_attr.rng);
 		this._atk_shade = new Group();
 		this._mov_shade = new Group();
 	
@@ -361,7 +246,7 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 	showAtkRng: function(unit) {
 		console.log("show attack range" + this._atk_grids);
 		var self = this;
-		this._atk_grids = this._getAvailAtkGrids(unit, unit.cur_attr.rng);
+		this._atk_grids = this.map.getAvailAtkGrids(unit, unit.cur_attr.rng);
 		var atk_shade_cb = function(grid) {
 			self.removeShades();
 			self.attack(unit, grid);
@@ -387,7 +272,7 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 		console.log("move " + shade.x + " : " + shade.y);
 		var route = shade.route;
 		if (route) {
-			this.animCharaMove(unit, route);
+			unit.animMove(route, bind(this.showMenu, this));
 			this._status = CONSTS.battleStatus("PLAYER_TURN");
 		}
 	},
@@ -444,7 +329,7 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 		this.ui_layer.removeChild(this._menu);
 	},
 	isMenu: function(target) {
-		return target === this._menu ? true : false;
+		return target === this._menu;
 	},
 
 	// infobox
@@ -457,35 +342,11 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 			this.ui_layer.removeChild(this.infobox);
 		}	
 	},
+	isInfoBox: function(target) {
+		return target === this.infobox;
+	},
 
 	// Animation utilities
-	// TODO: move this into Chara Class
-	animCharaMove: function(unit, route) {
-		// for each waypoint
-		var tl = unit.tl;
-		var d = unit._cur_direction;
-		var c = 0;
-		for (var i = 0; i < route.length; i++) {
-			var d = route[i].d;
-			// 后边d值变化了，覆盖了前面的值
-			// 导致之前放入回调函数里的d值也变化了
-			tl = tl.action({
-				time: 0,
-				onactionstart: function() {
-					console.log("onactinostart :" + d + " : " + route[c].d);
-					unit.move(route[c].d);
-					++c;
-				},
-			}).moveTo(route[i].x, route[i].y, 20);
-		}
-		var self = this;
-		tl = tl.then(function() {
-			unit.moveTo(Math.round(unit.x), Math.round(unit.y));
-		});
-		tl = tl.then(function() {
-			self.showMenu(unit);
-		});
-	},
 	animCharaAttack: function(action_script) {
 		if (action_script == null) {
 			console.log("empty action_script");

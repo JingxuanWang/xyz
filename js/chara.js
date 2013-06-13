@@ -18,22 +18,6 @@ var Unit = enchant.Class.create(enchant.Group, {
 		this.addChild(this.chara);
 		this.addChild(this.label);
 	},
-	i: {
-		get: function() {
-			return Math.round(this.x / this.width);
-		},
-		set: function(ti) {
-			this.x = ti * this.width;
-		}
-	},
-	j: {
-		get: function() {
-			return Math.round(this.y / this.height);
-		},
-		set: function(tj) {
-			this.y = tj * this.height;
-		}
-	},
 	d: {
 		get: function() {
 			return this.chara.d;
@@ -42,7 +26,32 @@ var Unit = enchant.Class.create(enchant.Group, {
 			this.chara.d = td;
 		}
 	},
-
+	animMove: function(route, onMoveComplete) {
+		// for each waypoint
+		var tl = this.tl;
+		var d = this._cur_direction;
+		var c = 0;
+		for (var i = 0; i < route.length; i++) {
+			var d = route[i].d;
+			// 后边d值变化了，覆盖了前面的值
+			// 导致之前放入回调函数里的d值也变化了
+			tl = tl.action({
+				time: 0,
+				onactionstart: function() {
+					console.log("onactinostart :" + d + " : " + route[c].d);
+					this.move(route[c].d);
+					++c;
+				},
+			}).moveTo(route[i].x, route[i].y, 20);
+		}
+		tl = tl.then(function() {
+			this.moveTo(Math.round(this.x), Math.round(this.y));
+		})
+		var self = this;
+		tl = tl.then(function() {
+			onMoveComplete.call(this, self);
+		});
+	},
 	setStatus: function(st) {
 		if (UNIT_STATUS[st] == null) {
 			console.log("Chara: setStatus undefined status: " + st);
@@ -195,22 +204,6 @@ var Chara = enchant.Class.create(enchant.Sprite, {
 				this.setCurAnimNextFrame();
 			}
 		});
-	},
-	i: {
-		get: function() {
-			return Math.round(this.x / this.width);
-		},
-		set: function(ti) {
-			this.x = ti * this.width;
-		}
-	},
-	j: {
-		get: function() {
-			return Math.round(this.y / this.height);
-		},
-		set: function(tj) {
-			this.y = tj * this.height;
-		}
 	},
 	d: {
 		get: function() {

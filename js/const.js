@@ -62,6 +62,50 @@ var Consts = enchant.Class.create({
 		
 			FULL_SCREEN: 99,
 		};
+		this._terrains = {
+			BARRIER: -5,
+			MOUNTAIN: -4,
+			WALL: -3,
+			SHIP: -2,
+			FIRE: -1,
+			GROUND: 0,
+			ROAD: 1,
+			GRASSLAND: 2,
+			WASTELAND: 3,
+			MARSH: 4,
+			SNOW: 5,
+			HILL: 6,
+			RIVER: 7,
+			BRIDGE: 8,
+			HOUSE: 11,
+			VILLAGE: 12,
+			CAMP: 13,
+			CASTLE: 14,
+		};
+		this._schools = {
+			swordman: 1,
+			lancer: 2,
+			warrior: 3,
+			soldier: 4,
+
+			horseman: 11,
+			lighthorseman: 12,
+			heavyhorseman: 13,
+
+			archer: 21,
+			horsearcher: 22,
+			crossbowman: 23,
+
+			cartroit: 31,
+			lighthcartroit: 32,
+			heavyhcartroit: 33,
+
+			wizard: 41,
+			
+			// debug
+			"群雄": 90,
+			"轻步兵": 91,
+		};
 	},
 	side: function(s) {
 		return this._side[s];
@@ -78,6 +122,5 @@ var Consts = enchant.Class.create({
 	attack_type: function(type) {
 		return this._atk_types[type];
 	},
-
 	_noop: function(){}
 });

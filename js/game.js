@@ -74,6 +74,50 @@ var Consts = enchant.Class.create({
 		
 			FULL_SCREEN: 99,
 		};
+		this._terrains = {
+			BARRIER: -5,
+			MOUNTAIN: -4,
+			WALL: -3,
+			SHIP: -2,
+			FIRE: -1,
+			GROUND: 0,
+			ROAD: 1,
+			GRASSLAND: 2,
+			WASTELAND: 3,
+			MARSH: 4,
+			SNOW: 5,
+			HILL: 6,
+			RIVER: 7,
+			BRIDGE: 8,
+			HOUSE: 11,
+			VILLAGE: 12,
+			CAMP: 13,
+			CASTLE: 14,
+		};
+		this._schools = {
+			swordman: 1,
+			lancer: 2,
+			warrior: 3,
+			soldier: 4,
+
+			horseman: 11,
+			lighthorseman: 12,
+			heavyhorseman: 13,
+
+			archer: 21,
+			horsearcher: 22,
+			crossbowman: 23,
+
+			cartroit: 31,
+			lighthcartroit: 32,
+			heavyhcartroit: 33,
+
+			wizard: 41,
+			
+			// debug
+			"群雄": 90,
+			"轻步兵": 91,
+		};
 	},
 	side: function(s) {
 		return this._side[s];
@@ -90,7 +134,6 @@ var Consts = enchant.Class.create({
 	attack_type: function(type) {
 		return this._atk_types[type];
 	},
-
 	_noop: function(){}
 });
 var Ajax = enchant.Class.create(enchant.EventTarget, {
@@ -174,6 +217,191 @@ var Config = enchant.Class.create({
 	_noop: function() {}
 });
 
+var xyzMap = enchant.Class.create(enchant.Map, {
+	classname: "xyzMap",
+	initialize: function(conf) {
+		enchant.Map.call(this, conf.tileWidth, conf.tileHeight);
+
+		this.image = GAME.assets[conf.image];
+
+		// for an assigned map
+		// use data matrix
+		if (conf.data.length > 0) {
+			this.loadData(conf.data);
+		} 
+		// if map not assigned by data matrix
+		// then generate a default one
+		else {
+			var matrix = [];
+			for (var i = 0; i < conf.width; i++) {
+				matrix[i] = [];
+				for (var j = 0; j < conf.height; j++) {
+					matrix[i][j] = i * conf.width + j;
+				}
+			}
+			this.loadData(matrix);
+		}
+
+		// load terrain_data
+		if (conf.terrain_data.length > 0) {
+			this.terrain_data = conf.terrain_data;
+		}
+
+		// movement matrix
+		this._movement_matrix = [];
+		for (var t in CONSTS._terrains) {
+			if (this.isPassible(CONSTS._terrains[t])) {
+				this._movement_matrix[CONSTS._terrains[t]] = [];
+				for (var s in CONSTS._schools) {
+					// TODO: this should be changed later
+					this._movement_matrix[CONSTS._terrains[t]][CONSTS._schools[s]] = 1;
+				}
+			}
+		}
+	},
+	getCols: function() {
+		return this.width * this.tileWidth;
+	},
+	getRows: function() {
+		return this.height * this.tileHeight;
+	},
+	x2j: function(x) {
+		return ~~((x - this.x) / this.tileWidth);
+	},
+	y2i: function(y) {
+		return ~~((y - this.y) / this.tileHeight);
+	},
+	getTerrain: function(x, y) {
+		return this.terrain_data[this.y2i(y)][this.x2j(x)];
+	},
+	isInMap: function(x, y) {
+		var i = this.y2i(y);
+		var j = this.x2j(x);
+		if (j >= 0 && j <= this.width &&
+			i >= 0 && i <= this.height) {
+			return true;
+		}
+		return false;
+	},
+	isPassible: function(terrain, school) {
+		// there may be terrains 
+		// that only allow units in some schools to pass
+		return terrain >= 0;
+	},
+	getReqMovement: function(terrain, school) {
+		if (this.isPassible(terrain)) {
+			return this._movement_matrix[terrain][school];
+		} else {
+			return -1;
+		}
+	},
+	// BFS get available grids 
+	// according to unit position and range
+	getAvailGrids: function(unit, rng, type) {
+		var src = {
+			x: ~~(unit.x),
+			y: ~~(unit.y),
+			r: rng,
+			route: [],
+		};
+		var queue = [];
+		var avail_grids = [];
+		var self = this;
+
+		var isValid = function (cur) {
+			if (!self.isInMap(cur.x, cur.y)) {
+				return false;
+			}
+			if (cur.x == src.x && cur.y == src.y) {
+				return false;
+			}
+			if (cur.r < 0) {
+				return false;
+			}
+			var terrain = self.getTerrain(cur.x, cur.y);
+			// impassible
+			if (type == "MOV" && !self.isPassible(terrain, unit.cur_attr.school)) {
+				return false;
+			}
+			// remain movement > 0
+			// but movement is not enough for this grid
+			if (cur.r + 1 < self.getReqMovement(terrain, unit.cur_attr.school)) {
+				return false;
+			}
+			if (type == "MOV" && self.battle.hitUnit(cur.x, cur.y, "ENEMY")) {
+				return false;
+			}
+
+			for (var i = 0; i < avail_grids.length; i++) {
+				if (avail_grids[i].x == cur.x && avail_grids[i].y == cur.y) {
+					return false;
+				}
+			}
+			return true;
+		};
+
+		queue.push(src);
+		while(queue.length > 0) {
+			var cur = queue.shift();
+			if (isValid(cur)) {
+				cur.route.push({x: ~~(cur.x), y: ~~(cur.y), d: cur.d});
+				avail_grids.push(cur);
+			}
+			var up = {
+				x: ~~(cur.x),
+				y: ~~(cur.y - unit.height),
+				r: ~~(cur.r - 1),
+				d: CONSTS.direction("UP"),
+				route: cur.route.slice(),
+			};
+			var down = {
+				x: ~~(cur.x),
+				y: ~~(cur.y + unit.height),
+				r: ~~(cur.r - 1),
+				d: CONSTS.direction("DOWN"),
+				route: cur.route.slice(),
+			};		
+			var left = {
+				x: ~~(cur.x - unit.width),
+				y: ~~(cur.y),
+				r: ~~(cur.r - 1),
+				d: CONSTS.direction("LEFT"),
+				route: cur.route.slice(),
+			};		
+			var right = {
+				x: ~~(cur.x + unit.width),
+				y: ~~(cur.y),
+				r: ~~(cur.r - 1),
+				d: CONSTS.direction("RIGHT"),
+				route: cur.route.slice(),
+			};		
+			if (isValid(down)) {
+				queue.push(down);
+			}
+			if (isValid(right)) {
+				queue.push(right);
+			}
+			if (isValid(up)) {
+				queue.push(up);
+			}
+			if (isValid(left)) {
+				queue.push(left);
+			}
+		}
+		return avail_grids;
+	},
+	getAvailAtkGrids: function(unit, type) {
+		if (type === CONSTS.attack_type("NONE")) {
+			return [];
+		}
+		else if (type <= CONSTS.attack_type("RANGE_5")) {
+			return this.getAvailGrids(unit, type, "ATK");			
+		}
+	},
+
+	_noop: function() {}
+});
+
 var Attr = enchant.Class.create({
 	classname: "Attr",
 	name: null,
@@ -239,22 +467,6 @@ var Unit = enchant.Class.create(enchant.Group, {
 		this.addChild(this.chara);
 		this.addChild(this.label);
 	},
-	i: {
-		get: function() {
-			return Math.round(this.x / this.width);
-		},
-		set: function(ti) {
-			this.x = ti * this.width;
-		}
-	},
-	j: {
-		get: function() {
-			return Math.round(this.y / this.height);
-		},
-		set: function(tj) {
-			this.y = tj * this.height;
-		}
-	},
 	d: {
 		get: function() {
 			return this.chara.d;
@@ -263,7 +475,32 @@ var Unit = enchant.Class.create(enchant.Group, {
 			this.chara.d = td;
 		}
 	},
-
+	animMove: function(route, onMoveComplete) {
+		// for each waypoint
+		var tl = this.tl;
+		var d = this._cur_direction;
+		var c = 0;
+		for (var i = 0; i < route.length; i++) {
+			var d = route[i].d;
+			// 后边d值变化了，覆盖了前面的值
+			// 导致之前放入回调函数里的d值也变化了
+			tl = tl.action({
+				time: 0,
+				onactionstart: function() {
+					console.log("onactinostart :" + d + " : " + route[c].d);
+					this.move(route[c].d);
+					++c;
+				},
+			}).moveTo(route[i].x, route[i].y, 20);
+		}
+		tl = tl.then(function() {
+			this.moveTo(Math.round(this.x), Math.round(this.y));
+		})
+		var self = this;
+		tl = tl.then(function() {
+			onMoveComplete.call(this, self);
+		});
+	},
 	setStatus: function(st) {
 		if (UNIT_STATUS[st] == null) {
 			console.log("Chara: setStatus undefined status: " + st);
@@ -416,22 +653,6 @@ var Chara = enchant.Class.create(enchant.Sprite, {
 				this.setCurAnimNextFrame();
 			}
 		});
-	},
-	i: {
-		get: function() {
-			return Math.round(this.x / this.width);
-		},
-		set: function(ti) {
-			this.x = ti * this.width;
-		}
-	},
-	j: {
-		get: function() {
-			return Math.round(this.y / this.height);
-		},
-		set: function(tj) {
-			this.y = tj * this.height;
-		}
 	},
 	d: {
 		get: function() {
@@ -1119,130 +1340,16 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 
 	// map utilities
 	addMap: function(conf) {
-		if (this._map) {
-			this.reomveChild(this._map);
+		if (this.map) {
+			this.reomveChild(this.map);
 		}
-		
-		var map = new Map(conf.tileWidth, conf.tileHeight);
-		map.image = GAME.assets[conf.image];
-		if (conf.data.length > 0) {
-			map.loadData(conf.data);
-		} else {
-			var matrix = [];
-			for (var i = 0; i < conf.width; i++) {
-				matrix[i] = [];
-				for (var j = 0; j < conf.height; j++) {
-					matrix[i][j] = i * conf.width + j;
-				}
-			}
-			map.loadData(matrix);
-		}
-		if (conf.collisionData.length > 0) {
-			map.collisionData = conf.collisionData;
-		}
-
+		var map = new xyzMap(conf);
 		this.map_layer.addChild(map);
-		this._map = map;
+		map.battle = this;
+		this.map = map;
 	},
 	isMap: function(target) {
-		return target === this._map ? true : false;
-	},
-	// BFS get available grids 
-	// according to unit position and range
-	_getAvailGrids: function(unit, rng, type) {
-		var src = {
-			x: ~~(unit.x),
-			y: ~~(unit.y),
-			r: rng,
-			route: [],
-		};
-		var queue = [];
-		var avail_grids = [];
-		var self = this;
-
-		var isValid = function (cur) {
-			if (cur.x < this.map_min_x || cur.y < this.map_min_y || 
-				cur.x > this.map_max_x || cur.y > this.map_max_y) {
-				return false;
-			}
-			if (cur.x == src.x && cur.y == src.y) {
-				return false;
-			}
-			if (cur.r < 0) {
-				return false;
-			}
-			if (this._map.hitTest(cur.x, cur.y)) {
-				return false;
-			}
-			if (type == "MOV" && self.hitUnit(cur.x, cur.y, "ENEMY")) {
-				return false;
-			}
-
-			for (var i = 0; i < avail_grids.length; i++) {
-				if (avail_grids[i].x == cur.x && avail_grids[i].y == cur.y) {
-					return false;
-				}
-			}
-			return true;
-		};
-
-		queue.push(src);
-		while(queue.length > 0) {
-			var cur = queue.shift();
-			if (isValid(cur)) {
-				cur.route.push({x: ~~(cur.x), y: ~~(cur.y), d: cur.d});
-				avail_grids.push(cur);
-			}
-			var up = {
-				x: ~~(cur.x),
-				y: ~~(cur.y - unit.height),
-				r: ~~(cur.r - 1),
-				d: CONSTS.direction("UP"),
-				route: cur.route.slice(),
-			};
-			var down = {
-				x: ~~(cur.x),
-				y: ~~(cur.y + unit.height),
-				r: ~~(cur.r - 1),
-				d: CONSTS.direction("DOWN"),
-				route: cur.route.slice(),
-			};		
-			var left = {
-				x: ~~(cur.x - unit.width),
-				y: ~~(cur.y),
-				r: ~~(cur.r - 1),
-				d: CONSTS.direction("LEFT"),
-				route: cur.route.slice(),
-			};		
-			var right = {
-				x: ~~(cur.x + unit.width),
-				y: ~~(cur.y),
-				r: ~~(cur.r - 1),
-				d: CONSTS.direction("RIGHT"),
-				route: cur.route.slice(),
-			};		
-			if (isValid(down)) {
-				queue.push(down);
-			}
-			if (isValid(right)) {
-				queue.push(right);
-			}
-			if (isValid(up)) {
-				queue.push(up);
-			}
-			if (isValid(left)) {
-				queue.push(left);
-			}
-		}
-		return avail_grids;
-	},
-	_getAvailAtkGrids: function(unit, type) {
-		if (type === CONSTS.attack_type("NONE")) {
-			return [];
-		}
-		else if (type <= CONSTS.attack_type("RANGE_5")) {
-			return this._getAvailGrids(unit, type, "ATK");			
-		}
+		return target === this.map;
 	},
 	removeShades: function() {
 		this.effect_layer.removeChild(this._atk_shade);
@@ -1255,9 +1362,8 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 		var self = this;
 		var i = 0;
 		var shade;
-		this._move_grids = this._getAvailGrids(unit, unit.cur_attr.mov, "MOV");
-		//this._atk_grids = this._getAvailGrids(unit, unit.cur_attr.rng, "ATK");
-		this._atk_grids = this._getAvailGrids(unit, unit.cur_attr.rng, "ATK");
+		this._move_grids = this.map.getAvailGrids(unit, unit.cur_attr.mov, "MOV");
+		this._atk_grids = this.map.getAvailAtkGrids(unit, unit.cur_attr.rng);
 		this._atk_shade = new Group();
 		this._mov_shade = new Group();
 	
@@ -1298,7 +1404,7 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 	showAtkRng: function(unit) {
 		console.log("show attack range" + this._atk_grids);
 		var self = this;
-		this._atk_grids = this._getAvailAtkGrids(unit, unit.cur_attr.rng);
+		this._atk_grids = this.map.getAvailAtkGrids(unit, unit.cur_attr.rng);
 		var atk_shade_cb = function(grid) {
 			self.removeShades();
 			self.attack(unit, grid);
@@ -1324,7 +1430,9 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 		console.log("move " + shade.x + " : " + shade.y);
 		var route = shade.route;
 		if (route) {
-			this.animCharaMove(unit, route);
+			//this.animCharaMove(unit, route);
+			//var self = this;
+			unit.animMove(route, bind(this.showMenu, this));
 			this._status = CONSTS.battleStatus("PLAYER_TURN");
 		}
 	},
@@ -1381,7 +1489,7 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 		this.ui_layer.removeChild(this._menu);
 	},
 	isMenu: function(target) {
-		return target === this._menu ? true : false;
+		return target === this._menu;
 	},
 
 	// infobox
@@ -1394,10 +1502,14 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 			this.ui_layer.removeChild(this.infobox);
 		}	
 	},
+	isInfoBox: function(target) {
+		return target === this.infobox;
+	},
 
 	// Animation utilities
 	// TODO: move this into Chara Class
 	animCharaMove: function(unit, route) {
+/*
 		// for each waypoint
 		var tl = unit.tl;
 		var d = unit._cur_direction;
@@ -1422,6 +1534,7 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 		tl = tl.then(function() {
 			self.showMenu(unit);
 		});
+*/
 	},
 	animCharaAttack: function(action_script) {
 		if (action_script == null) {
