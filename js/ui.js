@@ -34,7 +34,7 @@ var AttackShade = enchant.Class.create(enchant.Sprite, {
 var Menu = enchant.Class.create(enchant.Group, {
 	classname: "Menu",
 	buttons: ["atk", "mov"],
-	initialize: function(x, y, chara, cb_list) {
+	initialize: function(x, y, unit, cb_list) {
 		this.drawBackround();
 		for (var i = 0; i < buttons.length; i ++) {
 			var type = buttons[i];
@@ -138,40 +138,40 @@ var Button = enchant.Class.create(enchant.Group, {
 // contains hp/mp bar & label & image
 var InfoBox = enchant.Class.create(enchant.Group, {
 	classname: "InfoBox",
-	initialize: function(chara, type) {
+	initialize: function(unit, type, onAnimComplete) {
 		enchant.Group.call(this);
-		this.chara = chara;
+		this.unit = unit;
+		this.side = unit.side;
 		this.type = type;
 		this.width = 192;
 		this.height = 96;
+		this._in_anim = false;
+		this.onAnimComplete = onAnimComplete;
 
-		this.setBasePoint(chara.x, chara.y);
+		if (this.side == CONSTS.side("PLAYER") && this.type == "ATK") {
+			this.height = 144;
+		}
+
+		this.setBasePoint(this.unit.x, this.unit.y);
 		this.drawBackground(GAME.assets[CONFIG.get(["Menu", "base"])]);
 
 		this.setName();
 		this.setLevel();
 		this.setSchool();
-		//if (this.type == CONSTS.side("PLAYER")) {
 			this.setHpStat();
 			this.setMpStat();
+		if (this.side == CONSTS.side("PLAYER") && this.type == "ATK") {
 			this.setExpStat();
-		//}
-	},
-	chara: {
-		get: function() {
-			return this._chara;
-		},
-		set: function(chara) {
-			this._chara = chara;
 		}
-	},
-	type: {
-		get: function() {
-			return this._type;
-		},
-		set: function(type) {
-			this._type = type;
+		if (this.type != "ATK") {
+			this.setTerrainStat();
 		}
+	
+		// check animation status
+		// and trigger event when status change
+		this.addEventListener('enterframe', function() {
+			this.updateAnimStatus();
+		}); 
 	},
 	change: function(attr) {
 		this.hp_stat.value = attr.hp;
@@ -196,7 +196,7 @@ var InfoBox = enchant.Class.create(enchant.Group, {
 			this.x = x + CONFIG.get(["map", "tileWidth"]);
 		}
 		if (y >= CONFIG.get(["system", "height"]) / 2) {
-			if (this._type === 1 && this._style === 0) {
+			if (this.side == CONSTS.side("PLAYER") && this.type == "ATK") {
 				this.y = y - 2 * CONFIG.get(["map", "tileHeight"]);
 			} else {
 				this.y = y - CONFIG.get(["map", "tileHeight"]);
@@ -206,23 +206,34 @@ var InfoBox = enchant.Class.create(enchant.Group, {
 		}
 	},
 	setName: function() {
-		this.name = new Label(this.chara.cur_attr.name);
+		this.name = new Label(this.unit.cur_attr.name);
 		this.name.color = '#ffffff';
 		this.name.moveTo(10, 5);
 		this.addChild(this.name);
 	},
 	setLevel: function() {
-		this.level = new Label("Lv. " + this.chara.cur_attr.level);
+		this.level = new Label("Lv. " + this.unit.cur_attr.level);
 		this.level.color = '#ffffff';
 		this.level.moveTo(60, 5);
 		this.addChild(this.level);
 	},
 	setSchool: function() {
-		this.school = new Label(this.chara.cur_attr.school);
+		this.school = new Label(CONSTS.getSchoolName(this.unit.cur_attr.school));
 		this.school.color = '#ffffff';
 		this.school.moveTo(130, 5);
 		this.addChild(this.school);
 	},
+	setTerrainStat: function() {
+		var terrain_name = MAP.getTerrainName(this.unit.x, this.unit.y);
+		var terrain_info = MAP.getTerrainInfo(this.unit.x, this.unit.y);
+		this.terrain = new Label(
+			terrain_name + " " + terrain_info + "%"	
+		);
+		this.terrain.color = '#ffffff';
+		this.terrain.moveTo(120, 80);
+		this.addChild(this.terrain);
+	},
+
 	setHpStat: function() {
 		var bl = 32
 		// image
@@ -232,12 +243,13 @@ var InfoBox = enchant.Class.create(enchant.Group, {
 		this.addChild(this.hp_img);
 		// bar & lable
 		this.hp_stat = new TextBar(130, 8, 
-			this.chara.cur_attr.hp, 
-			this.chara.master_attr.hp
+			this.unit.last_attr.hp, 
+			this.unit.master_attr.hp
 		);
+		this.hp_stat.bar.value = this.unit.cur_attr.hp;
 
 		this.hp_stat.bar.image = GAME.assets[CONFIG.get(["Menu", "bar", "hp"])];
-		this.hp_stat.moveTo(45, bl - 5);
+		this.hp_stat.moveTo(45, bl - 3);
 
 		this.addChild(this.hp_stat);
 	},
@@ -250,20 +262,65 @@ var InfoBox = enchant.Class.create(enchant.Group, {
 		this.addChild(this.mp_img);
 		// bar & lable
 		this.mp_stat = new TextBar(130, 8, 
-			this.chara.cur_attr.mp, 
-			this.chara.master_attr.mp
+			this.unit.last_attr.mp, 
+			this.unit.master_attr.mp
 		);
 
 		this.mp_stat.bar.image = GAME.assets[CONFIG.get(["Menu", "bar", "mp"])];
-		this.mp_stat.moveTo(45, bl - 5);
+		this.mp_stat.moveTo(45, bl - 3);
 
 		this.addChild(this.mp_stat);
 	},
 	setExpStat: function() {
-		//this.exp_img = new Sprite(24, 24);
-		//this.exp_img.image = GAME.assets[CONFIG.get(["Menu", "icon", "exp"])];
-	},
+		var bl = 82;
+		// image
+		this.exp_img = new Sprite(24, 24);
+		this.exp_img.image = GAME.assets[CONFIG.get(["Menu", "icon", "exp"])];
+		this.exp_img.moveTo(10, bl - 5);
+		this.addChild(this.exp_img);
+		// bar & lable
+		this.exp_stat = new TextBar(130, 8, 
+			this.unit.last_attr.exp, 
+			this.unit.master_attr.exp
+		);
 
+		this.exp_stat.bar.image = GAME.assets[CONFIG.get(["Menu", "bar", "exp"])];
+		this.exp_stat.moveTo(45, bl - 3);
+
+		this.addChild(this.exp_stat);
+	},
+	// check if it is in an animation
+	updateAnimStatus: function() {
+		if (this._in_anim == true) {
+			if (this.checkStatus() == false) {
+				this._in_anim = false;
+				this.onAnimComplete.call(this);
+			}
+		} else {
+			if (this.checkStatus() == true) {
+				this._in_anim = true;
+			}
+		}
+	},
+	// check if status is changing
+	checkStatus: function() {
+/*
+		return (this.hp_stat.bar.is_changing() || 
+				this.mp_stat.bar.is_changing() || 
+				(this.exp_stat && this.exp_stat.bar.is_changing())
+		);
+*/
+		if (this.hp_stat.bar.is_changing()) {
+			return true;
+		}
+		if (this.mp_stat.bar.is_changing()) {
+			return true;
+		}
+		if (this.exp_stat && this.exp_stat.bar.is_changing()) {
+			return true;
+		}
+		return false;
+	},
 	_noop: function() {}	
 });
 
@@ -288,10 +345,10 @@ var TextBar = enchant.Class.create(enchant.Group, {
 
 		this.label = new Label(Math.round(curVal) + " / " + Math.round(maxVal));
 		this.label.color = '#ffffff';
-		this.label.textAlign = 'right';
+		this.label.textAlign = 'center';
 		this.label.width = w - 40;
 		this.label.font = '14pt Helvetica';
-		this.label.moveTo(20, 0);
+		this.label.moveTo(20, -2);
 		// move label to the middle of the bar
 
 		this.addChild(this.bar);
@@ -315,7 +372,7 @@ var Bar = enchant.Class.create(enchant.Sprite, {
         this._maxvalue = maxVal;
         this._lastvalue = curVal;
         this.value = curVal;
-        this.easing = 5;
+        this.easing = 10;
 		this._maxwidth = maxwidth;
         this.addEventListener('enterframe', function() {
             if (this.value < 0) {
@@ -337,6 +394,9 @@ var Bar = enchant.Class.create(enchant.Sprite, {
             this._updateCoordinate();
         });
     },
+	is_changing: function() {
+		return this.value != this.curvalue;
+	},
     direction: {
         get: function() {
             return this._direction;

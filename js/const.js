@@ -29,8 +29,8 @@ var Consts = enchant.Class.create({
 			INIT: 0,
 			SCENARIO: 1,
 			PLAYER_TURN: 100,
-			PLAYER_UNIT_MENU: 101,
-			PLAYER_UNIT_SHOW_RNG: 102,
+			PLAYER_UNIT_MOVE: 101,
+			PLAYER_UNIT_PREPARE: 102,
 			PLAYER_UNIT_ACTION: 103,
 			ENEMY_TURN: 200,
 			ENEMY_UNIT_ACTION: 201
@@ -121,6 +121,14 @@ var Consts = enchant.Class.create({
 	},	
 	attack_type: function(type) {
 		return this._atk_types[type];
+	},
+	getSchoolName: function(school) {
+		for (var s in this._schools) {
+			if (this._schools[s] == school) {
+				return s;
+			}
+		}
+		return "NO_NAME";
 	},
 	_noop: function(){}
 });

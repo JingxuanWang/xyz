@@ -10,9 +10,9 @@ window.onload = function(){
 
 		GAME.preload(CONFIG.get(["image"]));
 		GAME.onload = function(){
-			var battle = new BattleScene();
-			GAME.pushScene(battle);
-			battle.start();
+			BATTLE = new BattleScene();
+			GAME.pushScene(BATTLE);
+			BATTLE.start();
 		};
 		GAME.start();
 	});

@@ -103,14 +103,14 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 			unit = this.getUnit(evt.x, evt.y);
 			// only map or exception
 			if (unit != null) {
-				if (this.isUnit(unit, "PLAYER")) {
+				if (unit.side == "PLAYER") {
 					this.onUnitSelect(unit, "PLAYER");
-				} else if (this.isUnit(unit, "ENEMY")) {
+				} else if (unit.side == "ENEMY") {
 					this.onUnitSelect(unit, "ENEMY");
 				}
 			}
 		}
-		else if (this._status == CONSTS.battleStatus("PLAYER_UNIT_MENU")) {
+		else if (this._status == CONSTS.battleStatus("PLAYER_UNIT_MOVE")) {
 			unit = this.getUnit(evt.x, evt.y);
 			// only map or exception
 			if (unit != null) {
@@ -118,6 +118,16 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 				this._status = CONSTS.battleStatus("PLAYER_TURN");
 			}
 		}
+		else if (this._status == CONSTS.battleStatus("PLAYER_UNIT_PREPARE")) {
+			unit = this.getUnit(evt.x, evt.y);
+			shade = this.getShade(evt.x, evt.y);
+			// only map or exception
+			if (unit != null && shade != null) {
+				shade.dispatchEvent(evt);
+				this._status = CONSTS.battleStatus("PLAYER_ACTION");
+			}
+		}
+
 		// skip 
 		else {
 			console.log("Status: " + this._status + " can not handle this click, skip");
@@ -156,8 +166,8 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 	// no animation here 
 	addUnits: function(units, side) {
 		for (var i = 0; i < units.length; i++) {
-			//var chara = new Chara(units[i]);
 			var unit = new Unit(units[i]);
+			unit.side = side;
 			if (!this._units[side]) {
 				this._units[side] = [];
 			}
@@ -167,19 +177,6 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 			}
 		}
 	},
-	isUnit: function(unit, side) {
-		var units = this._units[side];
-		if (units == null) {
-			return false;
-		}
-		for (var i = 0; i < units.length; i++) {
-			if (units[i] === unit) {
-				return true;
-			}
-		}
-		return false;
-	},
-
 	// map utilities
 	addMap: function(conf) {
 		if (this.map) {
@@ -189,6 +186,7 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 		this.map_layer.addChild(map);
 		map.battle = this;
 		this.map = map;
+		MAP = map;
 	},
 	isMap: function(target) {
 		return target === this.map;
@@ -272,8 +270,8 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 		console.log("move " + shade.x + " : " + shade.y);
 		var route = shade.route;
 		if (route) {
+			this._status = CONSTS.battleStatus("PLAYER_UNIT_MOVE");
 			unit.animMove(route, bind(this.showMenu, this));
-			this._status = CONSTS.battleStatus("PLAYER_TURN");
 		}
 	},
 	attack: function(unit, grid) {
@@ -286,9 +284,32 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 			console.log("没有攻击对象");
 			return;
 		}
+		// TODO: this should be moved to ohter places
+		this.infobox_queue = [];
+		this.infobox_queue.push(enemy);
+		this.infobox_queue.push(unit);
+		enemy.backupAttr();
+		enemy.cur_attr.hp -= 50;
+		
+		unit.backupAttr();
+		unit.cur_attr.exp += 60;
+
+		this._status = CONSTS.battleStatus("PLAYER_ACTION");
 		var result = this.calcAttack(unit, enemy);
-		this.animCharaAttack(result);
-		this._status = CONSTS.battleStatus("PLAYER_TURN");
+		this.animCharaAttack(result, bind(this.animNextInfoBox, this));
+	},
+	// fetch from infobox queue
+	// and play infobox animation one by one
+	animNextInfoBox: function() {
+		var unit = this.infobox_queue.shift();
+		if (unit != null) {
+			this.removeInfoBox();
+			this.showInfoBox(unit, "ATK", bind(this.animNextInfoBox, this));
+		} else {
+			// no more infobox animation
+			// resume to default status
+			this._status = CONSTS.battleStatus("PLAYER_TURN");
+		}
 	},
 
 	// Menu
@@ -323,7 +344,7 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 
 		this._menu.moveTo(~~(unit.x + unit.width / 4), ~~(unit.y - unit.height / 2));
 		this.ui_layer.addChild(this._menu);
-		this._status = CONSTS.battleStatus("PLAYER_UNIT_MENU");
+		this._status = CONSTS.battleStatus("PLAYER_UNIT_PREPARE");
 	},
 	removeMenu: function() {
 		this.ui_layer.removeChild(this._menu);
@@ -333,11 +354,11 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 	},
 
 	// infobox
-	showInfoBox: function(unit, side) {
-		this.infobox = new InfoBox(unit);
+	showInfoBox: function(unit, type, onAnimComplete) {
+		this.infobox = new InfoBox(unit, type, onAnimComplete);
 		this.ui_layer.addChild(this.infobox);
 	},
-	removeInfoBox: function(unit, side) {
+	removeInfoBox: function() {
 		if (this.infobox != null) {
 			this.ui_layer.removeChild(this.infobox);
 		}	
@@ -347,11 +368,12 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 	},
 
 	// Animation utilities
-	animCharaAttack: function(action_script) {
+	animCharaAttack: function(action_script, onAnimComplete) {
 		if (action_script == null) {
 			console.log("empty action_script");
 			return;
 		}
+		var self = this;
 		// for each round
 		for (var i = 0; i < action_script.length; i++) {
 			var attacker = action_script[i].a;
@@ -376,6 +398,10 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 				atl = atl.delay(30).then(function() {
 					attacker.resume();
 					defender.resume();
+					// last animtion completed
+					if (i >= action_script.length) {
+						onAnimComplete.call(self);
+					}
 				});
 			}
 			// show defender infobox
@@ -497,21 +523,33 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 	// is there a unit specific unit
 	hitUnit: function(x, y, side) {
 		var unit = this.getUnit(x, y);
-		if (unit != null && this.isUnit(unit, side)) {
+		if (unit != null && unit.side == side) {
 			return true;
 		}
 		return false;
 	}, 
-
-	onUnitSelect: function(unit, side) {
-		if (side == "PLAYER") {
+	getShade: function(x, y) {
+		for (var i = 0; i < this.effect_layer.childNodes.length; i++) {
+			var child = this.effect_layer.childNodes[i];
+			for (var j = 0; j < child.childNodes.length; j++) {
+				var node = child.childNodes[j];
+				if (node.x <= x && x < node.x + node.width && 
+					node.y <= y && y < node.y + node.height) {
+					return node;
+				}
+			}
+		}
+		return null;
+	},
+	onUnitSelect: function(unit) {
+		if (unit.side == "PLAYER") {
 			if (unit.canMove()) {
 				this.showMoveRng(unit, false);
 			} else {
 				console.log("This unit can not move!");
 			}
-		} else if (side == "ENEMY") {
-			this.showInfoBox(unit, side);
+		} else if (unit.side == "ENEMY") {
+			this.showInfoBox(unit);
 		}
 	},
 	_nop: function(){

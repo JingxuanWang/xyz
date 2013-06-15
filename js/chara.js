@@ -10,6 +10,8 @@ var Unit = enchant.Class.create(enchant.Group, {
 
 		this.master_attr = new Attr(conf.attr);
 		this.cur_attr = new Attr(conf.attr);
+		this.last_attr = new Attr(conf.attr);
+
 		this._status = CONSTS.unitStatus("NORMAL");
 
 		this.chara = new Chara(conf);
@@ -103,6 +105,9 @@ var Unit = enchant.Class.create(enchant.Group, {
 		set: function(attr) {
 			this._cur_attr = attr;
 		},
+	},
+	backupAttr: function() {
+		this.last_attr = clone(this.cur_attr);
 	},
 
 	_noop: function() {

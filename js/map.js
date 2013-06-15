@@ -55,6 +55,12 @@ var xyzMap = enchant.Class.create(enchant.Map, {
 	getTerrain: function(x, y) {
 		return this.terrain_data[this.y2i(y)][this.x2j(x)];
 	},
+	getTerrainName: function(x, y) {
+		return "平地";
+	},
+	getTerrainInfo: function(x, y) {
+		return 100;
+	},
 	isInMap: function(x, y) {
 		var i = this.y2i(y);
 		var j = this.x2j(x);
@@ -111,7 +117,7 @@ var xyzMap = enchant.Class.create(enchant.Map, {
 			if (cur.r + 1 < self.getReqMovement(terrain, unit.cur_attr.school)) {
 				return false;
 			}
-			if (type == "MOV" && self.battle.hitUnit(cur.x, cur.y, "ENEMY")) {
+			if (type == "MOV" && BATTLE.hitUnit(cur.x, cur.y, "ENEMY")) {
 				return false;
 			}
 
