@@ -291,6 +291,7 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 		enemy.backupAttr();
 		enemy.cur_attr.hp -= 50;
 		
+		unit.cur_attr.exp = 10;
 		unit.backupAttr();
 		unit.cur_attr.exp += 60;
 
@@ -303,12 +304,17 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 	animNextInfoBox: function() {
 		var unit = this.infobox_queue.shift();
 		if (unit != null) {
-			this.removeInfoBox();
-			this.showInfoBox(unit, "ATK", bind(this.animNextInfoBox, this));
+			this.tl.delay(30).then(function(){
+				this.removeInfoBox();
+				this.showInfoBox(unit, "ATK", bind(this.animNextInfoBox, this));
+			});
 		} else {
 			// no more infobox animation
 			// resume to default status
-			this._status = CONSTS.battleStatus("PLAYER_TURN");
+			this.tl.delay(30).then(function(){
+				this.removeInfoBox();
+				this._status = CONSTS.battleStatus("PLAYER_TURN");
+			});
 		}
 	},
 
@@ -386,7 +392,7 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 			var dtl = defender.tl;
 			if (type === "ATTACK") {
 				atl = atl.action({
-					time: 60,
+					time: 40,
 					onactionstart: function() {
 						attacker.attack(d);
 					},

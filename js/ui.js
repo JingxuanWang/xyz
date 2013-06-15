@@ -148,7 +148,7 @@ var InfoBox = enchant.Class.create(enchant.Group, {
 		this._in_anim = false;
 		this.onAnimComplete = onAnimComplete;
 
-		if (this.side == CONSTS.side("PLAYER") && this.type == "ATK") {
+		if (this.side == "PLAYER" && this.type == "ATK") {
 			this.height = 144;
 		}
 
@@ -160,7 +160,7 @@ var InfoBox = enchant.Class.create(enchant.Group, {
 		this.setSchool();
 			this.setHpStat();
 			this.setMpStat();
-		if (this.side == CONSTS.side("PLAYER") && this.type == "ATK") {
+		if (this.side == "PLAYER" && this.type == "ATK") {
 			this.setExpStat();
 		}
 		if (this.type != "ATK") {
@@ -235,7 +235,7 @@ var InfoBox = enchant.Class.create(enchant.Group, {
 	},
 
 	setHpStat: function() {
-		var bl = 32
+		var bl = 35
 		// image
 		this.hp_img = new Sprite(24, 24);
 		this.hp_img.image = GAME.assets[CONFIG.get(["Menu", "icon", "hp"])];
@@ -254,7 +254,7 @@ var InfoBox = enchant.Class.create(enchant.Group, {
 		this.addChild(this.hp_stat);
 	},
 	setMpStat: function() {
-		var bl = 57;
+		var bl = 60;
 		// image
 		this.mp_img = new Sprite(24, 24);
 		this.mp_img.image = GAME.assets[CONFIG.get(["Menu", "icon", "mp"])];
@@ -265,6 +265,7 @@ var InfoBox = enchant.Class.create(enchant.Group, {
 			this.unit.last_attr.mp, 
 			this.unit.master_attr.mp
 		);
+		this.mp_stat.bar.value = this.unit.cur_attr.mp;
 
 		this.mp_stat.bar.image = GAME.assets[CONFIG.get(["Menu", "bar", "mp"])];
 		this.mp_stat.moveTo(45, bl - 3);
@@ -272,7 +273,7 @@ var InfoBox = enchant.Class.create(enchant.Group, {
 		this.addChild(this.mp_stat);
 	},
 	setExpStat: function() {
-		var bl = 82;
+		var bl = 85;
 		// image
 		this.exp_img = new Sprite(24, 24);
 		this.exp_img.image = GAME.assets[CONFIG.get(["Menu", "icon", "exp"])];
@@ -283,6 +284,7 @@ var InfoBox = enchant.Class.create(enchant.Group, {
 			this.unit.last_attr.exp, 
 			this.unit.master_attr.exp
 		);
+		this.exp_stat.bar.value = this.unit.cur_attr.exp;
 
 		this.exp_stat.bar.image = GAME.assets[CONFIG.get(["Menu", "bar", "exp"])];
 		this.exp_stat.moveTo(45, bl - 3);
@@ -304,12 +306,6 @@ var InfoBox = enchant.Class.create(enchant.Group, {
 	},
 	// check if status is changing
 	checkStatus: function() {
-/*
-		return (this.hp_stat.bar.is_changing() || 
-				this.mp_stat.bar.is_changing() || 
-				(this.exp_stat && this.exp_stat.bar.is_changing())
-		);
-*/
 		if (this.hp_stat.bar.is_changing()) {
 			return true;
 		}
