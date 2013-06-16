@@ -100,6 +100,7 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 		//console.log("Battle clicked: " + evt.x + " : " + evt.y + " : " + this._status);
 		var unit;
 		if (this._status == CONSTS.battleStatus("PLAYER_TURN")) {
+			this.removeInfoBox();
 			unit = this.getUnit(evt.x, evt.y);
 			// only map or exception
 			if (unit != null) {
@@ -110,13 +111,19 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 				}
 			}
 		}
-		else if (this._status == CONSTS.battleStatus("PLAYER_UNIT_MOVE")) {
+		else if (this._status == CONSTS.battleStatus("PLAYER_UNIT_MOVE_RNG")) {
 			unit = this.getUnit(evt.x, evt.y);
-			// only map or exception
-			if (unit != null) {
-				this.removeMenu();
+			if (unit == this._selected_unit) {
+				this.removeShades();
+				this.showInfoBox(unit);
 				this._status = CONSTS.battleStatus("PLAYER_TURN");
 			}
+		}
+		else if (this._status == CONSTS.battleStatus("PLAYER_UNIT_MOVE")) {
+			// if there is a touch event at this phrase
+			// it means to finish this animatin immediately
+			// TODO:
+			//this.finishCurMove();
 		}
 		else if (this._status == CONSTS.battleStatus("PLAYER_UNIT_PREPARE")) {
 			unit = this.getUnit(evt.x, evt.y);
@@ -124,11 +131,13 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 			// only map or exception
 			if (unit != null && shade != null) {
 				shade.dispatchEvent(evt);
-				this._status = CONSTS.battleStatus("PLAYER_ACTION");
+				this._status = CONSTS.battleStatus("PLAYER_UNIT_ACTION");
 			}
 		}
-
-		// skip 
+		else if (this._status == CONSTS.battleStatus("PLAYER_UNIT_ACTION")) {
+			// do nothing
+		}
+		// default is skip 
 		else {
 			console.log("Status: " + this._status + " can not handle this click, skip");
 		}
@@ -202,8 +211,8 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 		var self = this;
 		var i = 0;
 		var shade;
-		this._move_grids = this.map.getAvailGrids(unit, unit.cur_attr.mov, "MOV");
-		this._atk_grids = this.map.getAvailAtkGrids(unit, unit.cur_attr.rng);
+		this._move_grids = this.map.getAvailGrids(unit, unit.attr.current.mov, "MOV");
+		this._atk_grids = this.map.getAvailAtkGrids(unit, unit.attr.current.rng);
 		this._atk_shade = new Group();
 		this._mov_shade = new Group();
 	
@@ -244,7 +253,7 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 	showAtkRng: function(unit) {
 		console.log("show attack range" + this._atk_grids);
 		var self = this;
-		this._atk_grids = this.map.getAvailAtkGrids(unit, unit.cur_attr.rng);
+		this._atk_grids = this.map.getAvailAtkGrids(unit, unit.attr.current.rng);
 		var atk_shade_cb = function(grid) {
 			self.removeShades();
 			self.attack(unit, grid);
@@ -284,40 +293,15 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 			console.log("没有攻击对象");
 			return;
 		}
-		// TODO: this should be moved to ohter places
 		this.infobox_queue = [];
-		this.infobox_queue.push(enemy);
-		this.infobox_queue.push(unit);
-		enemy.backupAttr();
-		enemy.cur_attr.hp -= 50;
-		
-		unit.cur_attr.exp = 10;
-		unit.backupAttr();
-		unit.cur_attr.exp += 60;
+		this.dead_queue = [];
+		this.lvup_queue = [];
 
 		this._status = CONSTS.battleStatus("PLAYER_ACTION");
 		var result = this.calcAttack(unit, enemy);
-		this.animCharaAttack(result, bind(this.animNextInfoBox, this));
+		this.animCharaAttack(result, bind(this.animCharaInfoBox, this));
 	},
-	// fetch from infobox queue
-	// and play infobox animation one by one
-	animNextInfoBox: function() {
-		var unit = this.infobox_queue.shift();
-		if (unit != null) {
-			this.tl.delay(30).then(function(){
-				this.removeInfoBox();
-				this.showInfoBox(unit, "ATK", bind(this.animNextInfoBox, this));
-			});
-		} else {
-			// no more infobox animation
-			// resume to default status
-			this.tl.delay(30).then(function(){
-				this.removeInfoBox();
-				this._status = CONSTS.battleStatus("PLAYER_TURN");
-			});
-		}
-	},
-
+	
 	// Menu
 	showMenu: function(unit) {
 		console.log("showMenu called");
@@ -392,7 +376,7 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 			var dtl = defender.tl;
 			if (type === "ATTACK") {
 				atl = atl.action({
-					time: 40,
+					time: 60,
 					onactionstart: function() {
 						attacker.attack(d);
 					},
@@ -401,7 +385,7 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 					}
 				});
 					
-				atl = atl.delay(30).then(function() {
+				atl = atl.delay(20).then(function() {
 					attacker.resume();
 					defender.resume();
 					// last animtion completed
@@ -410,20 +394,74 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 					}
 				});
 			}
-			// show defender infobox
-			// show attacker infobox
 		}
 	},
-	animCharaAppear: function(unit) {
+	// fetch from infobox queue
+	// and play infobox animation one by one
+	animCharaInfoBox: function() {
+		var unit = this.infobox_queue.shift();
+		if (unit != null) {
+			this.tl.delay(10).then(function(){
+				this.removeInfoBox();
+				this.showInfoBox(unit, "ATK", bind(this.animCharaInfoBox, this));
+			});
+		} else {
+			// no more infobox animation
+			// resume to default status
+			this.tl.delay(10).then(function(){
+				this.removeInfoBox();
+				this.animCharaLevelup();
+			});
+		}
+	},
+	animCharaLevelup: function() {
+		var unit = this.lvup_queue.shift();
+		if (unit != null) {
+			// 1, level up (done)
+			// 2, weapon level up
+			// 3, armor level up
+			this.tl.delay(30).action({
+				time: 90,
+				onactionstart: function() {
+					unit.levelUp();
+				},
+				onactionend: function() {
+					unit.resume();
+					this.animCharaInfoBox();
+				},
+			});
+		} else {
+			// no more levelup animation
+			this.tl.delay(30).then(function(){
+				this.animCharaDie();
+			});
+		}
+	},
+	// there may be multiple units
+	animCharaDie: function() {
+		var unit = this.dead_queue.shift();
+		if (unit != null) {
+			this.tl.action({
+				time: 60,
+				onactionstart: function() {
+					unit.die();
+				},
+				onactionend: function() {
+					this.unit_layer.removeChild(unit);
+					this.animCharaDie();
+				}
+			});
+		} else {
+			this._status = CONSTS.battleStatus("PLAYER_TURN");
+		}
+	},
+	animCharaAppear: function(units) {
 
 	},
-	animCharaEscape: function(unit) {
+	animCharaEscape: function(units) {
 		
 	},
-	animCharaDie: function(unit) {
 
-	},
-	
 	// numberic calculations
 	calcRoute: function(unit, target) {
 		var judgeDirection = function(src, dst) {
@@ -456,6 +494,10 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 			console.log("Error Parameter" + attacker + " : " + defender);
 			return;
 		}
+
+		this.infobox_queue.push(defender);
+		this.infobox_queue.push(attacker);
+
 		var action_script = [];
 		// attack
 		var atk_dmg = this.calcAtkDamage(attacker, defender, "ATTACK");
@@ -467,6 +509,12 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 			ad: atk_dmg,
 			ae: atk_exp
 		})
+		defender.attr.backup();
+		defender.attr.current.hp -= atk_dmg;
+		
+		attacker.attr.backup();
+		attacker.attr.current.exp += atk_exp;
+
 		// 可以封杀反击...
 		if (false) {
 			// retaliate
@@ -480,6 +528,21 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 				re: atk_exp
 			});
 		}
+
+		if (defender.attr.current.hp <= 0) {
+			this.dead_queue.push(defender);
+		}
+		if (attacker.attr.current.hp <= 0) {
+			this.dead_queue.push(attacker);
+		}
+
+		if (attacker.canLevelUp()) {
+			attacker.attr.current.level += 
+				~~(attacker.attr.current.level / attacker.attr.master.level);
+			attacker.attr.current.exp %= attacker.attr.master.exp;
+			this.lvup_queue.push(attacker);
+		}
+
 		return action_script;
 	},
 	calcDirection: function(attacker, defender) {
@@ -499,7 +562,7 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 		return 50;
 	},
 	calcExp: function(attacker, defender, damage) {
-		return 10;
+		return 60;
 	},
 	// get all objects on this point
 	// including map
@@ -548,8 +611,10 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 		return null;
 	},
 	onUnitSelect: function(unit) {
+		this._selected_unit = unit;
 		if (unit.side == "PLAYER") {
 			if (unit.canMove()) {
+				this._status = CONSTS.battleStatus("PLAYER_UNIT_MOV_RNG");
 				this.showMoveRng(unit, false);
 			} else {
 				console.log("This unit can not move!");

@@ -109,12 +109,12 @@ var xyzMap = enchant.Class.create(enchant.Map, {
 			}
 			var terrain = self.getTerrain(cur.x, cur.y);
 			// impassible
-			if (type == "MOV" && !self.isPassible(terrain, unit.cur_attr.school)) {
+			if (type == "MOV" && !self.isPassible(terrain, unit.attr.current.school)) {
 				return false;
 			}
 			// remain movement > 0
 			// but movement is not enough for this grid
-			if (cur.r + 1 < self.getReqMovement(terrain, unit.cur_attr.school)) {
+			if (cur.r + 1 < self.getReqMovement(terrain, unit.attr.current.school)) {
 				return false;
 			}
 			if (type == "MOV" && BATTLE.hitUnit(cur.x, cur.y, "ENEMY")) {

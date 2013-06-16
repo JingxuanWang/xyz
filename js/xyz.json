@@ -41,7 +41,7 @@
 	},
 	"player_unit" : [
 		{
-			"attr" : {
+			"master_attr" : {
 				"chara_id" : 110001,
 				"name": "项羽",
 				"level" : 1,
@@ -55,10 +55,10 @@
 				"mor" : 20,
 				"mov" : 3,
 				"rng" : 1,
-				"exp" : 100,
-				"cur_hp" : 110,
-				"cur_mp" : 20,
-				"cur_exp" : 30
+				"exp" : 100
+			},
+			"cur_attr" : {
+				"exp" : 10
 			},
 			"position" : {
 				"i" : 1,
@@ -75,7 +75,7 @@
 	"allies_unit" : [],
 	"enemy_unit" : [
 		{
-			"attr" : {
+			"master_attr" : {
 				"chara_id" : 130001,
 				"name": "官兵",
 				"level" : 1,
@@ -89,10 +89,7 @@
 				"mor" : 20,
 				"mov" : 4,
 				"rng" : 1,
-				"exp" : 100,
-				"cur_hp" : 100,
-				"cur_mp" : 10,
-				"cur_exp" : 30
+				"exp" : 100
 			},
 			"position" : {
 				"i" : 3,

@@ -206,19 +206,19 @@ var InfoBox = enchant.Class.create(enchant.Group, {
 		}
 	},
 	setName: function() {
-		this.name = new Label(this.unit.cur_attr.name);
+		this.name = new Label(this.unit.attr.current.name);
 		this.name.color = '#ffffff';
 		this.name.moveTo(10, 5);
 		this.addChild(this.name);
 	},
 	setLevel: function() {
-		this.level = new Label("Lv. " + this.unit.cur_attr.level);
+		this.level = new Label("Lv. " + this.unit.attr.current.level);
 		this.level.color = '#ffffff';
 		this.level.moveTo(60, 5);
 		this.addChild(this.level);
 	},
 	setSchool: function() {
-		this.school = new Label(CONSTS.getSchoolName(this.unit.cur_attr.school));
+		this.school = new Label(CONSTS.getSchoolName(this.unit.attr.current.school));
 		this.school.color = '#ffffff';
 		this.school.moveTo(130, 5);
 		this.addChild(this.school);
@@ -243,10 +243,10 @@ var InfoBox = enchant.Class.create(enchant.Group, {
 		this.addChild(this.hp_img);
 		// bar & lable
 		this.hp_stat = new TextBar(130, 8, 
-			this.unit.last_attr.hp, 
-			this.unit.master_attr.hp
+			this.unit.attr.last.hp, 
+			this.unit.attr.master.hp
 		);
-		this.hp_stat.bar.value = this.unit.cur_attr.hp;
+		this.hp_stat.bar.value = this.unit.attr.current.hp;
 
 		this.hp_stat.bar.image = GAME.assets[CONFIG.get(["Menu", "bar", "hp"])];
 		this.hp_stat.moveTo(45, bl - 3);
@@ -262,10 +262,10 @@ var InfoBox = enchant.Class.create(enchant.Group, {
 		this.addChild(this.mp_img);
 		// bar & lable
 		this.mp_stat = new TextBar(130, 8, 
-			this.unit.last_attr.mp, 
-			this.unit.master_attr.mp
+			this.unit.attr.last.mp, 
+			this.unit.attr.master.mp
 		);
-		this.mp_stat.bar.value = this.unit.cur_attr.mp;
+		this.mp_stat.bar.value = this.unit.attr.current.mp;
 
 		this.mp_stat.bar.image = GAME.assets[CONFIG.get(["Menu", "bar", "mp"])];
 		this.mp_stat.moveTo(45, bl - 3);
@@ -281,10 +281,19 @@ var InfoBox = enchant.Class.create(enchant.Group, {
 		this.addChild(this.exp_img);
 		// bar & lable
 		this.exp_stat = new TextBar(130, 8, 
-			this.unit.last_attr.exp, 
-			this.unit.master_attr.exp
+			this.unit.attr.last.exp, 
+			this.unit.attr.master.exp
 		);
-		this.exp_stat.bar.value = this.unit.cur_attr.exp;
+		// if current.exp < last.exp
+		// it means there is a level up
+		// so we should redefine actions
+		if (this.unit.attr.current.exp < this.unit.attr.last.exp) {
+			// LEVEL UP
+			this.exp_stat.bar.value = this.unit.attr.master.exp;
+		} else {
+			// NO LEVEL UP
+			this.exp_stat.bar.value = this.unit.attr.current.exp;
+		}
 
 		this.exp_stat.bar.image = GAME.assets[CONFIG.get(["Menu", "bar", "exp"])];
 		this.exp_stat.moveTo(45, bl - 3);
@@ -335,9 +344,12 @@ var InfoBox = enchant.Class.create(enchant.Group, {
 */
 var TextBar = enchant.Class.create(enchant.Group, {
 	initialize: function(w, h, curVal, maxVal) {
-        enchant.Group.call(this);
+		if (curVal == null || maxVal == null) {
+			throw new Error('Undefined value ' + curVal + " " + maxVal);
+		}
+		enchant.Group.call(this);
 		this.bar = new Bar(w, h, w, curVal, maxVal);
-		this.bar.moveTo(10, 5);
+		this.bar.moveTo(0, 5);
 
 		this.label = new Label(Math.round(curVal) + " / " + Math.round(maxVal));
 		this.label.color = '#ffffff';
@@ -358,71 +370,75 @@ var TextBar = enchant.Class.create(enchant.Group, {
 });
 
 var Bar = enchant.Class.create(enchant.Sprite, {
-    initialize: function(w, h, maxwidth, curVal, maxVal) {
-        enchant.Sprite.call(this, w, h);
-        this.image = new enchant.Surface(w, h);// Null用
-        this.image.context.fillColor = 'RGB(0, 0, 256)';
-        this.image.context.fillRect(0, 0, w, h);
-        this._direction = 'right';
-        this._origin = 0;
-        this._maxvalue = maxVal;
-        this._lastvalue = curVal;
-        this.value = curVal;
-        this.easing = 10;
+	initialize: function(w, h, maxwidth, curVal, maxVal) {
+		enchant.Sprite.call(this, w, h);
+		this.image = new enchant.Surface(w, h);// Null用
+		this.image.context.fillColor = 'RGB(0, 0, 256)';
+		this.image.context.fillRect(0, 0, w, h);
+		this._direction = 'right';
+		this._origin = 0;
+		this._maxvalue = maxVal;
+		this._lastvalue = curVal;
+		this.value = curVal;
+		this.easing = 10;
 		this._maxwidth = maxwidth;
-        this.addEventListener('enterframe', function() {
-            if (this.value < 0) {
-                this.value = 0;
-            }
-            this._lastvalue += (this.value - this._lastvalue) / this.easing;
-            if (Math.abs(this._lastvalue - this.value) < 1.3) {
-                this._lastvalue = this.value;
-            }
-            this.width = Math.round((this._lastvalue / this._maxvalue) * this._maxwidth) | 0;
-            if (this.width > this._maxwidth) {
-                this.width = this._maxwidth;
-            }
-            if (this._direction === 'left') {
-                this._x = this._origin - this.width;
-            } else {
-                this._x = this._origin;
-            }
-            this._updateCoordinate();
-        });
-    },
+
+		// initialize
+		this.width = this._lastvalue;
+
+		this.addEventListener('enterframe', function() {
+			if (this.value < 0) {
+				this.value = 0;
+			}
+			this._lastvalue += (this.value - this._lastvalue) / this.easing;
+			if (Math.abs(this._lastvalue - this.value) < 1.3) {
+				this._lastvalue = this.value;
+			}
+			this.width = Math.round((this._lastvalue / this._maxvalue) * this._maxwidth) | 0;
+			if (this.width > this._maxwidth) {
+				this.width = this._maxwidth;
+			}
+			if (this._direction === 'left') {
+				this._x = this._origin - this.width;
+			} else {
+				this._x = this._origin;
+			}
+			this._updateCoordinate();
+		});
+	},
 	is_changing: function() {
 		return this.value != this.curvalue;
 	},
-    direction: {
-        get: function() {
-            return this._direction;
-        },
-        set: function(newdirection) {
-            if (newdirection !== 'right' && newdirection !== 'left') {
-                // ignore
-            } else {
-                this._direction = newdirection;
-            }
-        }
-    },
-    x: {
-        get: function() {
-            return this._origin;
-        },
-        set: function(x) {
-            this._x = x;
-            this._origin = x;
-            this._dirty = true;
-        }
-    },
-    maxvalue: {
-        get: function() {
-            return this._maxvalue;
-        },
-        set: function(val) {
-            this._maxvalue = val;
-        }
-    },
+	direction: {
+		get: function() {
+			return this._direction;
+		},
+		set: function(newdirection) {
+			if (newdirection !== 'right' && newdirection !== 'left') {
+				// ignore
+			} else {
+				this._direction = newdirection;
+			}
+		}
+	},
+	x: {
+		get: function() {
+			return this._origin;
+		},
+		set: function(x) {
+			this._x = x;
+			this._origin = x;
+			this._dirty = true;
+		}
+	},
+	maxvalue: {
+		get: function() {
+			return this._maxvalue;
+		},
+		set: function(val) {
+			this._maxvalue = val;
+		}
+	},
 	// readonly 
 	// returns current value
 	curvalue: {
