@@ -33,8 +33,17 @@ var Consts = enchant.Class.create({
 			PLAYER_UNIT_MOVE: 102,
 			PLAYER_UNIT_PREPARE: 103,
 			PLAYER_UNIT_ACTION: 104,
-			ENEMY_TURN: 200,
-			ENEMY_UNIT_ACTION: 201
+			ALLIES_TURN: 200,
+			ALLIES_UNIT_ACTION: 201,
+			ENEMY_TURN: 300,
+			ENEMY_UNIT_ACTION: 301
+			/*
+				MOVE_RNG
+				MOVE
+				ACTION_SELECT
+				ACTION_RNG
+				ACTION
+			*/
 		};
 		this._atk_types = {
 			NONE: 0,
@@ -119,7 +128,7 @@ var Consts = enchant.Class.create({
 	},	
 	battleStatus: function(st) {
 		return this._battle_status[st];
-	},	
+	},
 	attack_type: function(type) {
 		return this._atk_types[type];
 	},

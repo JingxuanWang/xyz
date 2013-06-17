@@ -10,6 +10,7 @@ var Unit = enchant.Class.create(enchant.Group, {
 
 		this.attr = new Attr(conf.master_attr, conf.cur_attr);
 
+		this.action_end = false;
 		this.weak_rate = 0.3;
 
 		this._status = CONSTS.unitStatus("NORMAL");
