@@ -3,12 +3,13 @@ var Unit = enchant.Class.create(enchant.Group, {
 	classname: "Unit",
 	initialize: function(conf) {
 		enchant.Group.call(this);
-		this.x = conf.position.i * CONFIG.get(["map", "tileWidth"]); 
-		this.y = conf.position.j * CONFIG.get(["map", "tileHeight"]);
 		this.width = CONFIG.get(["map", "tileWidth"]);
 		this.height = CONFIG.get(["map", "tileHeight"]);
+		
+		this.i = conf.position.i;
+		this.j = conf.position.j;
 
-		this.attr = new Attr(conf.master_attr, conf.cur_attr);
+		this.attr = new Attr(conf.master_attr, conf.cur_attr, this);
 
 		this.action_end = false;
 		this.weak_rate = 0.3;
@@ -20,6 +21,22 @@ var Unit = enchant.Class.create(enchant.Group, {
 		this.label.color = '#ffffff';
 		this.addChild(this.chara);
 		this.addChild(this.label);
+	},
+	i: {
+		get: function() {
+			return Math.round(this.x / this.width);
+		},
+		set: function(ti) {
+			this.x = ti * this.width;
+		}
+	},
+	j: {
+		get: function() {
+			return Math.round(this.y / this.height);
+		},
+		set: function(ty) {
+			this.y = ty * this.height;
+		}
 	},
 	d: {
 		get: function() {
@@ -55,6 +72,13 @@ var Unit = enchant.Class.create(enchant.Group, {
 			onMoveComplete.call(this, self);
 		});
 	},
+	isOnBattleField: function() {
+		if (this._status == CONSTS.unit_status.HIDE || 
+			this._status == CONSTS.unit_status.DEAD) {
+			return false;
+		}
+		return true;
+	},
 	canMove: function() {
 		if (this._status != CONSTS.unit_status.MOVED && 
 			this._status != CONSTS.unit_status.ACTIONED && 
@@ -74,12 +98,25 @@ var Unit = enchant.Class.create(enchant.Group, {
 	move: function(d) {
 		this.chara.setAnim("MOVE", d);
 	},
-	resume: function() {
+	resume: function(d) {
+		if (d) {
+			this.d = d;
+		}
 		this.label.text = "";
+		// sync cur attr 
 		if (this.attr.current.hp <= this.attr.master.hp * this.weak_rate) {
 			this.chara.setAnim("WEAK", this.d);
 		} else {
-			this.chara.setAnim("MOVE", this.d);
+			if (this._status == CONSTS.unit_status.ACTIONED) {
+				this.chara.setAnim("STAND", this.d);
+			} else {
+				this.chara.setAnim("MOVE", this.d);
+			}
+		}
+	},
+	stand: function() {
+		if (this._status == CONSTS.unit_status.ACTIONED) {
+			this.chara.setAnim("STAND", this.d);
 		}
 	},
 	hurt: function(damage) {
@@ -93,6 +130,7 @@ var Unit = enchant.Class.create(enchant.Group, {
 	die: function() {
 		this.chara.setAnim("WEAK", this.d);
 		this.chara.blink = true;
+		this._status = CONSTS.unit_status.DEAD;
 	},
 	_noop: function() {
 

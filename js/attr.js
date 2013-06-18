@@ -16,10 +16,15 @@ var Attr = enchant.Class.create({
 	rng: 0,
 	exp: 0,
 	
-	initialize: function(master_attr, cur_attr) {
+	initialize: function(master_attr, cur_attr, unit) {
 		if (master_attr == null) {
 			throw new Error('master_attr undefined');	
 		}
+		if (unit == null) {
+			throw new Error('unit undefined');	
+		}
+		this.unit = unit;
+
 		this.master = {};
 		this.current = {};
 		this.last = {};
@@ -76,11 +81,14 @@ var Attr = enchant.Class.create({
 		for (var prop in this._current) {
 			this._last[prop] = this._current[prop];
 		}
+		this._last.i = this.unit.i;
+		this._last.j = this.unit.j;
+		this._last.d = this.unit.d;
 	},
 	resume: function() {
 		this._current = {};
 		for (var prop in this._last) {
-			this._current[prop] = this._current[prop];
+			this._current[prop] = this._last[prop];
 		}
 	},
 	_noop: function() {}

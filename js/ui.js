@@ -305,6 +305,8 @@ var InfoBox = enchant.Class.create(enchant.Group, {
 		if (this._in_anim == true) {
 			if (this.checkStatus() == false) {
 				this._in_anim = false;
+				// to sync unit's attr
+				this.unit.attr.backup();
 				this.onAnimComplete.call(this);
 			}
 		} else {

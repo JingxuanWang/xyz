@@ -17,7 +17,7 @@ var Consts = enchant.Class.create({
 		this.unit_status = {
 			// common status
 			NORMAL: 0,
-			MOVED: 1,
+			MOVED: 1,		// not recommend to use
 			ACTIONED: 2,
 
 			// extra
@@ -37,7 +37,11 @@ var Consts = enchant.Class.create({
 			MOVE: 102,
 			ACTION_SELECT: 103,
 			ACTION_RNG: 104,
-			ACTION: 105
+			ACTION: 105,
+			
+			WIN: 900,
+			LOSE: 901,
+			DRAW: 902
 		};
 		this.attack_type = {
 			NONE: 0,
