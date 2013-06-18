@@ -1,51 +1,45 @@
 var Consts = enchant.Class.create({
 	classname: "Consts",
 	initialize: function() {
-		this._directions = {
+		this.direction = {
 			DOWN: 0,
 			RIGHT: 1,
 			UP: 2,
 			LEFT: 3,
 		};
-		this._side = {
+		this.side = {
 			PLAYER: 0,
 			ALLIES: 1,
 			ENEMY: 2,
 			ENEMY_ALLIES: 3,
 			NUTRUAL: 4,
 		};
-		this._unit_status = {
+		this.unit_status = {
 			// common status
 			NORMAL: 0,
 			MOVED: 1,
 			ACTIONED: 2,
+
 			// extra
 			POISON: 11,
+
+			// special status
+			HIDE: 20,
 				
 			// dead
 			DEAD: -1,
 		};
-		this._battle_status = {
+		this.battle_status = {
 			INIT: 0,
 			SCENARIO: 1,
-			PLAYER_TURN: 100,
-			PLAYER_UNIT_MOVE_RNG: 101,
-			PLAYER_UNIT_MOVE: 102,
-			PLAYER_UNIT_PREPARE: 103,
-			PLAYER_UNIT_ACTION: 104,
-			ALLIES_TURN: 200,
-			ALLIES_UNIT_ACTION: 201,
-			ENEMY_TURN: 300,
-			ENEMY_UNIT_ACTION: 301
-			/*
-				MOVE_RNG
-				MOVE
-				ACTION_SELECT
-				ACTION_RNG
-				ACTION
-			*/
+			NORMAL: 100,
+			MOVE_RNG: 101,
+			MOVE: 102,
+			ACTION_SELECT: 103,
+			ACTION_RNG: 104,
+			ACTION: 105
 		};
-		this._atk_types = {
+		this.attack_type = {
 			NONE: 0,
 
 			RANGE_1: 1,
@@ -72,7 +66,7 @@ var Consts = enchant.Class.create({
 		
 			FULL_SCREEN: 99,
 		};
-		this._terrains = {
+		this.terrain = {
 			BARRIER: -5,
 			MOUNTAIN: -4,
 			WALL: -3,
@@ -92,7 +86,7 @@ var Consts = enchant.Class.create({
 			CAMP: 13,
 			CASTLE: 14,
 		};
-		this._schools = {
+		this.unit_type = {
 			swordman: 1,
 			lancer: 2,
 			warrior: 3,
@@ -117,25 +111,10 @@ var Consts = enchant.Class.create({
 			"轻步兵": 91,
 		};
 	},
-	side: function(s) {
-		return this._side[s];
-	},
-	direction: function(d) {
-		return this._directions[d];
-	},	
-	unitStatus: function(st) {	
-		return this._unit_status[st];
-	},	
-	battleStatus: function(st) {
-		return this._battle_status[st];
-	},
-	attack_type: function(type) {
-		return this._atk_types[type];
-	},
-	getSchoolName: function(school) {
-		for (var s in this._schools) {
-			if (this._schools[s] == school) {
-				return s;
+	getUnitTypeName: function(t) {
+		for (var ut in this.unit_type) {
+			if (this.unit_type[ut] == t) {
+				return ut;
 			}
 		}
 		return "NO_NAME";

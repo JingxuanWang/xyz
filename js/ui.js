@@ -148,7 +148,7 @@ var InfoBox = enchant.Class.create(enchant.Group, {
 		this._in_anim = false;
 		this.onAnimComplete = onAnimComplete;
 
-		if (this.side == "PLAYER" && this.type == "ATK") {
+		if (this.side == CONSTS.side.PLAYER && this.type == "ATK") {
 			this.height = 144;
 		}
 
@@ -160,7 +160,7 @@ var InfoBox = enchant.Class.create(enchant.Group, {
 		this.setSchool();
 			this.setHpStat();
 			this.setMpStat();
-		if (this.side == "PLAYER" && this.type == "ATK") {
+		if (this.side == CONSTS.side.PLAYER && this.type == "ATK") {
 			this.setExpStat();
 		}
 		if (this.type != "ATK") {
@@ -196,7 +196,7 @@ var InfoBox = enchant.Class.create(enchant.Group, {
 			this.x = x + CONFIG.get(["map", "tileWidth"]);
 		}
 		if (y >= CONFIG.get(["system", "height"]) / 2) {
-			if (this.side == CONSTS.side("PLAYER") && this.type == "ATK") {
+			if (this.side == CONSTS.side.PLAYER && this.type == "ATK") {
 				this.y = y - 2 * CONFIG.get(["map", "tileHeight"]);
 			} else {
 				this.y = y - CONFIG.get(["map", "tileHeight"]);
@@ -218,7 +218,7 @@ var InfoBox = enchant.Class.create(enchant.Group, {
 		this.addChild(this.level);
 	},
 	setSchool: function() {
-		this.school = new Label(CONSTS.getSchoolName(this.unit.attr.current.school));
+		this.school = new Label(CONSTS.getUnitTypeName(this.unit.attr.current.school));
 		this.school.color = '#ffffff';
 		this.school.moveTo(130, 5);
 		this.addChild(this.school);

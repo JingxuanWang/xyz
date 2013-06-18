@@ -30,12 +30,12 @@ var xyzMap = enchant.Class.create(enchant.Map, {
 
 		// movement matrix
 		this._movement_matrix = [];
-		for (var t in CONSTS._terrains) {
-			if (this.isPassible(CONSTS._terrains[t])) {
-				this._movement_matrix[CONSTS._terrains[t]] = [];
-				for (var s in CONSTS._schools) {
+		for (var t in CONSTS.terrain) {
+			if (this.isPassible(CONSTS.terrain[t])) {
+				this._movement_matrix[CONSTS.terrain[t]] = [];
+				for (var ut in CONSTS.unit_type) {
 					// TODO: this should be changed later
-					this._movement_matrix[CONSTS._terrains[t]][CONSTS._schools[s]] = 1;
+					this._movement_matrix[CONSTS.terrain[t]][CONSTS.unit_type[ut]] = 1;
 				}
 			}
 		}
@@ -140,28 +140,28 @@ var xyzMap = enchant.Class.create(enchant.Map, {
 				x: ~~(cur.x),
 				y: ~~(cur.y - unit.height),
 				r: ~~(cur.r - 1),
-				d: CONSTS.direction("UP"),
+				d: CONSTS.direction.UP,
 				route: cur.route.slice(),
 			};
 			var down = {
 				x: ~~(cur.x),
 				y: ~~(cur.y + unit.height),
 				r: ~~(cur.r - 1),
-				d: CONSTS.direction("DOWN"),
+				d: CONSTS.direction.DOWN,
 				route: cur.route.slice(),
 			};		
 			var left = {
 				x: ~~(cur.x - unit.width),
 				y: ~~(cur.y),
 				r: ~~(cur.r - 1),
-				d: CONSTS.direction("LEFT"),
+				d: CONSTS.direction.LEFT,
 				route: cur.route.slice(),
 			};		
 			var right = {
 				x: ~~(cur.x + unit.width),
 				y: ~~(cur.y),
 				r: ~~(cur.r - 1),
-				d: CONSTS.direction("RIGHT"),
+				d: CONSTS.direction.RIGHT,
 				route: cur.route.slice(),
 			};		
 			if (isValid(down)) {
@@ -180,10 +180,10 @@ var xyzMap = enchant.Class.create(enchant.Map, {
 		return avail_grids;
 	},
 	getAvailAtkGrids: function(unit, type) {
-		if (type === CONSTS.attack_type("NONE")) {
+		if (type === CONSTS.attack_type.NONE) {
 			return [];
 		}
-		else if (type <= CONSTS.attack_type("RANGE_5")) {
+		else if (type <= CONSTS.attack_type.RANGE_5) {
 			return this.getAvailGrids(unit, type, "ATK");			
 		}
 	},

@@ -13,7 +13,7 @@ var Unit = enchant.Class.create(enchant.Group, {
 		this.action_end = false;
 		this.weak_rate = 0.3;
 
-		this._status = CONSTS.unitStatus("NORMAL");
+		this._status = CONSTS.unit_status.NORMAL;
 
 		this.chara = new Chara(conf);
 		this.label = new Label("");
@@ -55,16 +55,11 @@ var Unit = enchant.Class.create(enchant.Group, {
 			onMoveComplete.call(this, self);
 		});
 	},
-	setStatus: function(st) {
-		if (UNIT_STATUS[st] == null) {
-			console.log("Chara: setStatus undefined status: " + st);
-		}
-		this._status = UNIT_STATUS[st];
-	},
 	canMove: function() {
-		if (this._status != CONSTS.unitStatus("MOVED") && 
-			this._status != CONSTS.unitStatus("ACTIONED") && 
-			this._status != CONSTS.unitStatus("DEAD")) {
+		if (this._status != CONSTS.unit_status.MOVED && 
+			this._status != CONSTS.unit_status.ACTIONED && 
+			this._status != CONSTS.unit_status.HIDE && 
+			this._status != CONSTS.unit_status.DEAD) {
 			return true;
 		}
 		return false;
@@ -119,7 +114,7 @@ var Chara = enchant.Class.create(enchant.Sprite, {
 		this.width = CONFIG.get(["map", "tileWidth"]);
 		this.height = CONFIG.get(["map", "tileHeight"]);
 		//console.log("Chara.initialized:  x: " + this.x + " y: " + this.y + " width: " + this.width + " height: " + this.height);
-		this._status = CONSTS.unitStatus("NORMAL");
+		this._status = CONSTS.unit_status.NORMAL;
 		
 		this._anims = {
 			"ATTACK" : {
