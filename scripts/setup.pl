@@ -12,6 +12,7 @@ my @FILE_LIST = qw/
 	config.js
 	map.js
 	attr.js
+	ai.js
 	chara.js
 	ui.js
 	battle.js

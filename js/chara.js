@@ -15,6 +15,7 @@ var Unit = enchant.Class.create(enchant.Group, {
 		this.weak_rate = 0.3;
 
 		this._status = CONSTS.unit_status.NORMAL;
+		this.ai = new Ai(conf.ai);
 
 		this.chara = new Chara(conf);
 		this.label = new Label("");

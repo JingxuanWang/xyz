@@ -142,6 +142,18 @@ var Consts = enchant.Class.create({
 			"群雄": 90,
 			"轻步兵": 91,
 		};
+		this.ai = {
+			DUMMY: 0,			// do nothing, just skip
+			HOLD_POSITION: 1,	// do not move, but attack unit within attack range
+			MOVE_POSITION: 2,	// move to position, but not attack
+			ATTACK_POSITION: 3,	// move to position, attack if possible
+			ATTACK_UNIT: 4,		// pursue a target unit and attack if possible
+			KILL_ALL: 5,		// attack all enemy units
+			FOLLOW_UNIT: 6,		// follow a friendly unit
+			FOLLOW_ATTACK: 7,	// follow a friendly unit, attack if possible
+			
+			NONE: 999			// player control, not a ai		
+		};
 	},
 	getUnitTypeName: function(t) {
 		for (var ut in this.unit_type) {
@@ -523,6 +535,33 @@ var Attr = enchant.Class.create({
 	_noop: function() {}
 });
 
+var Ai = enchant.Class.create(enchant.EventTarget, {
+	classname: "Ai",
+
+	initialize: function(conf){
+		enchant.EventTarget.call(this);
+		this.type = CONSTS.ai[conf];
+		if (this.type == null) {
+			throw new Error('Undefined ai type ' + conf);
+		}
+		this.target_units = [];
+	},
+	// find target position
+	targetUnit: function() {
+	},
+	targetPosition: function() {
+	},
+	determineAction: function() {
+		var action_script = {};
+		if (this.type == CONSTS.ai.DUMMY) {
+			action_script.action = 'none';	
+		}
+		return action_script; 
+	},
+	_noop: function() {
+	}
+});
+
 // include chara and chara effect
 var Unit = enchant.Class.create(enchant.Group, {
 	classname: "Unit",
@@ -540,6 +579,7 @@ var Unit = enchant.Class.create(enchant.Group, {
 		this.weak_rate = 0.3;
 
 		this._status = CONSTS.unit_status.NORMAL;
+		this.ai = new Ai(conf.ai);
 
 		this.chara = new Chara(conf);
 		this.label = new Label("");
@@ -1542,7 +1582,17 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 		this.turn = side;
 		if (side == CONSTS.side.ENEMY) {
 			// Enemy AI
+			for (var i = 0; i < this._units[CONSTS.side.ENEMY].length; i++) {
+				var enemy = this._units[CONSTS.side.ENEMY][i];
+				if (enemy && enemy.canMove()) {
+					var action_script = enemy.ai.determineAction(enemy);
+					// action according the script
+					this.actionStart(enemy, action_script);
+					return;
+				}
+			}
 
+			// if there is no enemy
 			this.turnEnd();
 		} else if (side == CONSTS.side.ALLIES) {
 			// Allies AI
@@ -1563,10 +1613,25 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 			this.turnStart(CONSTS.side.ENEMY);
 		}
 	},
-	actionStart: function(unit) {
-		this.actor = unit;
-		this.actor.attr.backup();
-		this.showMoveRng(unit, false);
+	actionStart: function(unit, action_script) {
+		if (unit.side == CONSTS.side.PLAYER) {
+			this.actor = unit;
+			this.actor.attr.backup();
+			this.showMoveRng(unit, false);
+		} else if (unit.side == CONSTS.side.ALLIES) {
+			this.actionEnd();
+		} else if (unit.side == CONSTS.side.ENEMY) {
+			if (action_script == null || action_script.action == 'none') {
+				this.actionEnd();
+			} else if (action_script.action == 'move') {
+				// ...
+			} else if (action_script.action == 'attack') {
+				// ...
+			}
+		}
+	},
+	// used for enemy action
+	actionPhase: function() {
 	},
 	actionCancel: function() {
 		this.actor._status = CONSTS.unit_status.NORMAL;
@@ -1596,7 +1661,8 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 				// do nothing
 			} else {
 				// ai pick next unit to move
-				// next_unit.action() ...
+				var action_script = next_unit.ai.determineAction();
+				this.actionStart(next_unit, action_sctipt);
 			}
 		}
 		// switch to player/allies/enemy turn 
@@ -1611,24 +1677,6 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 		}
 	},
 
-	// status changes
-	start: function() {
-		this.turn = CONSTS.side.PLAYER;
-		this._status = CONSTS.battle_status.NORMAL;
-	},	
-	sideChange: function() {
-		this.turn = CONSTS.side.ENEMY;
-		this._status = CONSTS.battle_status.NORMAL;
-	},	
-	nextTurn: function() {
-		this._status = CONSTS.battle_status.NORMAL;
-	},
-	win: function() {
-		this._status = CONSTS.battle_status.WIN;
-	},
-	lose: function() {
-		this._status = CONSTS.battle_status.LOSE;
-	},
 	conditionJudge: function(conds, callback) {
 		for (var i = 0; i < conds.length; i++) {
 			if (this.condReached(conds[i])) {
@@ -1857,19 +1905,19 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 	},
 
 	// Animation utilities
-	animCharaAttack: function(action_script, onAnimComplete) {
-		if (action_script == null) {
-			console.log("empty action_script");
+	animCharaAttack: function(attack_script, onAnimComplete) {
+		if (attack_script == null) {
+			console.log("empty attack_script");
 			return;
 		}
 		var self = this;
 		// for each round
-		for (var i = 0; i < action_script.length; i++) {
-			var attacker = action_script[i].a;
-			var defender = action_script[i].d;
-			var damage = action_script[i].ad;
-			var type = action_script[i].t; 
-			var exp = action_script[i].ae;
+		for (var i = 0; i < attack_script.length; i++) {
+			var attacker = attack_script[i].a;
+			var defender = attack_script[i].d;
+			var damage = attack_script[i].ad;
+			var type = attack_script[i].t; 
+			var exp = attack_script[i].ae;
 			var d = this.calcDirection(attacker, defender);
 			var atl = attacker.tl;
 			var dtl = defender.tl;
@@ -1888,7 +1936,7 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 					attacker.resume();
 					defender.resume();
 					// last animtion completed
-					if (i >= action_script.length) {
+					if (i >= attack_script.length) {
 						onAnimComplete.call(self);
 					}
 				});
@@ -1997,11 +2045,11 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 		this.infobox_queue.push(defender);
 		this.infobox_queue.push(attacker);
 
-		var action_script = [];
+		var attack_script = [];
 		// attack
 		var atk_dmg = this.calcAtkDamage(attacker, defender, "ATTACK");
 		var atk_exp = this.calcExp(attacker, defender, atk_dmg);
-		action_script.push({
+		attack_script.push({
 			t: "ATTACK",
 			a: attacker,
 			d: defender,
@@ -2019,7 +2067,7 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 			// retaliate
 			atk_dmg = this.calcAtkDamage(defender, attacker, "RETALIATE");
 			atk_exp = this.calcExp(attacker, defender, atk_dmg);
-			action_script.push({
+			attack_script.push({
 				t: "RETALIATE",
 				a: defender,
 				d: attacker,
@@ -2042,7 +2090,7 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 			this.lvup_queue.push(attacker);
 		}
 
-		return action_script;
+		return attack_script;
 	},
 	calcDirection: function(attacker, defender) {
 		if (defender.x > attacker.x) {

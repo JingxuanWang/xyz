@@ -114,6 +114,18 @@ var Consts = enchant.Class.create({
 			"群雄": 90,
 			"轻步兵": 91,
 		};
+		this.ai = {
+			DUMMY: 0,			// do nothing, just skip
+			HOLD_POSITION: 1,	// do not move, but attack unit within attack range
+			MOVE_POSITION: 2,	// move to position, but not attack
+			ATTACK_POSITION: 3,	// move to position, attack if possible
+			ATTACK_UNIT: 4,		// pursue a target unit and attack if possible
+			KILL_ALL: 5,		// attack all enemy units
+			FOLLOW_UNIT: 6,		// follow a friendly unit
+			FOLLOW_ATTACK: 7,	// follow a friendly unit, attack if possible
+			
+			NONE: 999			// player control, not a ai		
+		};
 	},
 	getUnitTypeName: function(t) {
 		for (var ut in this.unit_type) {
