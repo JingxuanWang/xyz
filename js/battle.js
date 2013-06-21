@@ -160,6 +160,9 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 	// initialize
 	battleStart: function() {
 		this.round = 0;
+		//this.turn = CONSTS.side.PLAYER;
+		//this._status = CONSTS.battle_status.NORMAL;
+		this.roundStart();
 	},
 	// battle end
 	battleEnd: function(result) {
@@ -169,11 +172,13 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 	// to set all units' _status flag etc.
 	roundStart: function() {
 		this.round++;
+		console.log("ROUND " + this.round + " START !!!");
 		for (var s in this._units) {
 			var units = this._units[s];
 			for (var i = 0; i < units.length; i++) {
 				if (units[i].isOnBattleField()) {
 					units[i]._status = CONSTS.unit_status.NORMAL;
+					units[i].resume();
 				}
 			}
 		}
@@ -189,9 +194,11 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 	roundEnd: function() {
 		// round check
 		// this.battleEnd("lose");
-		if (this.conditionJudge(this.win_conds)) {
+		//if (this.conditionJudge(this.win_conds)) {
+		if (false) {
 			this.battleEnd(CONSTS.battle_status.WIN);
-		} else if (this.conditionJudge(this.lose_conds)) {
+		//} else if (this.conditionJudge(this.lose_conds)) {
+		} else if (false) {
 			this.battleEnd(CONSTS.battle_status.LOSE);
 		} else {
 			/*
@@ -207,6 +214,18 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 		// a new scene for "PLAYER TURN"/"ENEMY TURN"
 		// GAME.pushScene("...");
 		this.turn = side;
+		if (side == CONSTS.side.ENEMY) {
+			// Enemy AI
+
+			this.turnEnd();
+		} else if (side == CONSTS.side.ALLIES) {
+			// Allies AI
+
+			this.turnEnd();
+		} else if (side == CONSTS.side.PLAYER) {
+			this._status = CONSTS.battle_status.NORMAL;
+		}
+
 	},
 	// judge if it is a next turn or next round
 	turnEnd: function() {
@@ -259,6 +278,7 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 			if (this.turn == CONSTS.side.PLAYER) {
 				// pop up to inform user of turn change
 				// this.turnEnd(); //this should be callback
+				this.turnEnd();
 			} else {
 				this.turnEnd();
 			}
@@ -336,7 +356,6 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 	},
 	showMoveRng: function(unit, bind_callback) {
 		this._status = CONSTS.battle_status.MOV_RNG;
-		console.log("show move range");
 
 		var self = this;
 		var i = 0;
@@ -382,7 +401,7 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 	},
 	showAtkRng: function(unit) {
 		this._status = CONSTS.battle_status.ACTION_RNG;
-		console.log("show attack range" + this._atk_grids);
+		//console.log("show attack range" + this._atk_grids);
 		var self = this;
 		this._atk_grids = this.map.getAvailAtkGrids(unit, unit.attr.current.rng);
 		var atk_shade_cb = function(grid) {
@@ -407,7 +426,6 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 			console.log("那里有其他单位不能移动");
 			return;
 		}	
-		console.log("move " + shade.x + " : " + shade.y);
 		var route = shade.route;
 		if (route) {
 			this._status = CONSTS.battle_status.MOVE;
@@ -422,6 +440,7 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 		}
 		if (enemy == null) {
 			console.log("没有攻击对象");
+			this.showMenu(unit);
 			return;
 		}
 		this.infobox_queue = [];
@@ -455,7 +474,6 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 
 	// Menu
 	showMenu: function(unit) {
-		console.log("showMenu called");
 		if (this._menu) {
 			this.removeMenu();
 		}

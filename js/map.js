@@ -117,7 +117,7 @@ var xyzMap = enchant.Class.create(enchant.Map, {
 			if (cur.r + 1 < self.getReqMovement(terrain, unit.attr.current.school)) {
 				return false;
 			}
-			if (type == "MOV" && BATTLE.hitUnit(cur.x, cur.y, "ENEMY")) {
+			if (type == "MOV" && BATTLE.hitUnit(cur.x, cur.y, CONSTS.side.ENEMY)) {
 				return false;
 			}
 

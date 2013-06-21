@@ -12,7 +12,7 @@ window.onload = function(){
 		GAME.onload = function(){
 			BATTLE = new BattleScene();
 			GAME.pushScene(BATTLE);
-			BATTLE.start();
+			BATTLE.battleStart();
 		};
 		GAME.start();
 	});

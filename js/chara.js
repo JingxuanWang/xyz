@@ -89,8 +89,8 @@ var Unit = enchant.Class.create(enchant.Group, {
 		return false;
 	},
 	canLevelUp: function() {
-		return this.side == "PLAYER" && 
-			this.attr.current.exp > this.attr.master.exp;
+		return this.side == CONSTS.side.PLAYER && 
+			this.attr.current.exp >= this.attr.master.exp;
 	},
 	attack: function(d) {
 		this.chara.setAnim("ATTACK", d);
