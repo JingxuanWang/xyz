@@ -14,7 +14,11 @@ function bind(func, scope){
 		return func.apply(scope, arguments);
 	};
 }
-
+function sortBy(prop, order) {
+    return function(a, b) {
+        return order * (a[prop] - b[prop]);
+    };  
+}
 function clone(obj){
 	if(obj == null || typeof(obj) != 'object')
 		return obj;
