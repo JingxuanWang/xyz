@@ -95,7 +95,7 @@ var Ai = enchant.Class.create(enchant.EventTarget, {
 	// 3, sort all actions according to score
 	// 4, fetch randomly one action above the line
 	determineAction: function() {
-		sortByProp(this.possible_actions, score, -1);
+		sortByProp(this.possible_actions, "score", -1);
 		this.possible_actions.filter(this.isAboveLine);
 		var index = rand(0, this.possible_actions.length - 1);
 		return this.possible_actions[index];

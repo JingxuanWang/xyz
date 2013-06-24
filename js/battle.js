@@ -248,9 +248,9 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 		}
 	},
 	actionStart: function(unit, action_script) {
+		this.actor = unit;
+		this.actor.attr.backup();
 		if (unit.side == CONSTS.side.PLAYER) {
-			this.actor = unit;
-			this.actor.attr.backup();
 			this.showMoveRng(unit, false);
 		} else if (unit.side == CONSTS.side.ALLIES) {
 			this.actionEnd();
