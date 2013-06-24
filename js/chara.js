@@ -53,7 +53,7 @@ var Unit = enchant.Class.create(enchant.Group, {
 		var d = this._cur_direction;
 		var c = 0;
 		for (var i = 0; i < route.length; i++) {
-			var d = route[i].d;
+			d = route[i].d;
 			// 后边d值变化了，覆盖了前面的值
 			// 导致之前放入回调函数里的d值也变化了
 			tl = tl.action({
@@ -67,7 +67,7 @@ var Unit = enchant.Class.create(enchant.Group, {
 		}
 		tl = tl.then(function() {
 			this.moveTo(Math.round(this.x), Math.round(this.y));
-		})
+		});
 		var self = this;
 		tl = tl.then(function() {
 			onMoveComplete.call(this, self);

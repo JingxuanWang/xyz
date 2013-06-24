@@ -90,7 +90,7 @@ var Ai = enchant.Class.create(enchant.EventTarget, {
 		if (presult.other) {
 
 		}
-		return score
+		return score;
 	},
 	// 3, sort all actions according to score
 	// 4, fetch randomly one action above the line
@@ -102,7 +102,7 @@ var Ai = enchant.Class.create(enchant.EventTarget, {
 	},
 	isAboveLine: function(action) {
 		return true;
-	}
+	},
 	_noop: function() {
 	}
 });

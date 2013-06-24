@@ -235,7 +235,7 @@ var InfoBox = enchant.Class.create(enchant.Group, {
 	},
 
 	setHpStat: function() {
-		var bl = 35
+		var bl = 35;
 		// image
 		this.hp_img = new Sprite(24, 24);
 		this.hp_img.image = GAME.assets[CONFIG.get(["Menu", "icon", "hp"])];

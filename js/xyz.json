@@ -69,7 +69,8 @@
 				"img_atk" : "img/unit/Unit_atk_109.png",	
 				"img_mov" : "img/unit/Unit_mov_109.png",	
 				"img_spc" : "img/unit/Unit_spc_109.png"
-			}
+			},
+			"ai" : "DUMMY"
 		}
 	],
 	"allies_unit" : [],

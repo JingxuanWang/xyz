@@ -64,7 +64,9 @@ function sortByFunc(arr, func, order) {
 }
 
 function lot(arr, func, total_prob) {
-	total_prob ||= sum2(arr, func);
+	if (totla_prop == null) {
+		total_prob = sumByFunc(arr, func);
+	}
 	var rand = Math.floor((Math.random() * total_prob) + 1);  // 1 ~ total_prob
 	for (var i = 0; i < arr.length; i++) {
 		rand -= func(arr);
@@ -141,9 +143,9 @@ var Consts = enchant.Class.create({
 			LANCER_2: 22,
 			LANCER_3: 23,
 
-			CATAPULT_1: 31, 	
-			CATAPULT_2: 32, 	
-			CATAPULT_3: 33, 	
+			CATAPULT_1: 31,
+			CATAPULT_2: 32,
+			CATAPULT_3: 33,
 
 			MAGIC_1: 91,
 			MAGIC_2: 92,
@@ -680,7 +682,7 @@ var Ai = enchant.Class.create(enchant.EventTarget, {
 		if (presult.other) {
 
 		}
-		return score
+		return score;
 	},
 	// 3, sort all actions according to score
 	// 4, fetch randomly one action above the line
@@ -692,7 +694,7 @@ var Ai = enchant.Class.create(enchant.EventTarget, {
 	},
 	isAboveLine: function(action) {
 		return true;
-	}
+	},
 	_noop: function() {
 	}
 });
@@ -776,7 +778,7 @@ var Unit = enchant.Class.create(enchant.Group, {
 		var d = this._cur_direction;
 		var c = 0;
 		for (var i = 0; i < route.length; i++) {
-			var d = route[i].d;
+			d = route[i].d;
 			// 后边d值变化了，覆盖了前面的值
 			// 导致之前放入回调函数里的d值也变化了
 			tl = tl.action({
@@ -790,7 +792,7 @@ var Unit = enchant.Class.create(enchant.Group, {
 		}
 		tl = tl.then(function() {
 			this.moveTo(Math.round(this.x), Math.round(this.y));
-		})
+		});
 		var self = this;
 		tl = tl.then(function() {
 			onMoveComplete.call(this, self);
@@ -1304,7 +1306,7 @@ var InfoBox = enchant.Class.create(enchant.Group, {
 	},
 
 	setHpStat: function() {
-		var bl = 35
+		var bl = 35;
 		// image
 		this.hp_img = new Sprite(24, 24);
 		this.hp_img.image = GAME.assets[CONFIG.get(["Menu", "icon", "hp"])];
@@ -2183,7 +2185,7 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 			if (src.x > dst.x && src.y == dst.y) {
 				return CONSTS.direction.LEFT;
 			}
-		}
+		};
 		var cur = {
 			x: unit.x,
 			y: unit.y
@@ -2214,7 +2216,7 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 			d: defender,
 			ad: atk_dmg,
 			ae: atk_exp
-		})
+		});
 		defender.attr.backup();
 		defender.attr.current.hp -= atk_dmg;
 		

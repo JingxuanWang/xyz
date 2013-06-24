@@ -61,9 +61,9 @@ var Consts = enchant.Class.create({
 			LANCER_2: 22,
 			LANCER_3: 23,
 
-			CATAPULT_1: 31, 	
-			CATAPULT_2: 32, 	
-			CATAPULT_3: 33, 	
+			CATAPULT_1: 31,
+			CATAPULT_2: 32,
+			CATAPULT_3: 33,
 
 			MAGIC_1: 91,
 			MAGIC_2: 92,

@@ -658,7 +658,7 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 			if (src.x > dst.x && src.y == dst.y) {
 				return CONSTS.direction.LEFT;
 			}
-		}
+		};
 		var cur = {
 			x: unit.x,
 			y: unit.y
@@ -689,7 +689,7 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 			d: defender,
 			ad: atk_dmg,
 			ae: atk_exp
-		})
+		});
 		defender.attr.backup();
 		defender.attr.current.hp -= atk_dmg;
 		

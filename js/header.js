@@ -64,7 +64,9 @@ function sortByFunc(arr, func, order) {
 }
 
 function lot(arr, func, total_prob) {
-	total_prob ||= sum2(arr, func);
+	if (totla_prop == null) {
+		total_prob = sumByFunc(arr, func);
+	}
 	var rand = Math.floor((Math.random() * total_prob) + 1);  // 1 ~ total_prob
 	for (var i = 0; i < arr.length; i++) {
 		rand -= func(arr);
