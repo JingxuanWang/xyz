@@ -6,6 +6,8 @@ var CONSTS;
 var BATTLE;
 var MAP;
 
+
+
 // make functions called in assigned scope
 // which means binding 'this' variable 
 // when function is called
@@ -28,7 +30,7 @@ function clone(obj){
 }
 
 // sum up some prop in an array of objects
-function sum(arr, prop) {
+function sumByProp(arr, prop) {
 	return arr.map(function(k) {
 		return k[prop];
 	}).reduce(function(a, b) {
@@ -67,7 +69,7 @@ function lot(arr, func, total_prob) {
 	if (totla_prop == null) {
 		total_prob = sumByFunc(arr, func);
 	}
-	var rand = Math.floor((Math.random() * total_prob) + 1);  // 1 ~ total_prob
+	var r = rand(1, total_prob); // 1 ~ total_prob
 	for (var i = 0; i < arr.length; i++) {
 		rand -= func(arr);
 		if (rand < 0) {
@@ -78,7 +80,7 @@ function lot(arr, func, total_prob) {
 
 // return random integers in [min, max];
 function rand(min, max) {
-	return Math.floor((Math.random() * max) + min);
+	return Math.floor((Math.random() * (max - min + 1)) + min);
 }
 var Consts = enchant.Class.create({
 	classname: "Consts",

@@ -7,6 +7,7 @@ my $PATH = "../js";
 my $TARGET_FILE = "game.js";
 my @FILE_LIST = qw/
 	header.js
+	util.js
 	const.js
 	ajax.js
 	config.js
