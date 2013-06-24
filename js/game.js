@@ -14,7 +14,7 @@ function bind(func, scope){
 		return func.apply(scope, arguments);
 	};
 }
-
+// deap copy a object
 function clone(obj){
 	if(obj == null || typeof(obj) != 'object')
 		return obj;
@@ -26,9 +26,62 @@ function clone(obj){
 		temp[key] = clone(obj[key]);
 	return temp;
 }
+
+// sum up some prop in an array of objects
+function sum(arr, prop) {
+	return arr.map(function(k) {
+		return k[prop];
+	}).reduce(function(a, b) {
+		return a + b;
+	});
+}
+
+// sum up some prop in an array of objects
+function sumByFunc(arr, func) {
+	return arr.map(function(k) {
+		return func(k);
+	}).reduce(function(a, b) {
+		return a + b;
+	});
+}
+
+// sort an object array by it's property
+function sortByProp(arr, prop, order) {
+	return arr.sort(function(a, b) {
+		return order * (a[prop] - b[prop]);
+	});
+}
+
+//Schwartzian transform
+function sortByFunc(arr, func, order) {
+	return arr.map(function (x) {
+		return [x, func(x)];
+	}).sort(function (a, b) {
+		return order * (a[1] - b[1]);
+	}).map(function (x) {
+		return x[0];
+	});
+}
+
+function lot(arr, func, total_prob) {
+	total_prob ||= sum2(arr, func);
+	var rand = Math.floor((Math.random() * total_prob) + 1);  // 1 ~ total_prob
+	for (var i = 0; i < arr.length; i++) {
+		rand -= func(arr);
+		if (rand < 0) {
+			return arr[i];
+		}	
+	}
+}
+
+// return random integers in [min, max];
+function rand(min, max) {
+	return Math.floor((Math.random() * max) + min);
+}
 var Consts = enchant.Class.create({
 	classname: "Consts",
 	initialize: function() {
+		this.INFINITE = 999999;
 		this.direction = {
 			DOWN: 0,
 			RIGHT: 1,
@@ -538,29 +591,135 @@ var Attr = enchant.Class.create({
 var Ai = enchant.Class.create(enchant.EventTarget, {
 	classname: "Ai",
 
-	initialize: function(conf){
+	initialize: function(conf, unit){
 		enchant.EventTarget.call(this);
 		this.type = CONSTS.ai[conf];
-		if (this.type == null) {
-			throw new Error('Undefined ai type ' + conf);
+		this.unit = unit;
+		if (this.type == null || this.unit == null) {
+			throw new Error('Undefined ai parameter ' + conf + " : " + unit);
 		}
-		this.target_units = [];
+		this.possible_actions = [];
 	},
-	// find target position
-	targetUnit: function() {
+	// 0, determine round strategy at round start
+	updateRoundStrategy: function() {
+
 	},
-	targetPosition: function() {
-	},
-	determineAction: function() {
-		var action_script = {};
+	// 1, find all possible actions
+	// 2, score all actions according to some specific rules
+	getAvailActions: function() {
+		// call getAvailGrids and move based on grids
+		var grid = {
+			x: ~~(this.unit.x),
+			y: ~~(this.unit.y),
+			r: ~~(this.unit.mov),
+			d: ~~(this.unit.d),
+			route: [],
+		};
+		var action = {};
+		// Strategy that dont't allow moving
 		if (this.type == CONSTS.ai.DUMMY) {
-			action_script.action = 'none';	
+			action.type = this.type;
+			action.orig = grid;
+			action.move = null;
+			action.score = this.scoreMove(null);
+			action.action = null;
+			this.possible_actions.push(action);			
+
+			this.getPossibleAttack();
 		}
-		return action_script; 
+		// Strategy that allow moving 
+		else 
+		{
+			var grids = MAP.getAvailGrids(this.unit, this.unit.attr.mov, "ENEMY");
+			for (var g = 0; g < grids.length; g++) {
+			}
+		}
 	},
+	// BFS, using a queue
+	// possible actions on specific location
+	getPossibleAttack: function() {
+		for (var i = 0; i < this.possible_actions.length; i++) {
+			var pa = this.possible_actions[i];
+			var units = this.getInRangeUnits();
+			for (var j = 0; j < units.length; j++) {		
+				var action = clone(pa);
+				action.presult = this.predictAttack(units[j]);
+				this.scoreAttack(action.presult);
+				this.possible_actinn.push();
+			}
+		}
+	},
+	getPossibleMagicAttack: function() {
+	},
+	getPossibleHeal: function() {
+	},
+
+	// get move scores according to strategy
+	scoreMove: function(grid) {
+		if (grid == null) {
+			return 0;
+		}
+		return 10;
+	},
+	// get action scores according to strategy
+	scoreAttack: function(presult) {
+		var score = 0;
+		if (presult.defender) {
+			score += presult.defender.damage;
+			if (presult.defender.status == 'DEAD') {
+				score += CONSTS.INFINITE;
+			}
+		}
+		if (presult.attacker) {
+			score -= Math.round(presult.attacker.damage / 2);
+			if (presult.attacker.status == 'DEAD') {
+				score -= CONSTS.INFINITE;
+			}
+		}
+		// maybe useful in the future
+		if (presult.other) {
+
+		}
+		return score
+	},
+	// 3, sort all actions according to score
+	// 4, fetch randomly one action above the line
+	determineAction: function() {
+		sortByProp(this.possible_actions, score, -1);
+		this.possible_actions.filter(this.isAboveLine);
+		var index = rand(0, this.possible_actions.length - 1);
+		return this.possible_actions[index];
+	},
+	isAboveLine: function(action) {
+		return true;
+	}
 	_noop: function() {
 	}
 });
+
+/*
+
+	// action
+	{
+		type: 'none',
+		move: [grid_obj],
+		action: {
+			type: 'attack',
+			target: [target_obj]
+			presult: {
+				defender: {
+					damage:
+					status: 
+				},
+				attacker: {
+					damage:
+					status:
+				},
+			},
+		},
+		score: 100, 
+	}
+*/
 
 // include chara and chara effect
 var Unit = enchant.Class.create(enchant.Group, {
@@ -579,7 +738,7 @@ var Unit = enchant.Class.create(enchant.Group, {
 		this.weak_rate = 0.3;
 
 		this._status = CONSTS.unit_status.NORMAL;
-		this.ai = new Ai(conf.ai);
+		this.ai = new Ai(conf.ai, this);
 
 		this.chara = new Chara(conf);
 		this.label = new Label("");

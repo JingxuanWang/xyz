@@ -1,6 +1,7 @@
 var Consts = enchant.Class.create({
 	classname: "Consts",
 	initialize: function() {
+		this.INFINITE = 999999;
 		this.direction = {
 			DOWN: 0,
 			RIGHT: 1,
