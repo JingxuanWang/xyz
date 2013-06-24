@@ -114,7 +114,7 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 
 		if (this._status == CONSTS.battle_status.NORMAL) {
 			this.removeInfoBox();
-			unit = this.getUnit(evt.x, evt.y);
+			unit = this.getUnitByLoc(evt.x, evt.y);
 			// only map or exception
 			if (unit != null) {
 				if (unit.side == CONSTS.side.PLAYER) {
@@ -125,7 +125,7 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 			}
 		}
 		else if (this._status == CONSTS.battle_status.MOVE_RNG) {
-			unit = this.getUnit(evt.x, evt.y);
+			unit = this.getUnitByLoc(evt.x, evt.y);
 			if (unit == this._selected_unit) {
 				this.removeShades();
 				this.showInfoBox(unit);
@@ -139,7 +139,7 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 			//this.finishCurMove();
 		}
 		else if (this._status == CONSTS.battle_status.ACTION_RNG) {
-			unit = this.getUnit(evt.x, evt.y);
+			unit = this.getUnitByLoc(evt.x, evt.y);
 			shade = this.getShade(evt.x, evt.y);
 			// only map or exception
 			if (unit != null && shade != null) {
@@ -430,7 +430,7 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 		this.effect_layer.addChild(this._atk_shade);
 	},
 	move: function(unit, shade) {
-		if (this.getUnit(shade.x, shade.y)) {
+		if (this.getUnitByIndex(shade.i, shade.j)) {
 			console.log("那里有其他单位不能移动");
 			return;
 		}	
@@ -441,7 +441,7 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 		}
 	},
 	attack: function(unit, grid) {
-		var enemy = this.getUnit(grid.x, grid.y);
+		var enemy = this.getUnitByIndex(grid.i, grid.j);
 		if (unit == null) {
 			console.log("攻击者不存在");
 			return;
@@ -727,12 +727,12 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 		return attack_script;
 	},
 	calcDirection: function(attacker, defender) {
-		if (defender.x > attacker.x) {
+		if (defender.i > attacker.i) {
 			return CONSTS.direction.RIGHT;
-		} else if (defender.x < attacker.x) {
+		} else if (defender.i < attacker.i) {
 			return CONSTS.direction.LEFT;
 		} else {
-			if (defender.y < attacker.y) {
+			if (defender.j < attacker.j) {
 				return CONSTS.direction.UP;
 			} else {
 				return CONSTS.direction.DOWN;
@@ -758,8 +758,8 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 		}
 		return units;
 	},
-	// get only units on this point
-	getUnit: function(x, y, side) {
+	getUnitByLoc: function(x, y) {
+		/*
 		for (var i = 0; i < this.unit_layer.childNodes.length; i++) {
 			var node = this.unit_layer.childNodes[i];
 			if (node.x <= x && x < node.x + node.width && 
@@ -769,10 +769,26 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 			}
 		}
 		return null;
+		*/
+
+		var i = MAP.x2i(x);
+		var j = MAP.y2j(y);
+		return this.getUnitByIndex(i, j);
+	},
+
+	// get only units on this point
+	getUnitByIndex: function(i, j, side) {
+		for (var a = 0; a < this.unit_layer.childNodes.length; a++) {
+			var node = this.unit_layer.childNodes[a];
+			if (node.i == i && node.j == j && node.classname === "Unit") {
+				return node;
+			}
+		}
+		return null;
 	},
 	// is there a unit specific unit
-	hitUnit: function(x, y, side) {
-		var unit = this.getUnit(x, y);
+	hitUnit: function(i, j, side) {
+		var unit = this.getUnitByIndex(i, j);
 		if (unit != null && unit.side == side) {
 			return true;
 		}

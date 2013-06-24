@@ -5,7 +5,7 @@ var CONFIG;
 var CONSTS;
 var BATTLE;
 var MAP;
-
+var STAT;
 
 
 // make functions called in assigned scope
@@ -351,14 +351,23 @@ var xyzMap = enchant.Class.create(enchant.Map, {
 	getRows: function() {
 		return this.height * this.tileHeight;
 	},
-	x2j: function(x) {
-		return ~~((x - this.x) / this.tileWidth);
+	// convert global coordinate to index
+	x2i: function(x) {
+		return Math.floor((x - this.x) / this.tileWidth);
 	},
-	y2i: function(y) {
-		return ~~((y - this.y) / this.tileHeight);
+	y2j: function(y) {
+		return Math.floor((y - this.y) / this.tileHeight);
 	},
-	getTerrain: function(x, y) {
-		return this.terrain_data[this.y2i(y)][this.x2j(x)];
+	// convert index to local coordinate
+	// where map.x map.y is always 0
+	i2x: function(i) {
+		return i * this.tileWidth;
+	},
+	j2y: function(j) {
+		return j * this.tileHeight;
+	},
+	getTerrain: function(i, j) {
+		return this.terrain_data[i][j];
 	},
 	getTerrainName: function(x, y) {
 		return "平地";
@@ -366,11 +375,9 @@ var xyzMap = enchant.Class.create(enchant.Map, {
 	getTerrainInfo: function(x, y) {
 		return 100;
 	},
-	isInMap: function(x, y) {
-		var i = this.y2i(y);
-		var j = this.x2j(x);
-		if (j >= 0 && j <= this.width &&
-			i >= 0 && i <= this.height) {
+	isInMap: function(i, j) {
+		if (j >= 0 && j <= this.height &&
+			i >= 0 && i <= this.width) {
 			return true;
 		}
 		return false;
@@ -391,8 +398,8 @@ var xyzMap = enchant.Class.create(enchant.Map, {
 	// according to unit position and range
 	getAvailGrids: function(unit, rng, type) {
 		var src = {
-			x: ~~(unit.x),
-			y: ~~(unit.y),
+			i: unit.i,
+			j: unit.j,
 			r: rng,
 			route: [],
 		};
@@ -403,16 +410,16 @@ var xyzMap = enchant.Class.create(enchant.Map, {
 		// function within getAvailGrids
 		// it can 'see' variables defined in getAvailGrids
 		var isValid = function (cur) {
-			if (!self.isInMap(cur.x, cur.y)) {
+			if (!self.isInMap(cur.i, cur.j)) {
 				return false;
 			}
-			if (cur.x == src.x && cur.y == src.y) {
+			if (cur.i == src.i && cur.j == src.j) {
 				return false;
 			}
 			if (cur.r < 0) {
 				return false;
 			}
-			var terrain = self.getTerrain(cur.x, cur.y);
+			var terrain = self.getTerrain(cur.i, cur.j);
 			// impassible
 			if (type == "MOV" && !self.isPassible(terrain, unit.attr.current.school)) {
 				return false;
@@ -422,12 +429,12 @@ var xyzMap = enchant.Class.create(enchant.Map, {
 			if (cur.r + 1 < self.getReqMovement(terrain, unit.attr.current.school)) {
 				return false;
 			}
-			if (type == "MOV" && BATTLE.hitUnit(cur.x, cur.y, CONSTS.side.ENEMY)) {
+			if (type == "MOV" && BATTLE.hitUnit(cur.i, cur.j, CONSTS.side.ENEMY)) {
 				return false;
 			}
 
 			for (var i = 0; i < avail_grids.length; i++) {
-				if (avail_grids[i].x == cur.x && avail_grids[i].y == cur.y) {
+				if (avail_grids[i].i == cur.i && avail_grids[i].j == cur.j) {
 					return false;
 				}
 			}
@@ -438,33 +445,33 @@ var xyzMap = enchant.Class.create(enchant.Map, {
 		while(queue.length > 0) {
 			var cur = queue.shift();
 			if (isValid(cur)) {
-				cur.route.push({x: ~~(cur.x), y: ~~(cur.y), d: cur.d});
+				cur.route.push({i: ~~(cur.i), j: ~~(cur.j), d: cur.d});
 				avail_grids.push(cur);
 			}
 			var up = {
-				x: ~~(cur.x),
-				y: ~~(cur.y - unit.height),
+				i: cur.i,
+				j: cur.j - 1,
 				r: ~~(cur.r - 1),
 				d: CONSTS.direction.UP,
 				route: cur.route.slice(),
 			};
 			var down = {
-				x: ~~(cur.x),
-				y: ~~(cur.y + unit.height),
+				i: cur.i,
+				j: cur.j + 1,
 				r: ~~(cur.r - 1),
 				d: CONSTS.direction.DOWN,
 				route: cur.route.slice(),
 			};		
 			var left = {
-				x: ~~(cur.x - unit.width),
-				y: ~~(cur.y),
+				i: cur.i - 1,
+				j: cur.j,
 				r: ~~(cur.r - 1),
 				d: CONSTS.direction.LEFT,
 				route: cur.route.slice(),
 			};		
 			var right = {
-				x: ~~(cur.x + unit.width),
-				y: ~~(cur.y),
+				i: cur.i + 1,
+				j: cur.j,
 				r: ~~(cur.r - 1),
 				d: CONSTS.direction.RIGHT,
 				route: cur.route.slice(),
@@ -790,12 +797,16 @@ var Unit = enchant.Class.create(enchant.Group, {
 					this.move(route[c].d);
 					++c;
 				},
-			}).moveTo(route[i].x, route[i].y, 20);
+			}).moveTo(
+				route[i].i * CONFIG.get(["map", "tileWidth"]), 
+				route[i].j * CONFIG.get(["map", "tileHeight"]), 
+				20
+			);
 		}
-		tl = tl.then(function() {
-			this.moveTo(Math.round(this.x), Math.round(this.y));
-		});
 		var self = this;
+		tl = tl.then(function() {
+			//this.moveTo(Math.round(this.x), Math.round(this.y));
+		});
 		tl = tl.then(function() {
 			onMoveComplete.call(this, self);
 		});
@@ -1075,13 +1086,31 @@ var MoveShade = enchant.Class.create(enchant.Sprite, {
 	classname: "MoveShade",
 	initialize: function(grid, width, height, callback) {
 		enchant.Sprite.call(this, width, height);
-		this.moveTo(grid.x, grid.y);
+		this.i = grid.i;
+		this.j = grid.j;
 		this.image = GAME.assets[CONFIG.get(["UI", "mov_base"])];
 		this.addEventListener(enchant.Event.TOUCH_END, function() {
 			callback.call(this, grid);
 		});
 
 	},
+	i: {
+		get: function() {
+			return Math.round(this.x / this.width);
+		},
+		set: function(ti) {
+			this.x = ti * this.width;
+		}
+	},
+	j: {
+		get: function() {
+			return Math.round(this.y / this.height);
+		},
+		set: function(ty) {
+			this.y = ty * this.height;
+		}
+	},
+
 	_noop: function() {}	
 });
 
@@ -1089,7 +1118,8 @@ var AttackShade = enchant.Class.create(enchant.Sprite, {
 	classname: "AttackShade",
 	initialize: function(grid, width, height, type, callback) {
 		enchant.Sprite.call(this, width, height);
-		this.moveTo(grid.x, grid.y);
+		this.i = grid.i;
+		this.j = grid.j;
 		if (type === "ATK") {
 			this.image = GAME.assets[CONFIG.get(["UI", "atk_base"])];
 		} else {
@@ -1098,6 +1128,22 @@ var AttackShade = enchant.Class.create(enchant.Sprite, {
 		this.addEventListener(enchant.Event.TOUCH_END, function() {
 			callback.call(this, grid);
 		});
+	},
+	i: {
+		get: function() {
+			return Math.round(this.x / this.width);
+		},
+		set: function(ti) {
+			this.x = ti * this.width;
+		}
+	},
+	j: {
+		get: function() {
+			return Math.round(this.y / this.height);
+		},
+		set: function(ty) {
+			this.y = ty * this.height;
+		}
 	},
 
 	_noop: function() {}	
@@ -1643,7 +1689,7 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 
 		if (this._status == CONSTS.battle_status.NORMAL) {
 			this.removeInfoBox();
-			unit = this.getUnit(evt.x, evt.y);
+			unit = this.getUnitByLoc(evt.x, evt.y);
 			// only map or exception
 			if (unit != null) {
 				if (unit.side == CONSTS.side.PLAYER) {
@@ -1654,7 +1700,7 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 			}
 		}
 		else if (this._status == CONSTS.battle_status.MOVE_RNG) {
-			unit = this.getUnit(evt.x, evt.y);
+			unit = this.getUnitByLoc(evt.x, evt.y);
 			if (unit == this._selected_unit) {
 				this.removeShades();
 				this.showInfoBox(unit);
@@ -1668,7 +1714,7 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 			//this.finishCurMove();
 		}
 		else if (this._status == CONSTS.battle_status.ACTION_RNG) {
-			unit = this.getUnit(evt.x, evt.y);
+			unit = this.getUnitByLoc(evt.x, evt.y);
 			shade = this.getShade(evt.x, evt.y);
 			// only map or exception
 			if (unit != null && shade != null) {
@@ -1959,7 +2005,7 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 		this.effect_layer.addChild(this._atk_shade);
 	},
 	move: function(unit, shade) {
-		if (this.getUnit(shade.x, shade.y)) {
+		if (this.getUnitByIndex(shade.i, shade.j)) {
 			console.log("那里有其他单位不能移动");
 			return;
 		}	
@@ -1970,7 +2016,7 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 		}
 	},
 	attack: function(unit, grid) {
-		var enemy = this.getUnit(grid.x, grid.y);
+		var enemy = this.getUnitByIndex(grid.i, grid.j);
 		if (unit == null) {
 			console.log("攻击者不存在");
 			return;
@@ -2256,12 +2302,12 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 		return attack_script;
 	},
 	calcDirection: function(attacker, defender) {
-		if (defender.x > attacker.x) {
+		if (defender.i > attacker.i) {
 			return CONSTS.direction.RIGHT;
-		} else if (defender.x < attacker.x) {
+		} else if (defender.i < attacker.i) {
 			return CONSTS.direction.LEFT;
 		} else {
-			if (defender.y < attacker.y) {
+			if (defender.j < attacker.j) {
 				return CONSTS.direction.UP;
 			} else {
 				return CONSTS.direction.DOWN;
@@ -2287,8 +2333,8 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 		}
 		return units;
 	},
-	// get only units on this point
-	getUnit: function(x, y, side) {
+	getUnitByLoc: function(x, y) {
+		/*
 		for (var i = 0; i < this.unit_layer.childNodes.length; i++) {
 			var node = this.unit_layer.childNodes[i];
 			if (node.x <= x && x < node.x + node.width && 
@@ -2298,10 +2344,26 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 			}
 		}
 		return null;
+		*/
+
+		var i = MAP.x2i(x);
+		var j = MAP.y2j(y);
+		return this.getUnitByIndex(i, j);
+	},
+
+	// get only units on this point
+	getUnitByIndex: function(i, j, side) {
+		for (var a = 0; a < this.unit_layer.childNodes.length; a++) {
+			var node = this.unit_layer.childNodes[a];
+			if (node.i == i && node.j == j && node.classname === "Unit") {
+				return node;
+			}
+		}
+		return null;
 	},
 	// is there a unit specific unit
-	hitUnit: function(x, y, side) {
-		var unit = this.getUnit(x, y);
+	hitUnit: function(i, j, side) {
+		var unit = this.getUnitByIndex(i, j);
 		if (unit != null && unit.side == side) {
 			return true;
 		}
@@ -2345,6 +2407,12 @@ window.onload = function(){
 	CONFIG.load(function(){
 		GAME = new Core(CONFIG.get(["system", "width"]), CONFIG.get(["system", "height"]));
 		GAME.fps = 60;
+
+		STAT = new Stats();
+		document.getElementById("containerStats").appendChild(STAT.getDomElement());
+		GAME.addEventListener('enterframe', function(){
+			STAT.update();
+		});
 
 		GAME.preload(CONFIG.get(["image"]));
 		GAME.onload = function(){

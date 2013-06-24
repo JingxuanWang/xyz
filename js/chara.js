@@ -63,12 +63,16 @@ var Unit = enchant.Class.create(enchant.Group, {
 					this.move(route[c].d);
 					++c;
 				},
-			}).moveTo(route[i].x, route[i].y, 20);
+			}).moveTo(
+				route[i].i * CONFIG.get(["map", "tileWidth"]), 
+				route[i].j * CONFIG.get(["map", "tileHeight"]), 
+				20
+			);
 		}
-		tl = tl.then(function() {
-			this.moveTo(Math.round(this.x), Math.round(this.y));
-		});
 		var self = this;
+		tl = tl.then(function() {
+			//this.moveTo(Math.round(this.x), Math.round(this.y));
+		});
 		tl = tl.then(function() {
 			onMoveComplete.call(this, self);
 		});

@@ -46,14 +46,23 @@ var xyzMap = enchant.Class.create(enchant.Map, {
 	getRows: function() {
 		return this.height * this.tileHeight;
 	},
-	x2j: function(x) {
-		return ~~((x - this.x) / this.tileWidth);
+	// convert global coordinate to index
+	x2i: function(x) {
+		return Math.floor((x - this.x) / this.tileWidth);
 	},
-	y2i: function(y) {
-		return ~~((y - this.y) / this.tileHeight);
+	y2j: function(y) {
+		return Math.floor((y - this.y) / this.tileHeight);
 	},
-	getTerrain: function(x, y) {
-		return this.terrain_data[this.y2i(y)][this.x2j(x)];
+	// convert index to local coordinate
+	// where map.x map.y is always 0
+	i2x: function(i) {
+		return i * this.tileWidth;
+	},
+	j2y: function(j) {
+		return j * this.tileHeight;
+	},
+	getTerrain: function(i, j) {
+		return this.terrain_data[i][j];
 	},
 	getTerrainName: function(x, y) {
 		return "平地";
@@ -61,11 +70,9 @@ var xyzMap = enchant.Class.create(enchant.Map, {
 	getTerrainInfo: function(x, y) {
 		return 100;
 	},
-	isInMap: function(x, y) {
-		var i = this.y2i(y);
-		var j = this.x2j(x);
-		if (j >= 0 && j <= this.width &&
-			i >= 0 && i <= this.height) {
+	isInMap: function(i, j) {
+		if (j >= 0 && j <= this.height &&
+			i >= 0 && i <= this.width) {
 			return true;
 		}
 		return false;
@@ -86,8 +93,8 @@ var xyzMap = enchant.Class.create(enchant.Map, {
 	// according to unit position and range
 	getAvailGrids: function(unit, rng, type) {
 		var src = {
-			x: ~~(unit.x),
-			y: ~~(unit.y),
+			i: unit.i,
+			j: unit.j,
 			r: rng,
 			route: [],
 		};
@@ -98,16 +105,16 @@ var xyzMap = enchant.Class.create(enchant.Map, {
 		// function within getAvailGrids
 		// it can 'see' variables defined in getAvailGrids
 		var isValid = function (cur) {
-			if (!self.isInMap(cur.x, cur.y)) {
+			if (!self.isInMap(cur.i, cur.j)) {
 				return false;
 			}
-			if (cur.x == src.x && cur.y == src.y) {
+			if (cur.i == src.i && cur.j == src.j) {
 				return false;
 			}
 			if (cur.r < 0) {
 				return false;
 			}
-			var terrain = self.getTerrain(cur.x, cur.y);
+			var terrain = self.getTerrain(cur.i, cur.j);
 			// impassible
 			if (type == "MOV" && !self.isPassible(terrain, unit.attr.current.school)) {
 				return false;
@@ -117,12 +124,12 @@ var xyzMap = enchant.Class.create(enchant.Map, {
 			if (cur.r + 1 < self.getReqMovement(terrain, unit.attr.current.school)) {
 				return false;
 			}
-			if (type == "MOV" && BATTLE.hitUnit(cur.x, cur.y, CONSTS.side.ENEMY)) {
+			if (type == "MOV" && BATTLE.hitUnit(cur.i, cur.j, CONSTS.side.ENEMY)) {
 				return false;
 			}
 
 			for (var i = 0; i < avail_grids.length; i++) {
-				if (avail_grids[i].x == cur.x && avail_grids[i].y == cur.y) {
+				if (avail_grids[i].i == cur.i && avail_grids[i].j == cur.j) {
 					return false;
 				}
 			}
@@ -133,33 +140,33 @@ var xyzMap = enchant.Class.create(enchant.Map, {
 		while(queue.length > 0) {
 			var cur = queue.shift();
 			if (isValid(cur)) {
-				cur.route.push({x: ~~(cur.x), y: ~~(cur.y), d: cur.d});
+				cur.route.push({i: ~~(cur.i), j: ~~(cur.j), d: cur.d});
 				avail_grids.push(cur);
 			}
 			var up = {
-				x: ~~(cur.x),
-				y: ~~(cur.y - unit.height),
+				i: cur.i,
+				j: cur.j - 1,
 				r: ~~(cur.r - 1),
 				d: CONSTS.direction.UP,
 				route: cur.route.slice(),
 			};
 			var down = {
-				x: ~~(cur.x),
-				y: ~~(cur.y + unit.height),
+				i: cur.i,
+				j: cur.j + 1,
 				r: ~~(cur.r - 1),
 				d: CONSTS.direction.DOWN,
 				route: cur.route.slice(),
 			};		
 			var left = {
-				x: ~~(cur.x - unit.width),
-				y: ~~(cur.y),
+				i: cur.i - 1,
+				j: cur.j,
 				r: ~~(cur.r - 1),
 				d: CONSTS.direction.LEFT,
 				route: cur.route.slice(),
 			};		
 			var right = {
-				x: ~~(cur.x + unit.width),
-				y: ~~(cur.y),
+				i: cur.i + 1,
+				j: cur.j,
 				r: ~~(cur.r - 1),
 				d: CONSTS.direction.RIGHT,
 				route: cur.route.slice(),

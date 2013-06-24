@@ -2,13 +2,31 @@ var MoveShade = enchant.Class.create(enchant.Sprite, {
 	classname: "MoveShade",
 	initialize: function(grid, width, height, callback) {
 		enchant.Sprite.call(this, width, height);
-		this.moveTo(grid.x, grid.y);
+		this.i = grid.i;
+		this.j = grid.j;
 		this.image = GAME.assets[CONFIG.get(["UI", "mov_base"])];
 		this.addEventListener(enchant.Event.TOUCH_END, function() {
 			callback.call(this, grid);
 		});
 
 	},
+	i: {
+		get: function() {
+			return Math.round(this.x / this.width);
+		},
+		set: function(ti) {
+			this.x = ti * this.width;
+		}
+	},
+	j: {
+		get: function() {
+			return Math.round(this.y / this.height);
+		},
+		set: function(ty) {
+			this.y = ty * this.height;
+		}
+	},
+
 	_noop: function() {}	
 });
 
@@ -16,7 +34,8 @@ var AttackShade = enchant.Class.create(enchant.Sprite, {
 	classname: "AttackShade",
 	initialize: function(grid, width, height, type, callback) {
 		enchant.Sprite.call(this, width, height);
-		this.moveTo(grid.x, grid.y);
+		this.i = grid.i;
+		this.j = grid.j;
 		if (type === "ATK") {
 			this.image = GAME.assets[CONFIG.get(["UI", "atk_base"])];
 		} else {
@@ -25,6 +44,22 @@ var AttackShade = enchant.Class.create(enchant.Sprite, {
 		this.addEventListener(enchant.Event.TOUCH_END, function() {
 			callback.call(this, grid);
 		});
+	},
+	i: {
+		get: function() {
+			return Math.round(this.x / this.width);
+		},
+		set: function(ti) {
+			this.x = ti * this.width;
+		}
+	},
+	j: {
+		get: function() {
+			return Math.round(this.y / this.height);
+		},
+		set: function(ty) {
+			this.y = ty * this.height;
+		}
 	},
 
 	_noop: function() {}	

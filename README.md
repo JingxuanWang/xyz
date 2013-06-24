@@ -13,7 +13,6 @@
 		* 一开始是否需要弹出菜单
 		* 菜单的样式与展现
 		* 取消移动功能
-	* 在Map中的getAvailGrids用i, j代替x, y以便计算(doing)
 	* 将View从Scene的代码中分离出来
 		* battle的流程控制逻辑和画面显示逻辑分开
 		* 移动范围阴影和攻击范围阴影放在Map中？
@@ -47,7 +46,8 @@
 
 * 初步AI框架
 * header的通用函数调试
-
+* 在Map中的getAvailGrids用i, j代替x, y以便计算
+* 整合了stats.js
 
 #### 20130621
 
