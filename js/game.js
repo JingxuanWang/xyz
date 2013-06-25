@@ -419,7 +419,7 @@ var xyzMap = enchant.Class.create(enchant.Map, {
 	},
 	// BFS get available grids 
 	// according to unit position and range
-	getAvailGrids: function(unit, rng, type) {
+	getAvailGrids: function(unit, rng) {
 		var src = {
 			i: unit.i,
 			j: unit.j,
@@ -445,7 +445,7 @@ var xyzMap = enchant.Class.create(enchant.Map, {
 			}
 			var terrain = self.getTerrain(cur.i, cur.j);
 			// impassible
-			if (type == "MOV" && !self.isPassible(terrain, unit.attr.current.school)) {
+			if (!self.isPassible(terrain, unit.attr.current.school)) {
 				return false;
 			}
 			// remain movement > 0
@@ -453,7 +453,7 @@ var xyzMap = enchant.Class.create(enchant.Map, {
 			if (cur.r + 1 < self.getReqMovement(terrain, unit.attr.current.school)) {
 				return false;
 			}
-			if (type == "MOV" && BATTLE.hitUnit(cur.i, cur.j, CONSTS.side.ENEMY)) {
+			if (BATTLE.hitUnit(cur.i, cur.j, CONSTS.side.ENEMY)) {
 				return false;
 			}
 
@@ -472,36 +472,6 @@ var xyzMap = enchant.Class.create(enchant.Map, {
 				cur.route.push({i: ~~(cur.i), j: ~~(cur.j), d: cur.d});
 				avail_grids.push(cur);
 			}
-/*
-			var up = {
-				i: cur.i,
-				j: cur.j - 1,
-				r: ~~(cur.r - 1),
-				d: CONSTS.direction.UP,
-				route: cur.route.slice(),
-			};
-			var down = {
-				i: cur.i,
-				j: cur.j + 1,
-				r: ~~(cur.r - 1),
-				d: CONSTS.direction.DOWN,
-				route: cur.route.slice(),
-			};		
-			var left = {
-				i: cur.i - 1,
-				j: cur.j,
-				r: ~~(cur.r - 1),
-				d: CONSTS.direction.LEFT,
-				route: cur.route.slice(),
-			};		
-			var right = {
-				i: cur.i + 1,
-				j: cur.j,
-				r: ~~(cur.r - 1),
-				d: CONSTS.direction.RIGHT,
-				route: cur.route.slice(),
-			};	
-*/
 			var up    = new Grid(cur.i, cur.j - 1, CONSTS.direction.UP,    cur.r - 1, cur.route.slice());
 			var down  = new Grid(cur.i, cur.j + 1, CONSTS.direction.DOWN,  cur.r - 1, cur.route.slice());
 			var left  = new Grid(cur.i - 1, cur.j, CONSTS.direction.LEFT,  cur.r - 1, cur.route.slice());
@@ -704,7 +674,7 @@ var Ai = enchant.Class.create(enchant.EventTarget, {
 		}
 		// Strategy that allow moving 
 		else {
-			var grids = MAP.getAvailGrids(this.unit, this.unit.attr.mov, "MOV");
+			var grids = MAP.getAvailGrids(this.unit, this.unit.attr.mov);
 			for (var i = 0; i < grids.length; i++) {
 				var g = grids[i];
 				this.possible_actions.push(this.genIdle(g));
@@ -716,7 +686,11 @@ var Ai = enchant.Class.create(enchant.EventTarget, {
 	},
 	genIdle: function(grid) {
 		var action = {};
-		action.type = "";
+		if (grid.i == this.unit.i && grid.j == this.unit.j) {
+			action.type = "none";
+		} else {
+			action.type = "move";
+		}
 		action.move = grid;
 		action.score = this.scoreMove(action.move);
 		return action;
@@ -724,10 +698,7 @@ var Ai = enchant.Class.create(enchant.EventTarget, {
 	genAttack: function(grid) {
 		var actions = [];
 
-		this.unit.i = grid.i;
-		this.unit.j = grid.j;
-
-		var grids = MAP.getAvailAtkGrids(this.unit, this.unit.current.rng);
+		var grids = MAP.getAvailAtkGrids(grid, this.unit.current.rng);
 
 		for (var j = 0; j < grids.length; j++) {
 			var unit = BATTLE.getUnitByIndex(
@@ -1948,10 +1919,19 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 		} else if (unit.side == CONSTS.side.ALLIES) {
 			this.actionEnd();
 		} else if (unit.side == CONSTS.side.ENEMY) {
-			if (action_script == null || action_script.action == 'none') {
+			if (action_script == null || action_script.type == "none") {
 				this.actionEnd();
 			} else if (action_script.action == 'move') {
-				// ...
+				// show shade and move
+				this.tl.action({
+					time: 60,
+					onactionstart: function() {
+						this.showMove(unit, false);
+					},
+					onactionend: function() {
+						this.move(unit, action_script.move, action_script);
+					}
+				});
 			} else if (action_script.action == 'attack') {
 				// ...
 			}
@@ -2061,14 +2041,13 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 		var self = this;
 		var i = 0;
 		var shade;
-		this._move_grids = this.map.getAvailGrids(unit, unit.attr.current.mov, "MOV");
+		this._move_grids = this.map.getAvailGrids(unit, unit.attr.current.mov);
 		this._atk_grids = this.map.getAvailAtkGrids(unit, unit.attr.current.rng);
 		this._atk_shade = new Group();
 		this._mov_shade = new Group();
 	
 		// TODO: this should be rewritten
 		var move_shade_cb = function(grid) {
-			self.removeShades();
 			self.move(unit, grid);
 		};
 
@@ -2084,7 +2063,6 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 		this.effect_layer.addChild(this._atk_shade);
 		
 		var atk_shade_cb = function(grid) {
-			self.removeShades();
 			self.move(unit, grid);
 		};
 
@@ -2106,7 +2084,6 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 		var self = this;
 		this._atk_grids = this.map.getAvailAtkGrids(unit, unit.attr.current.rng);
 		var atk_shade_cb = function(grid) {
-			self.removeShades();
 			self.attack(unit, grid);
 		};
 		this._atk_shade = new Group();
@@ -2122,7 +2099,8 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 		}
 		this.effect_layer.addChild(this._atk_shade);
 	},
-	move: function(unit, shade) {
+	move: function(unit, shade, action_script) {
+		this.removeShades();
 		if (this.getUnitByIndex(shade.i, shade.j)) {
 			console.log("那里有其他单位不能移动");
 			return;
@@ -2130,10 +2108,18 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 		var route = shade.route;
 		if (route) {
 			this._status = CONSTS.battle_status.MOVE;
-			unit.animMove(route, bind(this.showMenu, this));
+			if (unit.side == CONSTS.side.PLAYER) {
+				unit.animMove(route, bind(this.showMenu, this));
+			} else {
+				// ai
+				if (action_script.type == 'attack') {
+					this.attack(unit, action_script.target);
+				}
+			}
 		}
 	},
 	attack: function(unit, grid) {
+		this.removeShades();
 		var enemy = this.getUnitByIndex(grid.i, grid.j);
 		if (unit == null) {
 			console.log("攻击者不存在");
@@ -2148,7 +2134,7 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 		this.dead_queue = [];
 		this.lvup_queue = [];
 
-		this._status = CONSTS.battle_status.PLAYER_ACTION;
+		this._status = CONSTS.battle_status.ACTION;
 		var result = this.calcAttack(unit, enemy);
 		this.animCharaAttack(result, bind(this.animCharaInfoBox, this));
 	},

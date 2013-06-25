@@ -114,7 +114,7 @@ var xyzMap = enchant.Class.create(enchant.Map, {
 	},
 	// BFS get available grids 
 	// according to unit position and range
-	getAvailGrids: function(unit, rng, type) {
+	getAvailGrids: function(unit, rng) {
 		var src = {
 			i: unit.i,
 			j: unit.j,
@@ -140,7 +140,7 @@ var xyzMap = enchant.Class.create(enchant.Map, {
 			}
 			var terrain = self.getTerrain(cur.i, cur.j);
 			// impassible
-			if (type == "MOV" && !self.isPassible(terrain, unit.attr.current.school)) {
+			if (!self.isPassible(terrain, unit.attr.current.school)) {
 				return false;
 			}
 			// remain movement > 0
@@ -148,7 +148,7 @@ var xyzMap = enchant.Class.create(enchant.Map, {
 			if (cur.r + 1 < self.getReqMovement(terrain, unit.attr.current.school)) {
 				return false;
 			}
-			if (type == "MOV" && BATTLE.hitUnit(cur.i, cur.j, CONSTS.side.ENEMY)) {
+			if (BATTLE.hitUnit(cur.i, cur.j, CONSTS.side.ENEMY)) {
 				return false;
 			}
 
@@ -167,36 +167,6 @@ var xyzMap = enchant.Class.create(enchant.Map, {
 				cur.route.push({i: ~~(cur.i), j: ~~(cur.j), d: cur.d});
 				avail_grids.push(cur);
 			}
-/*
-			var up = {
-				i: cur.i,
-				j: cur.j - 1,
-				r: ~~(cur.r - 1),
-				d: CONSTS.direction.UP,
-				route: cur.route.slice(),
-			};
-			var down = {
-				i: cur.i,
-				j: cur.j + 1,
-				r: ~~(cur.r - 1),
-				d: CONSTS.direction.DOWN,
-				route: cur.route.slice(),
-			};		
-			var left = {
-				i: cur.i - 1,
-				j: cur.j,
-				r: ~~(cur.r - 1),
-				d: CONSTS.direction.LEFT,
-				route: cur.route.slice(),
-			};		
-			var right = {
-				i: cur.i + 1,
-				j: cur.j,
-				r: ~~(cur.r - 1),
-				d: CONSTS.direction.RIGHT,
-				route: cur.route.slice(),
-			};	
-*/
 			var up    = new Grid(cur.i, cur.j - 1, CONSTS.direction.UP,    cur.r - 1, cur.route.slice());
 			var down  = new Grid(cur.i, cur.j + 1, CONSTS.direction.DOWN,  cur.r - 1, cur.route.slice());
 			var left  = new Grid(cur.i - 1, cur.j, CONSTS.direction.LEFT,  cur.r - 1, cur.route.slice());

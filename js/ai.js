@@ -38,7 +38,7 @@ var Ai = enchant.Class.create(enchant.EventTarget, {
 		}
 		// Strategy that allow moving 
 		else {
-			var grids = MAP.getAvailGrids(this.unit, this.unit.attr.mov, "MOV");
+			var grids = MAP.getAvailGrids(this.unit, this.unit.attr.mov);
 			for (var i = 0; i < grids.length; i++) {
 				var g = grids[i];
 				this.possible_actions.push(this.genIdle(g));
@@ -50,7 +50,11 @@ var Ai = enchant.Class.create(enchant.EventTarget, {
 	},
 	genIdle: function(grid) {
 		var action = {};
-		action.type = "";
+		if (grid.i == this.unit.i && grid.j == this.unit.j) {
+			action.type = "none";
+		} else {
+			action.type = "move";
+		}
 		action.move = grid;
 		action.score = this.scoreMove(action.move);
 		return action;
@@ -58,10 +62,7 @@ var Ai = enchant.Class.create(enchant.EventTarget, {
 	genAttack: function(grid) {
 		var actions = [];
 
-		this.unit.i = grid.i;
-		this.unit.j = grid.j;
-
-		var grids = MAP.getAvailAtkGrids(this.unit, this.unit.current.rng);
+		var grids = MAP.getAvailAtkGrids(grid, this.unit.current.rng);
 
 		for (var j = 0; j < grids.length; j++) {
 			var unit = BATTLE.getUnitByIndex(

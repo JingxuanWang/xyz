@@ -255,10 +255,19 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 		} else if (unit.side == CONSTS.side.ALLIES) {
 			this.actionEnd();
 		} else if (unit.side == CONSTS.side.ENEMY) {
-			if (action_script == null || action_script.action == 'none') {
+			if (action_script == null || action_script.type == "none") {
 				this.actionEnd();
 			} else if (action_script.action == 'move') {
-				// ...
+				// show shade and move
+				this.tl.action({
+					time: 60,
+					onactionstart: function() {
+						this.showMove(unit, false);
+					},
+					onactionend: function() {
+						this.move(unit, action_script.move, action_script);
+					}
+				});
 			} else if (action_script.action == 'attack') {
 				// ...
 			}
@@ -368,14 +377,13 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 		var self = this;
 		var i = 0;
 		var shade;
-		this._move_grids = this.map.getAvailGrids(unit, unit.attr.current.mov, "MOV");
+		this._move_grids = this.map.getAvailGrids(unit, unit.attr.current.mov);
 		this._atk_grids = this.map.getAvailAtkGrids(unit, unit.attr.current.rng);
 		this._atk_shade = new Group();
 		this._mov_shade = new Group();
 	
 		// TODO: this should be rewritten
 		var move_shade_cb = function(grid) {
-			self.removeShades();
 			self.move(unit, grid);
 		};
 
@@ -391,7 +399,6 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 		this.effect_layer.addChild(this._atk_shade);
 		
 		var atk_shade_cb = function(grid) {
-			self.removeShades();
 			self.move(unit, grid);
 		};
 
@@ -413,7 +420,6 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 		var self = this;
 		this._atk_grids = this.map.getAvailAtkGrids(unit, unit.attr.current.rng);
 		var atk_shade_cb = function(grid) {
-			self.removeShades();
 			self.attack(unit, grid);
 		};
 		this._atk_shade = new Group();
@@ -429,7 +435,8 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 		}
 		this.effect_layer.addChild(this._atk_shade);
 	},
-	move: function(unit, shade) {
+	move: function(unit, shade, action_script) {
+		this.removeShades();
 		if (this.getUnitByIndex(shade.i, shade.j)) {
 			console.log("那里有其他单位不能移动");
 			return;
@@ -437,10 +444,18 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 		var route = shade.route;
 		if (route) {
 			this._status = CONSTS.battle_status.MOVE;
-			unit.animMove(route, bind(this.showMenu, this));
+			if (unit.side == CONSTS.side.PLAYER) {
+				unit.animMove(route, bind(this.showMenu, this));
+			} else {
+				// ai
+				if (action_script.type == 'attack') {
+					this.attack(unit, action_script.target);
+				}
+			}
 		}
 	},
 	attack: function(unit, grid) {
+		this.removeShades();
 		var enemy = this.getUnitByIndex(grid.i, grid.j);
 		if (unit == null) {
 			console.log("攻击者不存在");
@@ -455,7 +470,7 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 		this.dead_queue = [];
 		this.lvup_queue = [];
 
-		this._status = CONSTS.battle_status.PLAYER_ACTION;
+		this._status = CONSTS.battle_status.ACTION;
 		var result = this.calcAttack(unit, enemy);
 		this.animCharaAttack(result, bind(this.animCharaInfoBox, this));
 	},
