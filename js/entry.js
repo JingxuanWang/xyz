@@ -8,11 +8,13 @@ window.onload = function(){
 		GAME = new Core(CONFIG.get(["system", "width"]), CONFIG.get(["system", "height"]));
 		GAME.fps = 60;
 
-		STAT = new Stats();
-		document.getElementById("containerStats").appendChild(STAT.getDomElement());
-		GAME.addEventListener('enterframe', function(){
-			STAT.update();
-		});
+		if (DEBUG) {
+			STAT = new Stats();
+			document.getElementById("containerStats").appendChild(STAT.getDomElement());
+			GAME.addEventListener('enterframe', function(){
+				STAT.update();
+			});
+		}
 
 		GAME.preload(CONFIG.get(["image"]));
 		GAME.onload = function(){

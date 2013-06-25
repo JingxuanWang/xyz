@@ -6,7 +6,7 @@ var CONSTS;
 var BATTLE;
 var MAP;
 var STAT;
-
+var DEBUG = false;
 
 // make functions called in assigned scope
 // which means binding 'this' variable 
@@ -303,6 +303,35 @@ var Config = enchant.Class.create({
 	_noop: function() {}
 });
 
+var Grid = enchant.Class.create({
+	classname: "Grid",
+	initialize: function(i, j, d, r, route) {
+		this.i = i;
+		this.j = j;
+		this.d = d;
+		this.r = r;
+		this.route = [];
+		if (route !== undefined) {
+			this.route = this.route.concat(route);
+		}
+	},
+	equal: function(that) {
+		return this.i == that.i && this.j == that.j;
+	},
+	isValid: function() {
+		if (!MAP.isInMap(this.i, this.j)) {
+			return false;
+		}
+		if (this.r && this.r < 0) {
+			return false;
+		}
+		return true;
+	},
+	_noop: function() {
+	}
+});
+
+
 var xyzMap = enchant.Class.create(enchant.Map, {
 	classname: "xyzMap",
 	initialize: function(conf) {
@@ -367,13 +396,7 @@ var xyzMap = enchant.Class.create(enchant.Map, {
 		return j * this.tileHeight;
 	},
 	getTerrain: function(i, j) {
-		return this.terrain_data[i][j];
-	},
-	getTerrainName: function(x, y) {
-		return "平地";
-	},
-	getTerrainInfo: function(x, y) {
-		return 100;
+		return this.terrain_data[j][i];
 	},
 	isInMap: function(i, j) {
 		if (j >= 0 && j <= this.height &&
@@ -403,6 +426,7 @@ var xyzMap = enchant.Class.create(enchant.Map, {
 			r: rng,
 			route: [],
 		};
+		var src = new Grid(unit.i, unit.j, unit.d, rng);
 		var queue = [];
 		var avail_grids = [];
 		var self = this;
@@ -448,6 +472,7 @@ var xyzMap = enchant.Class.create(enchant.Map, {
 				cur.route.push({i: ~~(cur.i), j: ~~(cur.j), d: cur.d});
 				avail_grids.push(cur);
 			}
+/*
 			var up = {
 				i: cur.i,
 				j: cur.j - 1,
@@ -475,7 +500,13 @@ var xyzMap = enchant.Class.create(enchant.Map, {
 				r: ~~(cur.r - 1),
 				d: CONSTS.direction.RIGHT,
 				route: cur.route.slice(),
-			};		
+			};	
+*/
+			var up    = new Grid(cur.i, cur.j - 1, CONSTS.direction.UP,    cur.r - 1, cur.route.slice());
+			var down  = new Grid(cur.i, cur.j + 1, CONSTS.direction.DOWN,  cur.r - 1, cur.route.slice());
+			var left  = new Grid(cur.i - 1, cur.j, CONSTS.direction.LEFT,  cur.r - 1, cur.route.slice());
+			var right = new Grid(cur.i + 1, cur.j, CONSTS.direction.RIGHT, cur.r - 1, cur.route.slice());
+
 			if (isValid(down)) {
 				queue.push(down);
 			}
@@ -491,15 +522,49 @@ var xyzMap = enchant.Class.create(enchant.Map, {
 		}
 		return avail_grids;
 	},
-	getAvailAtkGrids: function(unit, type) {
+	getAvailAtkGrids: function(grid, type) {
+		var grids = [];
 		if (type === CONSTS.attack_type.NONE) {
 			return [];
 		}
-		else if (type <= CONSTS.attack_type.RANGE_5) {
-			return this.getAvailGrids(unit, type, "ATK");			
+		else if (type === CONSTS.attack_type.RANGE_1) {
+			grids = this.getNeighbor4(grid);
 		}
+		else if (type === CONSTS.attack_type.RANGE_2) {
+			grids = this.getNeighbor8(grid);
+		}
+		var isValid = function(elem, index, arr) {
+			return MAP.isInMap(elem.i, elem.j);
+		};
+		return grids.filter(isValid);
 	},
-
+	getNeighbor4: function(grid) {
+		var up    = new Grid(grid.i, grid.j - 1);
+		var down  = new Grid(grid.i, grid.j + 1);
+		var left  = new Grid(grid.i - 1, grid.j);
+		var right = new Grid(grid.i + 1, grid.j);
+		return [up, down, left, right];
+	},
+	getNeighbor4x: function(grid) {
+		var up_left		= new Grid(grid.i - 1, grid.j - 1);
+		var up_right	= new Grid(grid.i + 1, grid.j - 1);
+		var down_left	= new Grid(grid.i - 1, grid.j + 1);
+		var down_right	= new Grid(grid.i + 1, grid.j + 1);
+		return [up_left, up_right, down_left, down_right];
+	},
+	getJumped4: function() {
+		var up    = new Grid(grid.i, grid.j - 2);
+		var down  = new Grid(grid.i, grid.j + 2);
+		var left  = new Grid(grid.i - 2, grid.j);
+		var right = new Grid(grid.i + 2, grid.j);
+		return [up, down, left, right];
+	},
+	getNeighbor8: function(grid) {
+		return this.getNeighbor4(grid).concat(this.getNeighbor4x(grid));
+	},
+	getNeighbor12: function(grid) {
+		return this.getNeighbor4(grid).concat(this.getNeighbor4x(grid)).concat(this.getJumped4(grid));
+	},
 	_noop: function() {}
 });
 
@@ -619,50 +684,102 @@ var Ai = enchant.Class.create(enchant.EventTarget, {
 	// 2, score all actions according to some specific rules
 	getAvailActions: function() {
 		// call getAvailGrids and move based on grids
-		var grid = {
-			x: ~~(this.unit.x),
-			y: ~~(this.unit.y),
+		var origin = {
+			i: ~~(this.unit.i),
+			j: ~~(this.unit.j),
 			r: ~~(this.unit.mov),
 			d: ~~(this.unit.d),
 			route: [],
 		};
 		var action = {};
+		this.possible_actions.push(this.genIdle(origin));			
 		// Strategy that dont't allow moving
 		if (this.type == CONSTS.ai.DUMMY) {
-			action.type = this.type;
-			action.orig = grid;
-			action.move = null;
-			action.score = this.scoreMove(null);
-			action.action = null;
-			this.possible_actions.push(action);			
-
-			this.getPossibleAttack();
+			// do nothing
+		} 
+		else if (this.type == CONSTS.ai.HOLD_POSITION) {
+			this.possible_actions.concat(this.genAttack(origin));
+			this.possible_actions.concat(this.genMagicAttack(origin));
+			this.possible_actions.concat(this.genHeal(origin));
 		}
 		// Strategy that allow moving 
-		else 
-		{
-			var grids = MAP.getAvailGrids(this.unit, this.unit.attr.mov, "ENEMY");
-			for (var g = 0; g < grids.length; g++) {
+		else {
+			var grids = MAP.getAvailGrids(this.unit, this.unit.attr.mov, "MOV");
+			for (var i = 0; i < grids.length; i++) {
+				var g = grids[i];
+				this.possible_actions.push(this.genIdle(g));
+				this.possible_actions.concat(this.genAttack(g));
+				this.possible_actions.concat(this.genMagicAttack(g));
+				this.possible_actions.concat(this.genHeal(g));
 			}
 		}
 	},
-	// BFS, using a queue
-	// possible actions on specific location
-	getPossibleAttack: function() {
-		for (var i = 0; i < this.possible_actions.length; i++) {
-			var pa = this.possible_actions[i];
-			var units = this.getInRangeUnits();
-			for (var j = 0; j < units.length; j++) {		
-				var action = clone(pa);
-				action.presult = this.predictAttack(units[j]);
-				this.scoreAttack(action.presult);
-				this.possible_actinn.push();
+	genIdle: function(grid) {
+		var action = {};
+		action.type = "";
+		action.move = grid;
+		action.score = this.scoreMove(action.move);
+		return action;
+	},
+	genAttack: function(grid) {
+		var actions = [];
+
+		this.unit.i = grid.i;
+		this.unit.j = grid.j;
+
+		var grids = MAP.getAvailAtkGrids(this.unit, this.unit.current.rng);
+
+		for (var j = 0; j < grids.length; j++) {
+			var unit = BATTLE.getUnitByIndex(
+				grids[j].i, grids[j].j, CONSTS.side.PLAYER
+			);
+			if (unit !== null && unit.isOnBattleField()) {
+				var action = {};
+				action.type = "ATTACK";
+				action.move = grid;
+				action.target = unit;
+				action.presult = this.predictAttack(unit);
+				// score
+				action.score += this.scoreMove(action.move);
+				action.score += this.scoreAttack(action.presult);
+
+				actions.push(action);
 			}
 		}
+		return actions;
 	},
-	getPossibleMagicAttack: function() {
+	genMagicAttack: function() {
 	},
-	getPossibleHeal: function() {
+	genHeal: function() {
+	},
+
+	predictAttack: function(unit) {
+		var attacker = this.unit;
+		var defender = unit;
+		var atk_dmg = this.calcAtkDamage(attacker, defender, "ATTACK");
+		var rtl_dmg = this.calcAtkDamage(defender, attacker, "RETALIATE");
+		var presult = {
+			attacker: {
+				damage: rtl_dmg,
+				status: attacker._status,
+			},
+			defender: {
+				damage: atk_dmg,
+				status: defender._status,
+			}
+		};
+		if (attacker.attr.current.hp - rtl_dmg <= 0) {
+			presult.defender.status = CONSTS.unit_status.DEAD;
+		}
+		if (defender.attr.current.hp - atk_dmg <= 0) {
+			presult.defender.status = CONSTS.unit_status.DEAD;
+		}
+
+		return presult;
+	},
+	predictMagicAttack: function() {
+	},
+	predictHeal: function() {
 	},
 
 	// get move scores according to strategy
@@ -677,13 +794,13 @@ var Ai = enchant.Class.create(enchant.EventTarget, {
 		var score = 0;
 		if (presult.defender) {
 			score += presult.defender.damage;
-			if (presult.defender.status == 'DEAD') {
+			if (presult.defender.status == CONSTS.unit_status.DEAD) {
 				score += CONSTS.INFINITE;
 			}
 		}
 		if (presult.attacker) {
 			score -= Math.round(presult.attacker.damage / 2);
-			if (presult.attacker.status == 'DEAD') {
+			if (presult.attacker.status == CONSTS.unit_status.DEAD) {
 				score -= CONSTS.INFINITE;
 			}
 		}
@@ -696,6 +813,7 @@ var Ai = enchant.Class.create(enchant.EventTarget, {
 	// 3, sort all actions according to score
 	// 4, fetch randomly one action above the line
 	determineAction: function() {
+		this.getAvailActions();
 		sortByProp(this.possible_actions, "score", -1);
 		this.possible_actions.filter(this.isAboveLine);
 		var index = rand(0, this.possible_actions.length - 1);
@@ -925,7 +1043,7 @@ var Chara = enchant.Class.create(enchant.Sprite, {
 			"STAND" : {
 				"asset" : conf.resource.img_spc,
 				"frames" : [0],
-				"df" : 0,
+				"df" : 1,
 				"fps" : 0,
 				"loop" : false,
 				"width" : 48,
@@ -2142,7 +2260,7 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 				});
 					
 				atl = atl.delay(20).then(function() {
-					attacker.resume();
+					attacker.resume(d);
 					defender.resume();
 					// last animtion completed
 					if (i >= attack_script.length) {
@@ -2314,8 +2432,14 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 			}
 		}
 	},
-	calcAtkDamage: function(attacker, defender) {
-		return 50;
+	calcAtkDamage: function(attacker, defender, type) {
+		var damage = attacker.attr.current.atk - defender.attr.current.def;
+		if (type == "ATTACK") {
+			// nothing
+		} else if (type == "RETALIATE") {
+			damage = Math.round(damage * 0.6);
+		}
+		return damage;
 	},
 	calcExp: function(attacker, defender, damage) {
 		return 60;
@@ -2355,16 +2479,17 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 	getUnitByIndex: function(i, j, side) {
 		for (var a = 0; a < this.unit_layer.childNodes.length; a++) {
 			var node = this.unit_layer.childNodes[a];
-			if (node.i == i && node.j == j && node.classname === "Unit") {
-				return node;
+			if (node.i == i && node.j == j && node.classname === "Unit" && 
+				(side === undefined || node.side === side)) {
+					return node;
 			}
 		}
 		return null;
 	},
 	// is there a unit specific unit
 	hitUnit: function(i, j, side) {
-		var unit = this.getUnitByIndex(i, j);
-		if (unit != null && unit.side == side) {
+		var unit = this.getUnitByIndex(i, j, side);
+		if (unit !== null) {
 			return true;
 		}
 		return false;
@@ -2408,11 +2533,13 @@ window.onload = function(){
 		GAME = new Core(CONFIG.get(["system", "width"]), CONFIG.get(["system", "height"]));
 		GAME.fps = 60;
 
-		STAT = new Stats();
-		document.getElementById("containerStats").appendChild(STAT.getDomElement());
-		GAME.addEventListener('enterframe', function(){
-			STAT.update();
-		});
+		if (DEBUG) {
+			STAT = new Stats();
+			document.getElementById("containerStats").appendChild(STAT.getDomElement());
+			GAME.addEventListener('enterframe', function(){
+				STAT.update();
+			});
+		}
 
 		GAME.preload(CONFIG.get(["image"]));
 		GAME.onload = function(){

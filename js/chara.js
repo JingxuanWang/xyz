@@ -191,7 +191,7 @@ var Chara = enchant.Class.create(enchant.Sprite, {
 			"STAND" : {
 				"asset" : conf.resource.img_spc,
 				"frames" : [0],
-				"df" : 0,
+				"df" : 1,
 				"fps" : 0,
 				"loop" : false,
 				"width" : 48,

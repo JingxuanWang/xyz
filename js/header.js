@@ -6,4 +6,4 @@ var CONSTS;
 var BATTLE;
 var MAP;
 var STAT;
-
+var DEBUG = false;

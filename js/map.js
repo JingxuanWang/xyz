@@ -1,3 +1,32 @@
+var Grid = enchant.Class.create({
+	classname: "Grid",
+	initialize: function(i, j, d, r, route) {
+		this.i = i;
+		this.j = j;
+		this.d = d;
+		this.r = r;
+		this.route = [];
+		if (route !== undefined) {
+			this.route = this.route.concat(route);
+		}
+	},
+	equal: function(that) {
+		return this.i == that.i && this.j == that.j;
+	},
+	isValid: function() {
+		if (!MAP.isInMap(this.i, this.j)) {
+			return false;
+		}
+		if (this.r && this.r < 0) {
+			return false;
+		}
+		return true;
+	},
+	_noop: function() {
+	}
+});
+
+
 var xyzMap = enchant.Class.create(enchant.Map, {
 	classname: "xyzMap",
 	initialize: function(conf) {
@@ -62,13 +91,7 @@ var xyzMap = enchant.Class.create(enchant.Map, {
 		return j * this.tileHeight;
 	},
 	getTerrain: function(i, j) {
-		return this.terrain_data[i][j];
-	},
-	getTerrainName: function(x, y) {
-		return "平地";
-	},
-	getTerrainInfo: function(x, y) {
-		return 100;
+		return this.terrain_data[j][i];
 	},
 	isInMap: function(i, j) {
 		if (j >= 0 && j <= this.height &&
@@ -98,6 +121,7 @@ var xyzMap = enchant.Class.create(enchant.Map, {
 			r: rng,
 			route: [],
 		};
+		var src = new Grid(unit.i, unit.j, unit.d, rng);
 		var queue = [];
 		var avail_grids = [];
 		var self = this;
@@ -143,6 +167,7 @@ var xyzMap = enchant.Class.create(enchant.Map, {
 				cur.route.push({i: ~~(cur.i), j: ~~(cur.j), d: cur.d});
 				avail_grids.push(cur);
 			}
+/*
 			var up = {
 				i: cur.i,
 				j: cur.j - 1,
@@ -170,7 +195,13 @@ var xyzMap = enchant.Class.create(enchant.Map, {
 				r: ~~(cur.r - 1),
 				d: CONSTS.direction.RIGHT,
 				route: cur.route.slice(),
-			};		
+			};	
+*/
+			var up    = new Grid(cur.i, cur.j - 1, CONSTS.direction.UP,    cur.r - 1, cur.route.slice());
+			var down  = new Grid(cur.i, cur.j + 1, CONSTS.direction.DOWN,  cur.r - 1, cur.route.slice());
+			var left  = new Grid(cur.i - 1, cur.j, CONSTS.direction.LEFT,  cur.r - 1, cur.route.slice());
+			var right = new Grid(cur.i + 1, cur.j, CONSTS.direction.RIGHT, cur.r - 1, cur.route.slice());
+
 			if (isValid(down)) {
 				queue.push(down);
 			}
@@ -186,15 +217,49 @@ var xyzMap = enchant.Class.create(enchant.Map, {
 		}
 		return avail_grids;
 	},
-	getAvailAtkGrids: function(unit, type) {
+	getAvailAtkGrids: function(grid, type) {
+		var grids = [];
 		if (type === CONSTS.attack_type.NONE) {
 			return [];
 		}
-		else if (type <= CONSTS.attack_type.RANGE_5) {
-			return this.getAvailGrids(unit, type, "ATK");			
+		else if (type === CONSTS.attack_type.RANGE_1) {
+			grids = this.getNeighbor4(grid);
 		}
+		else if (type === CONSTS.attack_type.RANGE_2) {
+			grids = this.getNeighbor8(grid);
+		}
+		var isValid = function(elem, index, arr) {
+			return MAP.isInMap(elem.i, elem.j);
+		};
+		return grids.filter(isValid);
 	},
-
+	getNeighbor4: function(grid) {
+		var up    = new Grid(grid.i, grid.j - 1);
+		var down  = new Grid(grid.i, grid.j + 1);
+		var left  = new Grid(grid.i - 1, grid.j);
+		var right = new Grid(grid.i + 1, grid.j);
+		return [up, down, left, right];
+	},
+	getNeighbor4x: function(grid) {
+		var up_left		= new Grid(grid.i - 1, grid.j - 1);
+		var up_right	= new Grid(grid.i + 1, grid.j - 1);
+		var down_left	= new Grid(grid.i - 1, grid.j + 1);
+		var down_right	= new Grid(grid.i + 1, grid.j + 1);
+		return [up_left, up_right, down_left, down_right];
+	},
+	getJumped4: function() {
+		var up    = new Grid(grid.i, grid.j - 2);
+		var down  = new Grid(grid.i, grid.j + 2);
+		var left  = new Grid(grid.i - 2, grid.j);
+		var right = new Grid(grid.i + 2, grid.j);
+		return [up, down, left, right];
+	},
+	getNeighbor8: function(grid) {
+		return this.getNeighbor4(grid).concat(this.getNeighbor4x(grid));
+	},
+	getNeighbor12: function(grid) {
+		return this.getNeighbor4(grid).concat(this.getNeighbor4x(grid)).concat(this.getJumped4(grid));
+	},
 	_noop: function() {}
 });
 

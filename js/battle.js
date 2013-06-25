@@ -567,7 +567,7 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 				});
 					
 				atl = atl.delay(20).then(function() {
-					attacker.resume();
+					attacker.resume(d);
 					defender.resume();
 					// last animtion completed
 					if (i >= attack_script.length) {
@@ -739,8 +739,14 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 			}
 		}
 	},
-	calcAtkDamage: function(attacker, defender) {
-		return 50;
+	calcAtkDamage: function(attacker, defender, type) {
+		var damage = attacker.attr.current.atk - defender.attr.current.def;
+		if (type == "ATTACK") {
+			// nothing
+		} else if (type == "RETALIATE") {
+			damage = Math.round(damage * 0.6);
+		}
+		return damage;
 	},
 	calcExp: function(attacker, defender, damage) {
 		return 60;
@@ -780,16 +786,17 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 	getUnitByIndex: function(i, j, side) {
 		for (var a = 0; a < this.unit_layer.childNodes.length; a++) {
 			var node = this.unit_layer.childNodes[a];
-			if (node.i == i && node.j == j && node.classname === "Unit") {
-				return node;
+			if (node.i == i && node.j == j && node.classname === "Unit" && 
+				(side === undefined || node.side === side)) {
+					return node;
 			}
 		}
 		return null;
 	},
 	// is there a unit specific unit
 	hitUnit: function(i, j, side) {
-		var unit = this.getUnitByIndex(i, j);
-		if (unit != null && unit.side == side) {
+		var unit = this.getUnitByIndex(i, j, side);
+		if (unit !== null) {
 			return true;
 		}
 		return false;

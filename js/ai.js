@@ -18,50 +18,102 @@ var Ai = enchant.Class.create(enchant.EventTarget, {
 	// 2, score all actions according to some specific rules
 	getAvailActions: function() {
 		// call getAvailGrids and move based on grids
-		var grid = {
-			x: ~~(this.unit.x),
-			y: ~~(this.unit.y),
+		var origin = {
+			i: ~~(this.unit.i),
+			j: ~~(this.unit.j),
 			r: ~~(this.unit.mov),
 			d: ~~(this.unit.d),
 			route: [],
 		};
 		var action = {};
+		this.possible_actions.push(this.genIdle(origin));			
 		// Strategy that dont't allow moving
 		if (this.type == CONSTS.ai.DUMMY) {
-			action.type = this.type;
-			action.orig = grid;
-			action.move = null;
-			action.score = this.scoreMove(null);
-			action.action = null;
-			this.possible_actions.push(action);			
-
-			this.getPossibleAttack();
+			// do nothing
+		} 
+		else if (this.type == CONSTS.ai.HOLD_POSITION) {
+			this.possible_actions.concat(this.genAttack(origin));
+			this.possible_actions.concat(this.genMagicAttack(origin));
+			this.possible_actions.concat(this.genHeal(origin));
 		}
 		// Strategy that allow moving 
-		else 
-		{
-			var grids = MAP.getAvailGrids(this.unit, this.unit.attr.mov, "ENEMY");
-			for (var g = 0; g < grids.length; g++) {
+		else {
+			var grids = MAP.getAvailGrids(this.unit, this.unit.attr.mov, "MOV");
+			for (var i = 0; i < grids.length; i++) {
+				var g = grids[i];
+				this.possible_actions.push(this.genIdle(g));
+				this.possible_actions.concat(this.genAttack(g));
+				this.possible_actions.concat(this.genMagicAttack(g));
+				this.possible_actions.concat(this.genHeal(g));
 			}
 		}
 	},
-	// BFS, using a queue
-	// possible actions on specific location
-	getPossibleAttack: function() {
-		for (var i = 0; i < this.possible_actions.length; i++) {
-			var pa = this.possible_actions[i];
-			var units = this.getInRangeUnits();
-			for (var j = 0; j < units.length; j++) {		
-				var action = clone(pa);
-				action.presult = this.predictAttack(units[j]);
-				this.scoreAttack(action.presult);
-				this.possible_actinn.push();
+	genIdle: function(grid) {
+		var action = {};
+		action.type = "";
+		action.move = grid;
+		action.score = this.scoreMove(action.move);
+		return action;
+	},
+	genAttack: function(grid) {
+		var actions = [];
+
+		this.unit.i = grid.i;
+		this.unit.j = grid.j;
+
+		var grids = MAP.getAvailAtkGrids(this.unit, this.unit.current.rng);
+
+		for (var j = 0; j < grids.length; j++) {
+			var unit = BATTLE.getUnitByIndex(
+				grids[j].i, grids[j].j, CONSTS.side.PLAYER
+			);
+			if (unit !== null && unit.isOnBattleField()) {
+				var action = {};
+				action.type = "ATTACK";
+				action.move = grid;
+				action.target = unit;
+				action.presult = this.predictAttack(unit);
+				// score
+				action.score += this.scoreMove(action.move);
+				action.score += this.scoreAttack(action.presult);
+
+				actions.push(action);
 			}
 		}
+		return actions;
 	},
-	getPossibleMagicAttack: function() {
+	genMagicAttack: function() {
 	},
-	getPossibleHeal: function() {
+	genHeal: function() {
+	},
+
+	predictAttack: function(unit) {
+		var attacker = this.unit;
+		var defender = unit;
+		var atk_dmg = this.calcAtkDamage(attacker, defender, "ATTACK");
+		var rtl_dmg = this.calcAtkDamage(defender, attacker, "RETALIATE");
+		var presult = {
+			attacker: {
+				damage: rtl_dmg,
+				status: attacker._status,
+			},
+			defender: {
+				damage: atk_dmg,
+				status: defender._status,
+			}
+		};
+		if (attacker.attr.current.hp - rtl_dmg <= 0) {
+			presult.defender.status = CONSTS.unit_status.DEAD;
+		}
+		if (defender.attr.current.hp - atk_dmg <= 0) {
+			presult.defender.status = CONSTS.unit_status.DEAD;
+		}
+
+		return presult;
+	},
+	predictMagicAttack: function() {
+	},
+	predictHeal: function() {
 	},
 
 	// get move scores according to strategy
@@ -76,13 +128,13 @@ var Ai = enchant.Class.create(enchant.EventTarget, {
 		var score = 0;
 		if (presult.defender) {
 			score += presult.defender.damage;
-			if (presult.defender.status == 'DEAD') {
+			if (presult.defender.status == CONSTS.unit_status.DEAD) {
 				score += CONSTS.INFINITE;
 			}
 		}
 		if (presult.attacker) {
 			score -= Math.round(presult.attacker.damage / 2);
-			if (presult.attacker.status == 'DEAD') {
+			if (presult.attacker.status == CONSTS.unit_status.DEAD) {
 				score -= CONSTS.INFINITE;
 			}
 		}
@@ -95,6 +147,7 @@ var Ai = enchant.Class.create(enchant.EventTarget, {
 	// 3, sort all actions according to score
 	// 4, fetch randomly one action above the line
 	determineAction: function() {
+		this.getAvailActions();
 		sortByProp(this.possible_actions, "score", -1);
 		this.possible_actions.filter(this.isAboveLine);
 		var index = rand(0, this.possible_actions.length - 1);
