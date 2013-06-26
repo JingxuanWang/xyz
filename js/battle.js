@@ -268,8 +268,9 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 						this.move(unit, action_script.move, action_script);
 					}
 				});
-			} else if (action_script.action == 'attack') {
+			} else if (action_script.type == 'attack') {
 				// ...
+				this.attack(unit, action_script.target);
 			}
 		}
 	},
@@ -604,9 +605,10 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 		} else {
 			// no more infobox animation
 			// resume to default status
+			var self = this;
 			this.tl.delay(10).then(function(){
-				this.removeInfoBox();
-				this.animCharaLevelup();
+				self.removeInfoBox();
+				self.animCharaLevelup();
 			});
 		}
 	},
@@ -692,7 +694,9 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 		}
 
 		this.infobox_queue.push(defender);
-		this.infobox_queue.push(attacker);
+		if (attacker.side == CONSTS.side.PLAYER) {
+			this.infobox_queue.push(attacker);
+		}
 
 		var attack_script = [];
 		// attack

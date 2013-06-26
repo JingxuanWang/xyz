@@ -26,25 +26,25 @@ var Ai = enchant.Class.create(enchant.EventTarget, {
 			route: [],
 		};
 		var action = {};
-		this.possible_actions.push(this.genIdle(origin));			
+		this.genIdle(origin);
 		// Strategy that dont't allow moving
 		if (this.type == CONSTS.ai.DUMMY) {
 			// do nothing
 		} 
 		else if (this.type == CONSTS.ai.HOLD_POSITION) {
-			this.possible_actions.concat(this.genAttack(origin));
-			this.possible_actions.concat(this.genMagicAttack(origin));
-			this.possible_actions.concat(this.genHeal(origin));
+			this.genAttack(origin);
+			this.genMagicAttack(origin);
+			this.genHeal(origin);
 		}
 		// Strategy that allow moving 
 		else {
-			var grids = MAP.getAvailGrids(this.unit, this.unit.attr.mov);
+			var grids = MAP.getAvailGrids(this.unit, this.unit.attr.current.mov);
 			for (var i = 0; i < grids.length; i++) {
 				var g = grids[i];
-				this.possible_actions.push(this.genIdle(g));
-				this.possible_actions.concat(this.genAttack(g));
-				this.possible_actions.concat(this.genMagicAttack(g));
-				this.possible_actions.concat(this.genHeal(g));
+				this.genIdle(g);
+				this.genAttack(g);
+				this.genMagicAttack(g);
+				this.genHeal(g);
 			}
 		}
 	},
@@ -57,12 +57,10 @@ var Ai = enchant.Class.create(enchant.EventTarget, {
 		}
 		action.move = grid;
 		action.score = this.scoreMove(action.move);
-		return action;
+		this.possible_actions.push(action);
 	},
 	genAttack: function(grid) {
-		var actions = [];
-
-		var grids = MAP.getAvailAtkGrids(grid, this.unit.current.rng);
+		var grids = MAP.getAvailAtkGrids(grid, this.unit.attr.current.rng);
 
 		for (var j = 0; j < grids.length; j++) {
 			var unit = BATTLE.getUnitByIndex(
@@ -70,18 +68,18 @@ var Ai = enchant.Class.create(enchant.EventTarget, {
 			);
 			if (unit !== null && unit.isOnBattleField()) {
 				var action = {};
-				action.type = "ATTACK";
+				action.type = "attack";
 				action.move = grid;
 				action.target = unit;
 				action.presult = this.predictAttack(unit);
+				action.score = 0;
 				// score
 				action.score += this.scoreMove(action.move);
 				action.score += this.scoreAttack(action.presult);
 
-				actions.push(action);
+				this.possible_actions.push(action);
 			}
 		}
-		return actions;
 	},
 	genMagicAttack: function() {
 	},
@@ -91,8 +89,9 @@ var Ai = enchant.Class.create(enchant.EventTarget, {
 	predictAttack: function(unit) {
 		var attacker = this.unit;
 		var defender = unit;
-		var atk_dmg = this.calcAtkDamage(attacker, defender, "ATTACK");
-		var rtl_dmg = this.calcAtkDamage(defender, attacker, "RETALIATE");
+		var atk_dmg = BATTLE.calcAtkDamage(attacker, defender, "ATTACK");
+		var rtl_dmg = 0;
+		//var rtl_dmg = this.calcAtkDamage(defender, attacker, "RETALIATE");
 		var presult = {
 			attacker: {
 				damage: rtl_dmg,
@@ -148,10 +147,12 @@ var Ai = enchant.Class.create(enchant.EventTarget, {
 	// 3, sort all actions according to score
 	// 4, fetch randomly one action above the line
 	determineAction: function() {
+		this.possible_actions = [];
 		this.getAvailActions();
 		sortByProp(this.possible_actions, "score", -1);
 		this.possible_actions.filter(this.isAboveLine);
-		var index = rand(0, this.possible_actions.length - 1);
+		//var index = rand(0, this.possible_actions.length - 1);
+		var index = 0;
 		return this.possible_actions[index];
 	},
 	isAboveLine: function(action) {

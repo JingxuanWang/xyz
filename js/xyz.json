@@ -102,7 +102,7 @@
 				"img_mov" : "img/unit/Unit_mov_3.png",	
 				"img_spc" : "img/unit/Unit_spc_3.png"
 			},
-			"ai" : "DUMMY"
+			"ai" : "HOLD_POSITION"
 		}
 	],
 	"UI" : {

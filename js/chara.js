@@ -59,7 +59,6 @@ var Unit = enchant.Class.create(enchant.Group, {
 			tl = tl.action({
 				time: 0,
 				onactionstart: function() {
-					console.log("onactinostart :" + d + " : " + route[c].d);
 					this.move(route[c].d);
 					++c;
 				},
