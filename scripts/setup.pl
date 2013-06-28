@@ -28,6 +28,7 @@ sub main {
 	for my $file (@FILE_LIST) {
 		_runCmd("cat $PATH/$file >> $PATH/$TARGET_FILE");	
 	}
+	_runCmd("marica_sync");
 }
 
 sub _runCmd {

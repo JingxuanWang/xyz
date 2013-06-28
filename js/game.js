@@ -631,6 +631,29 @@ var Attr = enchant.Class.create({
 			this._current[prop] = this._last[prop];
 		}
 	},
+	levelup: function() {
+		var diff_level = this.current.level - this.master.level;
+		this.master.level = this.current.level;
+		for (var i = 0; i < diff_level; i++) {
+			this.master.hp += rand(5, 10);
+			this.master.mp += rand(3, 5);
+			this.master.atk += rand(1, 5);
+			this.master.def += rand(1, 5);
+			this.master.intl += rand(1, 5);
+			this.master.dex += rand(1, 5);
+			this.master.mor += rand(1, 5);
+		}
+
+		// recover hp/mp and all status
+		for (var prop in this.master) {
+			if (prop != "exp") {
+				var value = this.master[prop];
+				this.current[prop] = value;
+				this.last[prop] = value;
+			}
+		}
+
+	},
 	_noop: function() {}
 });
 
@@ -954,6 +977,7 @@ var Unit = enchant.Class.create(enchant.Group, {
 	levelUp: function() {
 		this.chara.setAnim("LEVEL_UP", this.d);
 		console.log("level up to " + this.attr.current.level);
+		this.attr.levelup();
 	},
 	die: function() {
 		this.chara.setAnim("WEAK", this.d);
@@ -985,7 +1009,7 @@ var Chara = enchant.Class.create(enchant.Sprite, {
 		this._anims = {
 			"ATTACK" : {
 				"asset" : conf.resource.img_atk,
-				"frames" : [0, 0, 0, 0, 1, 2, 3, 3, 3, 3],
+				"frames" : [0, 0, 0, 1, 2, 3, 3, 3, 3, 3],
 				// df stand for direction factor
 				"df" : 4,
 				"fps" : 10,
@@ -1049,9 +1073,9 @@ var Chara = enchant.Class.create(enchant.Sprite, {
 			},
 			"LEVEL_UP" : {
 				"asset" : conf.resource.img_spc,
-				"frames" : [5, 6, 7, 4, 5, 6, 7, 4, 9, 9, 9, 9],
+				"frames" : [4, 5, 6, 7, 4, 5, 6, 7, 4, 9, 9, 9],
 				"df" : 0,
-				"fps" : 8,
+				"fps" : 10,
 				"loop" : false,
 				"width" : 48,
 				"height" : 48
@@ -1495,7 +1519,7 @@ var InfoBox = enchant.Class.create(enchant.Group, {
 		// if current.exp < last.exp
 		// it means there is a level up
 		// so we should redefine actions
-		if (this.unit.attr.current.exp < this.unit.attr.last.exp) {
+		if (this.unit.attr.current.level > this.unit.attr.last.level) {
 			// LEVEL UP
 			this.exp_stat.bar.value = this.unit.attr.master.exp;
 		} else {
@@ -1661,7 +1685,65 @@ var Bar = enchant.Class.create(enchant.Sprite, {
 	}
 });
 
+var LabelScene = enchant.Class.create(enchant.Scene, {
+	classname: "LableScene",
+	initialize: function(conf) {
+		enchant.Scene.call(this);
 
+		console.log("LabelScene -- " + conf.labels[0].text);
+
+		this.width = CONFIG.get(["system",  "width"]);
+		this.height = CONFIG.get(["system",  "height"]);
+
+		this.lifetime = conf.lifetime ? conf.lifetime : 60; // default 60 frames
+		this.labels = conf.labels;
+		this.last_change = this.age;
+		this.li = 0;	// lable index
+
+		this.bg = new Sprite(this.width, this.height);
+		this.bg.image = GAME.assets[CONFIG.get(["Menu", "base"])];
+
+		this.label = new Label(this.labels[this.li].text);
+		this.label.color = '#ffffff';
+		this.label.textAlign = 'center';
+		this.label.width = 300;
+		this.label.height = 150;
+		this.label.font = '20pt Helvetica';
+		this.label.moveTo(
+			~~(this.width / 2 - this.label.width / 2), 
+			~~(this.height / 2 - this.label.width / 2)
+		);
+
+		this.addChild(this.bg);
+		this.addChild(this.label);
+
+		var self = this;
+		this.addEventListener('enterframe', function(){
+			if (self.shouldChangeLabel()) {
+				self.nextLabel();
+			}
+		});
+	},
+	shouldChangeLabel: function() {
+		if (this.age - this.last_change >= this.labels[this.li].lifetime) {
+			return true;
+		}
+		return false;
+	},
+	nextLabel: function() {
+		this.last_change = this.age;
+		this.li ++;
+		if (this.labels[this.li] !== undefined) {
+			this.label.text = this.labels[this.li].text;
+		} else {
+			this.onDestory();		
+		}
+	},
+	onDestory: function() {
+		GAME.removeScene(this);
+	},
+	_noop: function() {}
+});
 var BattleScene = enchant.Class.create(enchant.Scene, {
 	classname: "BattleScene",
 	initialize: function() {
@@ -1826,17 +1908,57 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 		this.round = 0;
 		//this.turn = CONSTS.side.PLAYER;
 		//this._status = CONSTS.battle_status.NORMAL;
-		this.roundStart();
+		var lb_battle_start = new LabelScene({
+			labels: [
+				{
+					text: "Battle Start!",
+					lifetime: 60,
+				}
+			]
+		});
+		GAME.pushScene(lb_battle_start);
+		this.tl.delay(60).then(function() {
+			this.roundStart();
+		});
 	},
 	// battle end
 	battleEnd: function(result) {
-		// server communication
+		// TODO: server communication
+
+
+		var text;
+		if (result == CONSTS.battle_status.WIN) {
+			text = "Victory!";
+		} else {
+			text = "Try Again...";
+		}
+		var lb_battle_end = new LabelScene({
+			labels: [
+				{
+					text: text,
+					lifetime: 60,
+				}
+			]
+		});
+		GAME.pushScene(lb_battle_end);
+		GAME.stop();
 	},
 	// preprocess logic before each round
 	// to set all units' _status flag etc.
 	roundStart: function() {
 		this.round++;
-		console.log("ROUND " + this.round + " START !!!");
+		var text = "ROUND " + this.round + " START !!!";
+		console.log(text);
+		var lb_round_start = new LabelScene({
+			labels: [
+				{
+					text: text,
+					lifetime: 60,
+				}
+			]
+		});
+		GAME.pushScene(lb_round_start);
+
 		for (var s in this._units) {
 			var units = this._units[s];
 			for (var i = 0; i < units.length; i++) {
@@ -1851,7 +1973,9 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 
 		// this should be the callback
 		// as the scenario finishes
-		this.turnStart(CONSTS.side.PLAYER);
+		this.tl.delay(60).then(function() {
+			this.turnStart(CONSTS.side.PLAYER);
+		});
 	},
 	// enemy turn finishes and round end
 	// there maybe round condition check here
@@ -1879,24 +2003,45 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 		// GAME.pushScene("...");
 		this.turn = side;
 		if (side == CONSTS.side.ENEMY) {
-			// Enemy AI
-			for (var i = 0; i < this._units[CONSTS.side.ENEMY].length; i++) {
-				var enemy = this._units[CONSTS.side.ENEMY][i];
-				if (enemy && enemy.canMove()) {
-					var action_script = enemy.ai.determineAction(enemy);
-					// action according the script
-					this.actionStart(enemy, action_script);
-					return;
+			var lb_turn_start = new LabelScene({
+				labels: [
+					{
+						text: "Enemy Turn",
+						lifetime: 60,
+					}
+				]
+			});
+			GAME.pushScene(lb_turn_start);
+			this.tl.delay(60).then(function() {
+				// Enemy AI
+				for (var i = 0; i < this._units[CONSTS.side.ENEMY].length; i++) {
+					var enemy = this._units[CONSTS.side.ENEMY][i];
+					if (enemy && enemy.canMove()) {
+						var action_script = enemy.ai.determineAction(enemy);
+						// action according the script
+						this.actionStart(enemy, action_script);
+						return;
+					}
 				}
-			}
 
-			// if there is no enemy
-			this.turnEnd();
+				// if there is no enemy
+				this.turnEnd();
+			});
 		} else if (side == CONSTS.side.ALLIES) {
 			// Allies AI
 
 			this.turnEnd();
 		} else if (side == CONSTS.side.PLAYER) {
+			var lb_turn_start = new LabelScene({
+				labels: [
+					{
+						text: "Player Turn",
+						lifetime: 60,
+					}
+				]
+			});
+			GAME.pushScene(lb_turn_start);
+
 			this._status = CONSTS.battle_status.NORMAL;
 		}
 
@@ -1933,8 +2078,22 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 					}
 				});
 			} else if (action_script.type == 'attack') {
-				// ...
-				this.attack(unit, action_script.target);
+				if (action_script.move.i == unit.i && 
+					action_script.move.j == unit.j) { 
+					this.attack(unit, action_script.target);
+				} else {
+					// show shade and move
+					this.tl.action({
+						time: 60,
+						onactionstart: function() {
+							this.showMove(unit, false);
+						},
+						onactionend: function() {
+							this.move(unit, action_script.move, action_script);
+						}
+					});
+
+				}
 			}
 		}
 	},
@@ -1961,6 +2120,16 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 		this.removeMenu();
 		this.removeInfoBox();
 
+		// battle condition check
+		if (!this.unitsCheck(CONSTS.side.PLAYER)) {
+			this.battleEnd(CONSTS.battle_status.LOSE);
+			return;
+		}
+		if (!this.unitsCheck(CONSTS.side.ENEMY)) {
+			this.battleEnd(CONSTS.battle_status.WIN);
+			return;
+		}
+
 		//turn check
 		var next_unit = this.turnCheck(this.turn);
 		// for player only
@@ -1983,6 +2152,17 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 				this.turnEnd();
 			}
 		}
+	},
+	// check whether all units are dead
+	// TODO: integrate this check into condition check
+	unitsCheck: function(side) {
+		for (var i = 0; i < this._units[side].length; i++) {
+			// TODO: hero check
+			if(this._units[side][i].isOnBattleField()) {
+				return true;
+			}
+		}
+		return false;
 	},
 
 	conditionJudge: function(conds, callback) {
@@ -2237,7 +2417,7 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 			var dtl = defender.tl;
 			if (type === "ATTACK") {
 				atl = atl.action({
-					time: 60,
+					time: 66,	// 6 frame delay
 					onactionstart: function() {
 						attacker.attack(d);
 					},
@@ -2283,7 +2463,7 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 			// 2, weapon level up
 			// 3, armor level up
 			this.tl.delay(30).action({
-				time: 90,
+				time: 100, // 10 frame buffer
 				onactionstart: function() {
 					unit.levelUp();
 				},
@@ -2424,6 +2604,7 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 	},
 	calcAtkDamage: function(attacker, defender, type) {
 		var damage = attacker.attr.current.atk - defender.attr.current.def;
+		damage *= 2;
 		if (type == "ATTACK") {
 			// nothing
 		} else if (type == "RETALIATE") {
@@ -2432,7 +2613,7 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 		return damage;
 	},
 	calcExp: function(attacker, defender, damage) {
-		return 60;
+		return 60 * 2;
 	},
 	// get all objects on this point
 	// including map

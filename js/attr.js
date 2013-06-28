@@ -91,6 +91,29 @@ var Attr = enchant.Class.create({
 			this._current[prop] = this._last[prop];
 		}
 	},
+	levelup: function() {
+		var diff_level = this.current.level - this.master.level;
+		this.master.level = this.current.level;
+		for (var i = 0; i < diff_level; i++) {
+			this.master.hp += rand(5, 10);
+			this.master.mp += rand(3, 5);
+			this.master.atk += rand(1, 5);
+			this.master.def += rand(1, 5);
+			this.master.intl += rand(1, 5);
+			this.master.dex += rand(1, 5);
+			this.master.mor += rand(1, 5);
+		}
+
+		// recover hp/mp and all status
+		for (var prop in this.master) {
+			if (prop != "exp") {
+				var value = this.master[prop];
+				this.current[prop] = value;
+				this.last[prop] = value;
+			}
+		}
+
+	},
 	_noop: function() {}
 });
 

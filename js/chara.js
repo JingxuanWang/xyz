@@ -130,6 +130,7 @@ var Unit = enchant.Class.create(enchant.Group, {
 	levelUp: function() {
 		this.chara.setAnim("LEVEL_UP", this.d);
 		console.log("level up to " + this.attr.current.level);
+		this.attr.levelup();
 	},
 	die: function() {
 		this.chara.setAnim("WEAK", this.d);
@@ -161,7 +162,7 @@ var Chara = enchant.Class.create(enchant.Sprite, {
 		this._anims = {
 			"ATTACK" : {
 				"asset" : conf.resource.img_atk,
-				"frames" : [0, 0, 0, 0, 1, 2, 3, 3, 3, 3],
+				"frames" : [0, 0, 0, 1, 2, 3, 3, 3, 3, 3],
 				// df stand for direction factor
 				"df" : 4,
 				"fps" : 10,
@@ -225,9 +226,9 @@ var Chara = enchant.Class.create(enchant.Sprite, {
 			},
 			"LEVEL_UP" : {
 				"asset" : conf.resource.img_spc,
-				"frames" : [5, 6, 7, 4, 5, 6, 7, 4, 9, 9, 9, 9],
+				"frames" : [4, 5, 6, 7, 4, 5, 6, 7, 4, 9, 9, 9],
 				"df" : 0,
-				"fps" : 8,
+				"fps" : 10,
 				"loop" : false,
 				"width" : 48,
 				"height" : 48

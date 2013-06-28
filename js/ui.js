@@ -322,7 +322,7 @@ var InfoBox = enchant.Class.create(enchant.Group, {
 		// if current.exp < last.exp
 		// it means there is a level up
 		// so we should redefine actions
-		if (this.unit.attr.current.exp < this.unit.attr.last.exp) {
+		if (this.unit.attr.current.level > this.unit.attr.last.level) {
 			// LEVEL UP
 			this.exp_stat.bar.value = this.unit.attr.master.exp;
 		} else {
@@ -488,4 +488,62 @@ var Bar = enchant.Class.create(enchant.Sprite, {
 	}
 });
 
+var LabelScene = enchant.Class.create(enchant.Scene, {
+	classname: "LableScene",
+	initialize: function(conf) {
+		enchant.Scene.call(this);
 
+		console.log("LabelScene -- " + conf.labels[0].text);
+
+		this.width = CONFIG.get(["system",  "width"]);
+		this.height = CONFIG.get(["system",  "height"]);
+
+		this.lifetime = conf.lifetime ? conf.lifetime : 60; // default 60 frames
+		this.labels = conf.labels;
+		this.last_change = this.age;
+		this.li = 0;	// lable index
+
+		this.bg = new Sprite(this.width, this.height);
+		this.bg.image = GAME.assets[CONFIG.get(["Menu", "base"])];
+
+		this.label = new Label(this.labels[this.li].text);
+		this.label.color = '#ffffff';
+		this.label.textAlign = 'center';
+		this.label.width = 300;
+		this.label.height = 150;
+		this.label.font = '20pt Helvetica';
+		this.label.moveTo(
+			~~(this.width / 2 - this.label.width / 2), 
+			~~(this.height / 2 - this.label.width / 2)
+		);
+
+		this.addChild(this.bg);
+		this.addChild(this.label);
+
+		var self = this;
+		this.addEventListener('enterframe', function(){
+			if (self.shouldChangeLabel()) {
+				self.nextLabel();
+			}
+		});
+	},
+	shouldChangeLabel: function() {
+		if (this.age - this.last_change >= this.labels[this.li].lifetime) {
+			return true;
+		}
+		return false;
+	},
+	nextLabel: function() {
+		this.last_change = this.age;
+		this.li ++;
+		if (this.labels[this.li] !== undefined) {
+			this.label.text = this.labels[this.li].text;
+		} else {
+			this.onDestory();		
+		}
+	},
+	onDestory: function() {
+		GAME.removeScene(this);
+	},
+	_noop: function() {}
+});
