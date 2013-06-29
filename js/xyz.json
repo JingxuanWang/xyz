@@ -43,14 +43,14 @@
 		{
 			"master_attr" : {
 				"chara_id" : 110001,
-				"name": "项羽",
+				"name": "项梁",
 				"level" : 1,
 				"school" : 90,
 				"hp" : 110,
-				"mp" : 20,
-				"atk" : 30,
-				"def" : 10,
-				"intl" : 5,
+				"mp" : 40,
+				"atk" : 25,
+				"def" : 25,
+				"intl" : 25,
 				"dex" : 15,
 				"mor" : 20,
 				"mov" : 3,
@@ -61,14 +61,46 @@
 				"exp" : 10
 			},
 			"position" : {
-				"i" : 5,
-				"j" : 5,
-				"d" : 1
+				"i" : 9,
+				"j" : 3,
+				"d" : 0
 			},
 			"resource" : {
 				"img_atk" : "img/unit/Unit_atk_109.png",	
 				"img_mov" : "img/unit/Unit_mov_109.png",	
 				"img_spc" : "img/unit/Unit_spc_109.png"
+			},
+			"ai" : "DUMMY"
+		},
+		{
+			"master_attr" : {
+				"chara_id" : 110001,
+				"name": "项羽",
+				"level" : 1,
+				"school" : 90,
+				"hp" : 110,
+				"mp" : 20,
+				"atk" : 35,
+				"def" : 25,
+				"intl" : 5,
+				"dex" : 25,
+				"mor" : 20,
+				"mov" : 4,
+				"rng" : 1,
+				"exp" : 100
+			},
+			"cur_attr" : {
+				"exp" : 10
+			},
+			"position" : {
+				"i" : 10,
+				"j" : 3,
+				"d" : 0
+			},
+			"resource" : {
+				"img_atk" : "img/unit/Unit_atk_135.png",	
+				"img_mov" : "img/unit/Unit_mov_135.png",	
+				"img_spc" : "img/unit/Unit_spc_135.png"
 			},
 			"ai" : "DUMMY"
 		}
@@ -93,9 +125,96 @@
 				"exp" : 100
 			},
 			"position" : {
-				"i" : 3,
-				"j" : 3,
-				"d" : 3
+				"i" : 9,
+				"j" : 6,
+				"d" : 2
+			},
+			"resource" : {
+				"img_atk" : "img/unit/Unit_atk_3.png",	
+				"img_mov" : "img/unit/Unit_mov_3.png",	
+				"img_spc" : "img/unit/Unit_spc_3.png"
+			},
+			"ai" : "HOLD_POSITION"
+		},
+		{
+			"master_attr" : {
+				"chara_id" : 130001,
+				"name": "官兵",
+				"level" : 1,
+				"school" : 91,
+				"hp" : 100,
+				"mp" : 10,
+				"atk" : 20,
+				"def" : 12,
+				"intl" : 15,
+				"dex" : 15,
+				"mor" : 20,
+				"mov" : 4,
+				"rng" : 1,
+				"exp" : 100
+			},
+			"position" : {
+				"i" : 10,
+				"j" : 6,
+				"d" : 2
+			},
+			"resource" : {
+				"img_atk" : "img/unit/Unit_atk_3.png",	
+				"img_mov" : "img/unit/Unit_mov_3.png",	
+				"img_spc" : "img/unit/Unit_spc_3.png"
+			},
+			"ai" : "HOLD_POSITION"
+		},
+		{
+			"master_attr" : {
+				"chara_id" : 130066,
+				"name": "郡守",
+				"level" : 1,
+				"school" : 91,
+				"hp" : 120,
+				"mp" : 60,
+				"atk" : 10,
+				"def" : 32,
+				"intl" : 25,
+				"dex" : 15,
+				"mor" : 20,
+				"mov" : 4,
+				"rng" : 1,
+				"exp" : 100
+			},
+			"position" : {
+				"i" : 9,
+				"j" : 11,
+				"d" : 0
+			},
+			"resource" : {
+				"img_atk" : "img/unit/Unit_atk_66.png",	
+				"img_mov" : "img/unit/Unit_mov_66.png",	
+				"img_spc" : "img/unit/Unit_spc_66.png"
+			},
+			"ai" : "HOLD_POSITION"
+		},
+		{
+			"master_attr" : {
+				"chara_id" : 130001,
+				"name": "官兵",
+				"level" : 1,
+				"school" : 91,
+				"hp" : 100,
+				"mp" : 10,
+				"atk" : 20,
+				"def" : 12,
+				"intl" : 15,
+				"dex" : 15,
+				"mor" : 20,
+				"mov" : 4,
+				"rng" : 1,
+				"exp" : 100
+			},
+			"position" : {
+				"i" : 10,
+				"j" : 11,
+				"d" : 0
 			},
 			"resource" : {
 				"img_atk" : "img/unit/Unit_atk_3.png",	
@@ -146,6 +265,12 @@
 		"img/unit/Unit_mov_109.png",
 		"img/unit/Unit_atk_109.png",
 		"img/unit/Unit_spc_109.png",
+		"img/unit/Unit_mov_135.png",
+		"img/unit/Unit_atk_135.png",
+		"img/unit/Unit_spc_135.png",
+		"img/unit/Unit_mov_66.png",
+		"img/unit/Unit_atk_66.png",
+		"img/unit/Unit_spc_66.png",
 		"img/unit/Unit_mov_3.png",
 		"img/unit/Unit_atk_3.png",
 		"img/unit/Unit_spc_3.png",

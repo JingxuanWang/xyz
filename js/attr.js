@@ -81,6 +81,8 @@ var Attr = enchant.Class.create({
 		for (var prop in this._current) {
 			this._last[prop] = this._current[prop];
 		}
+		this._last.x = this.unit.x;
+		this._last.y = this.unit.y;
 		this._last.i = this.unit.i;
 		this._last.j = this.unit.j;
 		this._last.d = this.unit.d;

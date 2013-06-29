@@ -77,10 +77,10 @@ var xyzMap = enchant.Class.create(enchant.Map, {
 	},
 	// convert global coordinate to index
 	x2i: function(x) {
-		return Math.floor((x - this.x) / this.tileWidth);
+		return Math.floor((x - this._offsetX) / this.tileWidth);
 	},
 	y2j: function(y) {
-		return Math.floor((y - this.y) / this.tileHeight);
+		return Math.floor((y - this._offsetY) / this.tileHeight);
 	},
 	// convert index to local coordinate
 	// where map.x map.y is always 0

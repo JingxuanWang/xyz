@@ -382,10 +382,10 @@ var xyzMap = enchant.Class.create(enchant.Map, {
 	},
 	// convert global coordinate to index
 	x2i: function(x) {
-		return Math.floor((x - this.x) / this.tileWidth);
+		return Math.floor((x - this._offsetX) / this.tileWidth);
 	},
 	y2j: function(y) {
-		return Math.floor((y - this.y) / this.tileHeight);
+		return Math.floor((y - this._offsetY) / this.tileHeight);
 	},
 	// convert index to local coordinate
 	// where map.x map.y is always 0
@@ -621,6 +621,8 @@ var Attr = enchant.Class.create({
 		for (var prop in this._current) {
 			this._last[prop] = this._current[prop];
 		}
+		this._last.x = this.unit.x;
+		this._last.y = this.unit.y;
 		this._last.i = this.unit.i;
 		this._last.j = this.unit.j;
 		this._last.d = this.unit.d;
@@ -1205,7 +1207,6 @@ var MoveShade = enchant.Class.create(enchant.Sprite, {
 		this.addEventListener(enchant.Event.TOUCH_END, function() {
 			callback.call(this, grid);
 		});
-
 	},
 	i: {
 		get: function() {
@@ -1258,7 +1259,6 @@ var AttackShade = enchant.Class.create(enchant.Sprite, {
 			this.y = ty * this.height;
 		}
 	},
-
 	_noop: function() {}	
 });
 
@@ -1396,7 +1396,7 @@ var InfoBox = enchant.Class.create(enchant.Group, {
 			this.setExpStat();
 		}
 		if (this.type != "ATK") {
-			this.setTerrainStat();
+			//this.setTerrainStat();
 		}
 	
 		// check animation status
@@ -1564,7 +1564,7 @@ var InfoBox = enchant.Class.create(enchant.Group, {
 });
 
 /*
-   // Bar
+	// Bar
 	var bar = new Bar(20, 100);
 	bar.image = game.assets["bar.png"];
 	bar.maxvalue = 200;
@@ -1572,7 +1572,7 @@ var InfoBox = enchant.Class.create(enchant.Group, {
 	bar.on("enterframe", function() {
 		if (this.age % 60 == 0) {
 			this.value = Math.random() * 200;
-		}   
+		}	
 	}); 
 	game.rootScene.addChild(bar);
 */
@@ -1872,10 +1872,9 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 		}
 		else if (this._status == CONSTS.battle_status.MOVE_RNG) {
 			unit = this.getUnitByLoc(evt.x, evt.y);
-			if (unit == this._selected_unit) {
+			if (unit == this.actor) {
 				this.removeShades();
-				this.showInfoBox(unit);
-				this._status = CONSTS.battle_status.NORMAL;
+				this.showMenu(unit);
 			}
 		}
 		else if (this._status == CONSTS.battle_status.MOVE) {
@@ -1884,9 +1883,17 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 			// TODO:
 			//this.finishCurMove();
 		}
+		else if (this._status == CONSTS.battle_status.ACTION_SELECT) {
+			// cancel mov
+			unit = this.getUnitByLoc(evt.x, evt.y);
+			if (unit == this.actor) {
+				this.removeMenu();
+				this.actionCancel();
+			}
+		}
 		else if (this._status == CONSTS.battle_status.ACTION_RNG) {
 			unit = this.getUnitByLoc(evt.x, evt.y);
-			shade = this.getShade(evt.x, evt.y);
+			shade = this.getShadeByLoc(evt.x, evt.y);
 			// only map or exception
 			if (unit != null && shade != null) {
 				shade.dispatchEvent(evt);
@@ -2102,7 +2109,7 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 	},
 	actionCancel: function() {
 		this.actor._status = CONSTS.unit_status.NORMAL;
-		this.actor.moveTo(this.actor.attr.last.j, this.actor.attr.last.i);
+		this.actor.moveTo(this.actor.attr.last.x, this.actor.attr.last.y);
 		this.actor.resume(this.actor.attr.last.d);
 		this.actor = null;
 		this._status = CONSTS.battle_status.NORMAL;
@@ -2139,7 +2146,7 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 			} else {
 				// ai pick next unit to move
 				var action_script = next_unit.ai.determineAction();
-				this.actionStart(next_unit, action_sctipt);
+				this.actionStart(next_unit, action_script);
 			}
 		}
 		// switch to player/allies/enemy turn 
@@ -2217,7 +2224,7 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 		}
 	},
 	showMoveRng: function(unit, bind_callback) {
-		this._status = CONSTS.battle_status.MOV_RNG;
+		this._status = CONSTS.battle_status.MOVE_RNG;
 
 		var self = this;
 		var i = 0;
@@ -2239,12 +2246,18 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 				unit.height,
 				move_shade_cb
 			);
-			this._atk_shade.addChild(shade);
+			this._mov_shade.addChild(shade);
 		}
-		this.effect_layer.addChild(this._atk_shade);
+		this.effect_layer.addChild(this._mov_shade);
 		
 		var atk_shade_cb = function(grid) {
-			self.move(unit, grid);
+			for (var i = 0; i < self._move_grids.length; i++) {
+				if (self._move_grids[i].i == grid.i && 
+					self._move_grids[i].j == grid.j) {
+					self.move(unit, self._move_grids[i]);
+					return;
+				}
+			}
 		};
 
 		for (i = 0; i < this._atk_grids.length; i++) {
@@ -2255,9 +2268,9 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 				"MOV",
 				atk_shade_cb
 			);
-			this._mov_shade.addChild(shade);
+			this._atk_shade.addChild(shade);
 		}
-		this.effect_layer.addChild(this._mov_shade);
+		this.effect_layer.addChild(this._atk_shade);
 	},
 	showAtkRng: function(unit) {
 		this._status = CONSTS.battle_status.ACTION_RNG;
@@ -2371,7 +2384,7 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 
 		this._menu.moveTo(~~(unit.x + unit.width / 4), ~~(unit.y - unit.height / 2));
 		this.ui_layer.addChild(this._menu);
-		this._status = CONSTS.battle_status.ACTION_RNG;
+		this._status = CONSTS.battle_status.ACTION_SELECT;
 	},
 	removeMenu: function() {
 		if (this._menu) {
@@ -2606,14 +2619,23 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 		var damage = attacker.attr.current.atk - defender.attr.current.def;
 		damage *= 2;
 		if (type == "ATTACK") {
-			// nothing
+			// TODO: attack bonus
 		} else if (type == "RETALIATE") {
 			damage = Math.round(damage * 0.6);
 		}
-		return damage;
+		return damage > 1 ? damage : 1;
 	},
 	calcExp: function(attacker, defender, damage) {
-		return 60 * 2;
+		var exp = damage < 30 ? damage : 30;
+		var level_diff = attacker.attr.current.level - defender.attr.current.level;
+		if (level_diff > 3) {
+			exp = ~~(exp / 2);
+		} else if (level_diff < -3) {
+			exp *= 2;
+		} else {
+			// normal
+		}
+		return exp >= 5 ? exp : 5;
 	},
 	// get all objects on this point
 	// including map
@@ -2629,18 +2651,6 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 		return units;
 	},
 	getUnitByLoc: function(x, y) {
-		/*
-		for (var i = 0; i < this.unit_layer.childNodes.length; i++) {
-			var node = this.unit_layer.childNodes[i];
-			if (node.x <= x && x < node.x + node.width && 
-				node.y <= y && y < node.y + node.height && 
-				node.classname === "Unit") {
-				return node;
-			}
-		}
-		return null;
-		*/
-
 		var i = MAP.x2i(x);
 		var j = MAP.y2j(y);
 		return this.getUnitByIndex(i, j);
@@ -2665,13 +2675,18 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 		}
 		return false;
 	}, 
-	getShade: function(x, y) {
-		for (var i = 0; i < this.effect_layer.childNodes.length; i++) {
-			var child = this.effect_layer.childNodes[i];
-			for (var j = 0; j < child.childNodes.length; j++) {
-				var node = child.childNodes[j];
-				if (node.x <= x && x < node.x + node.width && 
-					node.y <= y && y < node.y + node.height) {
+	getShadeByLoc: function(x, y, type) {
+		var i = MAP.x2i(x);
+		var j = MAP.y2j(y);
+		return this.getShadeByIndex(i, j, type);
+	},
+	getShadeByIndex: function(i, j, type) {
+		for (var a = 0; a < this.effect_layer.childNodes.length; a++) {
+			var child = this.effect_layer.childNodes[a];
+			for (var b = 0; b < child.childNodes.length; b++) {
+				var node = child.childNodes[b];
+				if (node.i == i && node.j == j && 
+					(!type || node.classname == type)) {
 					return node;
 				}
 			}
@@ -2679,7 +2694,6 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 		return null;
 	},
 	onUnitSelect: function(unit) {
-		this._selected_unit = unit;
 		if (unit.side == CONSTS.side.PLAYER) {
 			if (unit.canMove()) {
 				this.actionStart(unit);

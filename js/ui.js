@@ -8,7 +8,6 @@ var MoveShade = enchant.Class.create(enchant.Sprite, {
 		this.addEventListener(enchant.Event.TOUCH_END, function() {
 			callback.call(this, grid);
 		});
-
 	},
 	i: {
 		get: function() {
@@ -61,7 +60,6 @@ var AttackShade = enchant.Class.create(enchant.Sprite, {
 			this.y = ty * this.height;
 		}
 	},
-
 	_noop: function() {}	
 });
 
@@ -199,7 +197,7 @@ var InfoBox = enchant.Class.create(enchant.Group, {
 			this.setExpStat();
 		}
 		if (this.type != "ATK") {
-			this.setTerrainStat();
+			//this.setTerrainStat();
 		}
 	
 		// check animation status
@@ -367,7 +365,7 @@ var InfoBox = enchant.Class.create(enchant.Group, {
 });
 
 /*
-   // Bar
+	// Bar
 	var bar = new Bar(20, 100);
 	bar.image = game.assets["bar.png"];
 	bar.maxvalue = 200;
@@ -375,7 +373,7 @@ var InfoBox = enchant.Class.create(enchant.Group, {
 	bar.on("enterframe", function() {
 		if (this.age % 60 == 0) {
 			this.value = Math.random() * 200;
-		}   
+		}	
 	}); 
 	game.rootScene.addChild(bar);
 */
