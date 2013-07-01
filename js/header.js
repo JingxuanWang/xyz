@@ -7,3 +7,4 @@ var BATTLE;
 var MAP;
 var STAT;
 var DEBUG = false;
+var MUTE = true;

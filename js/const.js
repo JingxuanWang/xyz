@@ -39,7 +39,9 @@ var Consts = enchant.Class.create({
 			ACTION_SELECT: 103,
 			ACTION_RNG: 104,
 			ACTION: 105,
-			
+
+			INFO: 200,
+
 			WIN: 900,
 			LOSE: 901,
 			DRAW: 902
@@ -124,7 +126,8 @@ var Consts = enchant.Class.create({
 			KILL_ALL: 5,		// attack all enemy units
 			FOLLOW_UNIT: 6,		// follow a friendly unit
 			FOLLOW_ATTACK: 7,	// follow a friendly unit, attack if possible
-			
+			DEFEND: 8,			// attack if there is enemy, otherwise stand still	
+	
 			NONE: 999			// player control, not a ai		
 		};
 	},

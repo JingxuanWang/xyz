@@ -36,6 +36,17 @@ var Ai = enchant.Class.create(enchant.EventTarget, {
 			this.genMagicAttack(origin);
 			this.genHeal(origin);
 		}
+		// attack if there is unit available in range
+		// otherwise defend its position
+		else if (this.type == CONSTS.ai.DEFEND) {
+			var grids = MAP.getAvailGrids(this.unit, this.unit.attr.current.mov);
+			for (var i = 0; i < grids.length; i++) {
+				var g = grids[i];
+				this.genAttack(g);
+				this.genMagicAttack(g);
+				this.genHeal(g);
+			}
+		}
 		// Strategy that allow moving 
 		else {
 			var grids = MAP.getAvailGrids(this.unit, this.unit.attr.current.mov);

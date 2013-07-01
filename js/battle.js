@@ -82,9 +82,17 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 	},
 	onTouchMove: function(evt) {
 		// status check
-		if (false) {
+		if (this._status >= CONSTS.battle_status.ACTION) {
 			return; 
 		}
+
+		unit = this.getUnitByLoc(evt.x, evt.y);
+		shade = this.getShadeByLoc(evt.x, evt.y);
+		if (this._status == CONSTS.battle_status.ACTION_RNG && 
+			unit == this.actor || shade != null) {
+			return;
+		}
+	
 
 		this.x = this._origin_x + evt.x - this._touch_origin_x;
 		this.y = this._origin_y + evt.y - this._touch_origin_y;
@@ -157,6 +165,14 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 		else if (this._status == CONSTS.battle_status.ACTION) {
 			// do nothing
 		}
+		else if (this._status == CONSTS.battle_status.INFO) {
+			unit = this.getUnitByLoc(evt.x, evt.y);
+			// click to remove infobox
+			if (unit == this._infobox.unit) {
+				this.removeInfoBox();
+				this._status = CONSTS.battle_status.NORMAL;
+			}
+		}
 		// default is skip 
 		else {
 			console.log("Status: " + this._status + " can not handle this click, skip");
@@ -214,12 +230,15 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 			labels: [
 				{
 					text: text,
-					lifetime: 60,
-				}
+					lifetime: 90,
+				},
+				{
+					text: "Player Turn",
+					lifetime: 90,
+				},
 			]
 		});
 		GAME.pushScene(lb_round_start);
-
 		for (var s in this._units) {
 			var units = this._units[s];
 			for (var i = 0; i < units.length; i++) {
@@ -293,6 +312,7 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 
 			this.turnEnd();
 		} else if (side == CONSTS.side.PLAYER) {
+			/*
 			var lb_turn_start = new LabelScene({
 				labels: [
 					{
@@ -302,7 +322,7 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 				]
 			});
 			GAME.pushScene(lb_turn_start);
-
+			*/
 			this._status = CONSTS.battle_status.NORMAL;
 		}
 
@@ -347,7 +367,7 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 					this.tl.action({
 						time: 60,
 						onactionstart: function() {
-							this.showMove(unit, false);
+							this.showMoveRng(unit, false);
 						},
 						onactionend: function() {
 							this.move(unit, action_script.move, action_script);
@@ -561,7 +581,16 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 			} else {
 				// ai
 				if (action_script.type == 'attack') {
-					this.attack(unit, action_script.target);
+					var self = this;
+					unit.animMove(route, function() {
+						self.attack(unit, action_script.target);
+					});
+				} else {
+					var self = this;
+					unit.animMove(route, function() {
+						self.attack(unit, action_script.target);
+						self.actionEnd();
+					});
 				}
 			}
 		}
@@ -652,6 +681,7 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 
 	// infobox
 	showInfoBox: function(unit, type, onAnimComplete) {
+		this._status = CONSTS.battle_status.INFO;
 		this._infobox = new InfoBox(unit, type, onAnimComplete);
 		this.ui_layer.addChild(this._infobox);
 	},

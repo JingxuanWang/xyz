@@ -17,6 +17,7 @@ window.onload = function(){
 		}
 
 		GAME.preload(CONFIG.get(["image"]));
+		GAME.preload(CONFIG.get(["sound"]));
 		GAME.onload = function(){
 			BATTLE = new BattleScene();
 			GAME.pushScene(BATTLE);

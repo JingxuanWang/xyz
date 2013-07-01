@@ -11,6 +11,19 @@ var Unit = enchant.Class.create(enchant.Group, {
 
 		this.attr = new Attr(conf.master_attr, conf.cur_attr, this);
 
+		// TODO:
+		// clone se on each unit 
+		// may eat up too much memory
+		// may be we should make it a singleton
+		this.se = {};
+		var se_list = CONFIG.get(["SE", "unit"]);
+		for (var type in se_list) {
+			this.se[type] = GAME.assets[se_list[type]].clone();
+			if (MUTE) {
+				this.se[type].volumn = 0;
+			}
+		}
+
 		this.action_end = false;
 		this.weak_rate = 0.3;
 
@@ -97,9 +110,11 @@ var Unit = enchant.Class.create(enchant.Group, {
 			this.attr.current.exp >= this.attr.master.exp;
 	},
 	attack: function(d) {
+		this.se['atk_prepare'].play();
 		this.chara.setAnim("ATTACK", d);
 	},
 	move: function(d) {
+		this.se['foot_move'].play();
 		this.chara.setAnim("MOVE", d);
 	},
 	resume: function(d) {
@@ -124,15 +139,18 @@ var Unit = enchant.Class.create(enchant.Group, {
 		}
 	},
 	hurt: function(damage) {
+		this.se['hit'].play();
 		this.chara.setAnim("HURT", this.d);
 		this.label.text = damage;
 	},
 	levelUp: function() {
+		this.se['level_up'].play();
 		this.chara.setAnim("LEVEL_UP", this.d);
 		console.log("level up to " + this.attr.current.level);
 		this.attr.levelup();
 	},
 	die: function() {
+		this.se['die'].play();
 		this.chara.setAnim("WEAK", this.d);
 		this.chara.blink = true;
 		this._status = CONSTS.unit_status.DEAD;
@@ -347,4 +365,6 @@ var Chara = enchant.Class.create(enchant.Sprite, {
 	},
 	noop: function() {}
 }); 
+
+
 

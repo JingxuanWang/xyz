@@ -134,7 +134,7 @@
 				"img_mov" : "img/unit/Unit_mov_3.png",	
 				"img_spc" : "img/unit/Unit_spc_3.png"
 			},
-			"ai" : "HOLD_POSITION"
+			"ai" : "DEFEND"
 		},
 		{
 			"master_attr" : {
@@ -261,6 +261,30 @@
 			"mp_incr" : "img/menu/bar/blue.png"
 		}
 	},
+	"SE" : {
+		"click" : 	 "se/Se00.wav",
+		"cancel" : 	 "se/Se01.wav",
+		"error" : 	 "se/Se02.wav",
+		"unit": {
+			"level_up" : 	"se/Se11.wav",
+			"die" : 		"se/Se16.wav",
+			"foot_move" : 	"se/Se23.wav",
+			"horse_move" : 	"se/Se24.wav",
+			"atk_prepare" : "se/Se32.wav",
+			"hit" : 		"se/Se35.wav"
+		}
+	},
+	"sound" : [
+		"se/Se00.wav",
+		"se/Se01.wav",
+		"se/Se02.wav",
+		"se/Se11.wav",
+		"se/Se16.wav",
+		"se/Se23.wav",
+		"se/Se24.wav",
+		"se/Se32.wav",
+		"se/Se35.wav"
+	],
 	"image" : [
 		"img/unit/Unit_mov_109.png",
 		"img/unit/Unit_atk_109.png",

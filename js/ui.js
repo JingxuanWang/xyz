@@ -185,7 +185,7 @@ var InfoBox = enchant.Class.create(enchant.Group, {
 			this.height = 144;
 		}
 
-		this.setBasePoint(this.unit.x, this.unit.y);
+		this.setBasePoint(this.unit.x + MAP._offsetX, this.unit.y + MAP._offsetY);
 		this.drawBackground(GAME.assets[CONFIG.get(["Menu", "base"])]);
 
 		this.setName();
@@ -223,12 +223,12 @@ var InfoBox = enchant.Class.create(enchant.Group, {
 		this.addChild(bg);
 	},
 	setBasePoint: function(x, y) {
-		if (x >= CONFIG.get(["system", "width"]) / 2) {
+		if (x  >= CONFIG.get(["system", "width"]) / 2) {
 			this.x = x - 4 * CONFIG.get(["map", "tileWidth"]);
 		} else {
 			this.x = x + CONFIG.get(["map", "tileWidth"]);
 		}
-		if (y >= CONFIG.get(["system", "height"]) / 2) {
+		if (y  >= CONFIG.get(["system", "height"]) / 2) {
 			if (this.side == CONSTS.side.PLAYER && this.type == "ATK") {
 				this.y = y - 2 * CONFIG.get(["map", "tileHeight"]);
 			} else {
@@ -237,6 +237,10 @@ var InfoBox = enchant.Class.create(enchant.Group, {
 		} else {
 			this.y = y;
 		}
+		
+		// convert global coordinate to local(scrren) coordinate
+		this.x -= MAP._offsetX;
+		this.y -= MAP._offsetY;
 	},
 	setName: function() {
 		this.name = new Label(this.unit.attr.current.name);
@@ -490,8 +494,6 @@ var LabelScene = enchant.Class.create(enchant.Scene, {
 	classname: "LableScene",
 	initialize: function(conf) {
 		enchant.Scene.call(this);
-
-		console.log("LabelScene -- " + conf.labels[0].text);
 
 		this.width = CONFIG.get(["system",  "width"]);
 		this.height = CONFIG.get(["system",  "height"]);
