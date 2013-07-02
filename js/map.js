@@ -75,6 +75,12 @@ var xyzMap = enchant.Class.create(enchant.Map, {
 	getRows: function() {
 		return this.height * this.tileHeight;
 	},
+
+	/*
+	 *	global_x = local_x + offset_x
+	 *	local_x  = i * width
+	 */
+
 	// convert global coordinate to index
 	x2i: function(x) {
 		return Math.floor((x - this._offsetX) / this.tileWidth);
@@ -110,6 +116,30 @@ var xyzMap = enchant.Class.create(enchant.Map, {
 			return this._movement_matrix[terrain][school];
 		} else {
 			return -1;
+		}
+	},
+	// make some grid at the center of the screen
+	focus: function(i, j) {
+		// global x/y
+		var x = ~~(CONFIG.get(["system", "width"]) / 2) 
+			- this.i2x(i) - this._offsetX - CONFIG.get(["map", "tileWidth"]);
+		var y = ~~(CONFIG.get(["system", "height"])/2) 
+			- this.j2y(j) - this._offsetY - CONFIG.get(["map", "tileHeight"]);
+
+		if (x < BATTLE.min_x) {
+			BATTLE.x = BATTLE.min_x;
+		} else if (x > BATTLE.max_x) {
+			BATTLE.x = BATTLE.max_x;
+		} else {
+			BATTLE.x = x;
+		}
+
+		if (y < BATTLE.min_y) {
+			BATTLE.y = BATTLE.min_y;
+		} else if (y > BATTLE.max_y) {
+			BATTLE.y = BATTLE.max_y;
+		} else {
+			BATTLE.y = y;
 		}
 	},
 	// BFS get available grids 
@@ -148,7 +178,14 @@ var xyzMap = enchant.Class.create(enchant.Map, {
 			if (cur.r + 1 < self.getReqMovement(terrain, unit.attr.current.school)) {
 				return false;
 			}
-			if (BATTLE.hitUnit(cur.i, cur.j, CONSTS.side.ENEMY)) {
+
+			// TODO: make an abstract function of this block
+			if (unit.side == CONSTS.side.PLAYER && 
+				BATTLE.hitUnit(cur.i, cur.j, CONSTS.side.ENEMY)) {
+				return false;
+			}
+			if (unit.side == CONSTS.side.ENEMY && 
+				BATTLE.hitUnit(cur.i, cur.j, CONSTS.side.PLAYER)) {
 				return false;
 			}
 

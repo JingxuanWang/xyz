@@ -156,10 +156,13 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 		else if (this._status == CONSTS.battle_status.ACTION_RNG) {
 			unit = this.getUnitByLoc(evt.x, evt.y);
 			shade = this.getShadeByLoc(evt.x, evt.y);
-			// only map or exception
 			if (unit != null && shade != null) {
 				shade.dispatchEvent(evt);
-				this._status = CONSTS.battle_status.ACTION;
+			}
+			// cancel action range
+			if (unit != null && unit == this.actor) {
+				this.removeShades();
+				this.showMenu(unit);
 			}
 		}
 		else if (this._status == CONSTS.battle_status.ACTION) {
@@ -168,9 +171,14 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 		else if (this._status == CONSTS.battle_status.INFO) {
 			unit = this.getUnitByLoc(evt.x, evt.y);
 			// click to remove infobox
-			if (unit == this._infobox.unit) {
-				this.removeInfoBox();
-				this._status = CONSTS.battle_status.NORMAL;
+			if (unit != null) {
+				if (unit == this._infobox.unit) {
+					this.removeInfoBox();
+					this._status = CONSTS.battle_status.NORMAL;
+				} else {
+					this.removeInfoBox();
+					this.showInfoBox(unit);
+				}
 			}
 		}
 		// default is skip 
@@ -183,6 +191,7 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 	// initialize
 	battleStart: function() {
 		this.round = 0;
+		MAP.focus(9, 5);
 		//this.turn = CONSTS.side.PLAYER;
 		//this._status = CONSTS.battle_status.NORMAL;
 		var lb_battle_start = new LabelScene({
@@ -588,7 +597,6 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 				} else {
 					var self = this;
 					unit.animMove(route, function() {
-						self.attack(unit, action_script.target);
 						self.actionEnd();
 					});
 				}
@@ -596,17 +604,28 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 		}
 	},
 	attack: function(unit, grid) {
-		this.removeShades();
 		var enemy = this.getUnitByIndex(grid.i, grid.j);
+		// if we don't remove shades at first time
+		// when error occurs it will fall into a dead loop
+		// onTouchEnd event will be passed to parentNode
+		// so we should remove child nodes and re-create them again
+		this.removeShades();
 		if (unit == null) {
 			console.log("攻击者不存在");
+			this.actionCancel();
 			return;
 		}
 		if (enemy == null) {
 			console.log("没有攻击对象");
-			this.showMenu(unit);
+			this.showAtkRng(unit);
 			return;
 		}
+		if (unit.side == enemy.side) {
+			console.log("不能攻击友军单位");
+			this.showAtkRng(unit);
+			return;
+		}
+
 		this.infobox_queue = [];
 		this.dead_queue = [];
 		this.lvup_queue = [];
