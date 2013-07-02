@@ -110,11 +110,26 @@ var Unit = enchant.Class.create(enchant.Group, {
 			this.attr.current.exp >= this.attr.master.exp;
 	},
 	attack: function(d) {
-		this.se['atk_prepare'].play();
+		// demo
+		if (this.side == CONSTS.side.PLAYER) {
+			this.se['atk_2'].play();
+		} else {
+			this.se['atk'].play();
+		}
 		this.chara.setAnim("ATTACK", d);
 	},
+	criticalAttack: function(d) {
+		this.se['atk_crit'].play();
+		this.chara.setAnim("ATTACK", d);
+	},
+
 	move: function(d) {
-		this.se['foot_move'].play();
+		// demo
+		if (this.side == CONSTS.side.PLAYER) {
+			this.se['horse_move'].play();
+		} else {
+			this.se['foot_move'].play();
+		}
 		this.chara.setAnim("MOVE", d);
 	},
 	resume: function(d) {
@@ -138,8 +153,20 @@ var Unit = enchant.Class.create(enchant.Group, {
 			this.chara.setAnim("STAND", this.d);
 		}
 	},
-	hurt: function(damage) {
-		this.se['hit'].play();
+	defend: function(critical) {
+		if (critical) {
+			this.se['def_crit'].play();
+		} else {
+			this.se['def'].play();
+		}
+		this.chara.setAnim("DEFEND", this.d);
+	},
+	hurt: function(damage, critical) {
+		if (critical) {
+			this.se['hit_crit'].play();
+		} else {
+			this.se['hit'].play();
+		}
 		this.chara.setAnim("HURT", this.d);
 		this.label.text = damage;
 	},

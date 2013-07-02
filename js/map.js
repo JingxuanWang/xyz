@@ -123,7 +123,7 @@ var xyzMap = enchant.Class.create(enchant.Map, {
 		// global x/y
 		var x = ~~(CONFIG.get(["system", "width"]) / 2) 
 			- this.i2x(i) - this._offsetX - CONFIG.get(["map", "tileWidth"]);
-		var y = ~~(CONFIG.get(["system", "height"])/2) 
+		var y = ~~(CONFIG.get(["system", "height"]) / 2) 
 			- this.j2y(j) - this._offsetY - CONFIG.get(["map", "tileHeight"]);
 
 		if (x < BATTLE.min_x) {

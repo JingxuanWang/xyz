@@ -125,6 +125,64 @@
 				"exp" : 100
 			},
 			"position" : {
+				"i" : 8,
+				"j" : 3,
+				"d" : 1
+			},
+			"resource" : {
+				"img_atk" : "img/unit/Unit_atk_3.png",	
+				"img_mov" : "img/unit/Unit_mov_3.png",	
+				"img_spc" : "img/unit/Unit_spc_3.png"
+			},
+			"ai" : "DEFEND"
+		},
+		{
+			"master_attr" : {
+				"chara_id" : 130001,
+				"name": "官兵",
+				"level" : 1,
+				"school" : 91,
+				"hp" : 100,
+				"mp" : 10,
+				"atk" : 20,
+				"def" : 12,
+				"intl" : 15,
+				"dex" : 15,
+				"mor" : 20,
+				"mov" : 4,
+				"rng" : 1,
+				"exp" : 100
+			},
+			"position" : {
+				"i" : 11,
+				"j" : 3,
+				"d" : 3
+			},
+			"resource" : {
+				"img_atk" : "img/unit/Unit_atk_3.png",	
+				"img_mov" : "img/unit/Unit_mov_3.png",	
+				"img_spc" : "img/unit/Unit_spc_3.png"
+			},
+			"ai" : "DEFEND"
+		},
+		{
+			"master_attr" : {
+				"chara_id" : 130001,
+				"name": "官兵",
+				"level" : 1,
+				"school" : 91,
+				"hp" : 100,
+				"mp" : 10,
+				"atk" : 20,
+				"def" : 12,
+				"intl" : 15,
+				"dex" : 15,
+				"mor" : 20,
+				"mov" : 4,
+				"rng" : 1,
+				"exp" : 100
+			},
+			"position" : {
 				"i" : 9,
 				"j" : 6,
 				"d" : 2
@@ -163,14 +221,14 @@
 				"img_mov" : "img/unit/Unit_mov_3.png",	
 				"img_spc" : "img/unit/Unit_spc_3.png"
 			},
-			"ai" : "HOLD_POSITION"
+			"ai" : "DEFEND"
 		},
 		{
 			"master_attr" : {
 				"chara_id" : 130066,
 				"name": "郡守",
 				"level" : 1,
-				"school" : 91,
+				"school" : 92,
 				"hp" : 120,
 				"mp" : 60,
 				"atk" : 10,
@@ -192,7 +250,7 @@
 				"img_mov" : "img/unit/Unit_mov_66.png",	
 				"img_spc" : "img/unit/Unit_spc_66.png"
 			},
-			"ai" : "HOLD_POSITION"
+			"ai" : "DEFEND"
 		},
 		{
 			"master_attr" : {
@@ -270,8 +328,13 @@
 			"die" : 		"se/Se16.wav",
 			"foot_move" : 	"se/Se23.wav",
 			"horse_move" : 	"se/Se24.wav",
-			"atk_prepare" : "se/Se32.wav",
-			"hit" : 		"se/Se35.wav"
+			"def" :         "se/Se30.wav",
+			"def_crit" :    "se/Se31.wav",
+			"atk" :         "se/Se32.wav",
+			"atk_crit" :    "se/Se33.wav",
+			"atk_2" :       "se/Se34.wav",
+			"hit" : 		"se/Se35.wav",
+			"hit_crit" :    "se/Se36.wav"
 		}
 	},
 	"sound" : [
@@ -282,8 +345,13 @@
 		"se/Se16.wav",
 		"se/Se23.wav",
 		"se/Se24.wav",
+		"se/Se30.wav",
+		"se/Se31.wav",
 		"se/Se32.wav",
-		"se/Se35.wav"
+		"se/Se33.wav",
+		"se/Se34.wav",
+		"se/Se35.wav",
+		"se/Se36.wav"
 	],
 	"image" : [
 		"img/unit/Unit_mov_109.png",

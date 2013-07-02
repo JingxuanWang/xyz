@@ -39,12 +39,19 @@ var Ai = enchant.Class.create(enchant.EventTarget, {
 		// attack if there is unit available in range
 		// otherwise defend its position
 		else if (this.type == CONSTS.ai.DEFEND) {
+			this.genAttack(origin);
+			this.genMagicAttack(origin);
+			this.genHeal(origin);
+
 			var grids = MAP.getAvailGrids(this.unit, this.unit.attr.current.mov);
 			for (var i = 0; i < grids.length; i++) {
 				var g = grids[i];
-				this.genAttack(g);
-				this.genMagicAttack(g);
-				this.genHeal(g);
+				var u = BATTLE.getUnitByIndex(g.i, g.j);
+				if (u == null) {
+					this.genAttack(g);
+					this.genMagicAttack(g);
+					this.genHeal(g);
+				}
 			}
 		}
 		// Strategy that allow moving 
@@ -52,10 +59,13 @@ var Ai = enchant.Class.create(enchant.EventTarget, {
 			var grids = MAP.getAvailGrids(this.unit, this.unit.attr.current.mov);
 			for (var i = 0; i < grids.length; i++) {
 				var g = grids[i];
-				this.genIdle(g);
-				this.genAttack(g);
-				this.genMagicAttack(g);
-				this.genHeal(g);
+				var u = BATTLE.getUnitByIndex(g.i, g.j);
+				if (u == null) {
+					this.genIdle(g);
+					this.genAttack(g);
+					this.genMagicAttack(g);
+					this.genHeal(g);
+				}
 			}
 		}
 	},

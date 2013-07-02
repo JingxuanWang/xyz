@@ -116,6 +116,7 @@ var Consts = enchant.Class.create({
 			// debug
 			"群雄": 90,
 			"轻步兵": 91,
+			"县官": 92,
 		};
 		this.ai = {
 			DUMMY: 0,			// do nothing, just skip

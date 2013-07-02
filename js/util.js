@@ -73,3 +73,9 @@ function lot(arr, func, total_prob) {
 function rand(min, max) {
 	return Math.floor((Math.random() * (max - min + 1)) + min);
 }
+
+// get url parameter
+function getURLParameter(name) {
+  return decodeURIComponent((new RegExp('[?|&]' + name + '=' + '([^&;]+?)(&|#|;|$)').exec(location.search)||[,""])[1].replace(/\+/g, '%20'))||null;
+}
+

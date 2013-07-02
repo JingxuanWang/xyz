@@ -94,8 +94,8 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 		}
 	
 
-		this.x = this._origin_x + evt.x - this._touch_origin_x;
-		this.y = this._origin_y + evt.y - this._touch_origin_y;
+		this.x = ~~(this._origin_x + evt.x - this._touch_origin_x);
+		this.y = ~~(this._origin_y + evt.y - this._touch_origin_y);
 		
 		// border check
 		if (this.x < this.min_x){
@@ -191,7 +191,6 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 	// initialize
 	battleStart: function() {
 		this.round = 0;
-		MAP.focus(9, 5);
 		//this.turn = CONSTS.side.PLAYER;
 		//this._status = CONSTS.battle_status.NORMAL;
 		var lb_battle_start = new LabelScene({
@@ -262,9 +261,9 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 
 		// this should be the callback
 		// as the scenario finishes
-		this.tl.delay(60).then(function() {
+		//this.tl.delay(60).then(function() {
 			this.turnStart(CONSTS.side.PLAYER);
-		});
+		//});
 	},
 	// enemy turn finishes and round end
 	// there maybe round condition check here
@@ -332,6 +331,10 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 			});
 			GAME.pushScene(lb_turn_start);
 			*/
+			if (this.round == 1) {
+				MAP.focus(9, 5);
+			}
+
 			this._status = CONSTS.battle_status.NORMAL;
 		}
 
@@ -349,6 +352,7 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 	actionStart: function(unit, action_script) {
 		this.actor = unit;
 		this.actor.attr.backup();
+		// foucs current actor
 		if (unit.side == CONSTS.side.PLAYER) {
 			this.showMoveRng(unit, false);
 		} else if (unit.side == CONSTS.side.ALLIES) {
@@ -578,10 +582,11 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 	},
 	move: function(unit, shade, action_script) {
 		this.removeShades();
-		if (this.getUnitByIndex(shade.i, shade.j)) {
+		var target = this.getUnitByIndex(shade.i, shade.j);
+		if (target != null && target != unit) {
 			console.log("那里有其他单位不能移动");
 			return;
-		}	
+		}
 		var route = shade.route;
 		if (route) {
 			this._status = CONSTS.battle_status.MOVE;
@@ -632,7 +637,7 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 
 		this._status = CONSTS.battle_status.ACTION;
 		var result = this.calcAttack(unit, enemy);
-		this.animCharaAttack(result, bind(this.animCharaInfoBox, this));
+		this.animCharaAttack(result);
 	},
 
 	turnCheck: function(side) {
@@ -715,43 +720,46 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 	},
 
 	// Animation utilities
-	animCharaAttack: function(attack_script, onAnimComplete) {
+	animCharaAttack: function(attack_script) {
+		// for each round
 		if (attack_script == null) {
-			console.log("empty attack_script");
+			this.animCharaAttackComplete();
+			return;
+		}
+		var as = attack_script.shift();
+		if (as == null) {
+			this.animCharaAttackComplete();
 			return;
 		}
 		var self = this;
-		// for each round
-		for (var i = 0; i < attack_script.length; i++) {
-			var attacker = attack_script[i].a;
-			var defender = attack_script[i].d;
-			var damage = attack_script[i].ad;
-			var type = attack_script[i].t; 
-			var exp = attack_script[i].ae;
-			var d = this.calcDirection(attacker, defender);
-			var atl = attacker.tl;
-			var dtl = defender.tl;
-			if (type === "ATTACK") {
-				atl = atl.action({
-					time: 66,	// 6 frame delay
-					onactionstart: function() {
-						attacker.attack(d);
-					},
-					onactionend: function() {
-						defender.hurt(damage);
-					}
-				});
-					
-				atl = atl.delay(20).then(function() {
-					attacker.resume(d);
-					defender.resume();
-					// last animtion completed
-					if (i >= attack_script.length) {
-						onAnimComplete.call(self);
-					}
-				});
-			}
-		}
+		var result = as.r;
+		var type = as.t; 
+		var attacker = as.a;
+		var defender = as.d;
+		var damage = as.rd;
+		var exp = as.re;
+		var d = this.calcDirection(attacker, defender);
+		var tl = this.tl;
+		//if (type === "ATTACK") {
+			tl = tl.action({
+				time: 60,
+				onactionstart: function() {
+					attacker.attack(d);
+				},
+				onactionend: function() {
+					defender.hurt(damage);
+				}
+			});
+				
+			tl = tl.delay(30).then(function() {
+				attacker.resume(d);
+				defender.resume();
+				self.animCharaAttack(attack_script);
+			});
+		//}
+	},
+	animCharaAttackComplete: function() {
+		this.animCharaInfoBox();
 	},
 	// fetch from infobox queue
 	// and play infobox animation one by one
@@ -846,47 +854,47 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 			var d = judgeDirection(cur, next);
 		}
 	},
-	// TODO: this will be a server request in the future
 	calcAttack: function(attacker, defender) {
 		if (attacker == null || defender == null) {
 			console.log("Error Parameter" + attacker + " : " + defender);
 			return;
 		}
 
+		// here we should determine attack type
+		// double attack?
+		// critical attack?
+		// parry?
+
 		this.infobox_queue.push(defender);
+		// TODO: should not be pushed twice or above
 		if (attacker.side == CONSTS.side.PLAYER) {
 			this.infobox_queue.push(attacker);
 		}
 
 		var attack_script = [];
-		// attack
-		var atk_dmg = this.calcAtkDamage(attacker, defender, "ATTACK");
-		var atk_exp = this.calcExp(attacker, defender, atk_dmg);
-		attack_script.push({
-			t: "ATTACK",
-			a: attacker,
-			d: defender,
-			ad: atk_dmg,
-			ae: atk_exp
-		});
-		defender.attr.backup();
-		defender.attr.current.hp -= atk_dmg;
-		
-		//attacker.attr.backup();
-		attacker.attr.current.exp += atk_exp;
+		var atk_dmg;
+		var atk_exp;
 
-		// 可以封杀反击...
+		defender.attr.backup();
+
+		// first strike
+		if (true) {
+			attack_script.push(this.calcStrike(attacker, defender, "ATTACK"));
+		}
+
+		// second strike
 		if (false) {
-			// retaliate
-			atk_dmg = this.calcAtkDamage(defender, attacker, "RETALIATE");
-			atk_exp = this.calcExp(attacker, defender, atk_dmg);
-			attack_script.push({
-				t: "RETALIATE",
-				a: defender,
-				d: attacker,
-				rd: atk_dmg,
-				re: atk_exp
-			});
+			attack_script.push(this.calcStrike(attacker, defender, "DOUBLE"));
+		}
+
+		// retaliate
+		if (true) {
+			attack_script.push(this.calcStrike(defender, attacker, "RETAILATE"));
+		}
+
+		// re-retaliate
+		if (false) {
+			attack_script.push(this.calcStrike(attacker, defender, "RETAILATE"));
 		}
 
 		if (defender.attr.current.hp <= 0) {
@@ -904,6 +912,40 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 		}
 
 		return attack_script;
+	},
+	calcStrike: function(attacker, defender, type) {
+		var ret = {};
+		var atk_dmg = 0;
+		var atk_exp = 0;
+		// parry	
+		if (false) {
+			atk_exp = this.calcExp(attacker, defender, atk_dmg);
+			ret = {
+				r: "PARRY", 
+				t: type,
+				a: attacker,
+				d: defender,
+				rd: atk_dmg,
+				re: atk_exp
+			};
+		} else {
+			atk_dmg = this.calcAtkDamage(attacker, defender, type);
+			atk_exp = this.calcExp(attacker, defender, atk_dmg);
+			ret = {
+				r: "HIT", 
+				t: type,
+				a: attacker,
+				d: defender,
+				rd: atk_dmg,
+				re: atk_exp
+			};
+		}
+
+		defender.attr.current.hp -= atk_dmg;
+		if (attacker.side == CONSTS.side.PLAYER) {
+			attacker.attr.current.exp += atk_exp;
+		}
+		return ret;
 	},
 	calcDirection: function(attacker, defender) {
 		if (defender.i > attacker.i) {
@@ -923,6 +965,8 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 		damage *= 2;
 		if (type == "ATTACK") {
 			// TODO: attack bonus
+		} else if (type == "DOUBLE") {
+			damage = Math.round(damage * 0.8);
 		} else if (type == "RETALIATE") {
 			damage = Math.round(damage * 0.6);
 		}
