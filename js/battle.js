@@ -304,7 +304,7 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 				// Enemy AI
 				for (var i = 0; i < this._units[CONSTS.side.ENEMY].length; i++) {
 					var enemy = this._units[CONSTS.side.ENEMY][i];
-					if (enemy && enemy.canMove()) {
+					if (enemy && enemy.isOnBattleField()) {
 						var action_script = enemy.ai.determineAction(enemy);
 						// action according the script
 						this.actionStart(enemy, action_script);
@@ -350,6 +350,11 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 		}
 	},
 	actionStart: function(unit, action_script) {
+		//if (!unit.isOnBattleField()) {
+		//	this.actionEnd();
+		//	return;
+		//}
+
 		this.actor = unit;
 		this.actor.attr.backup();
 		// foucs current actor
@@ -406,8 +411,10 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 	// and call turn check
 	actionEnd: function() {
 		this._status = CONSTS.battle_status.NORMAL;
-		this.actor._status = CONSTS.unit_status.ACTIONED;
-		this.actor.stand();
+		if (this.actor.isOnBattleField()) {
+			this.actor._status = CONSTS.unit_status.ACTIONED;
+			this.actor.resume();
+		}
 		this.actor = null;
 
 		this.removeShades();
@@ -759,6 +766,7 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 		//}
 	},
 	animCharaAttackComplete: function() {
+		this.infobox_queue = sortByProp(this.infobox_queue, 'side', -1);
 		this.animCharaInfoBox();
 	},
 	// fetch from infobox queue
@@ -865,11 +873,6 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 		// critical attack?
 		// parry?
 
-		this.infobox_queue.push(defender);
-		// TODO: should not be pushed twice or above
-		if (attacker.side == CONSTS.side.PLAYER) {
-			this.infobox_queue.push(attacker);
-		}
 
 		var attack_script = [];
 		var atk_dmg;
@@ -888,7 +891,7 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 		}
 
 		// retaliate
-		if (true) {
+		if (defender.attr.current.hp > 0) {
 			attack_script.push(this.calcStrike(defender, attacker, "RETAILATE"));
 		}
 
@@ -904,12 +907,26 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 			this.dead_queue.push(attacker);
 		}
 
+		if (defender.attr.changed()) {
+			this.infobox_queue.push(defender);
+		}
+		if (attacker.attr.changed()) {
+			this.infobox_queue.push(attacker);
+		}
+
 		if (attacker.canLevelUp()) {
 			attacker.attr.current.level += 
 				~~(attacker.attr.current.level / attacker.attr.master.level);
 			attacker.attr.current.exp %= attacker.attr.master.exp;
 			this.lvup_queue.push(attacker);
 		}
+		if (defender.canLevelUp()) {
+			defender.attr.current.level += 
+				~~(defender.attr.current.level / defender.attr.master.level);
+			defender.attr.current.exp %= defender.attr.master.exp;
+			this.lvup_queue.push(defender);
+		}
+
 
 		return attack_script;
 	},

@@ -93,6 +93,14 @@ var Attr = enchant.Class.create({
 			this._current[prop] = this._last[prop];
 		}
 	},
+	changed: function() {
+		for (var prop in this._last) {
+			if(this._current[prop] != this._last[prop]) {
+				return true;
+			}
+		}
+		return false;
+	},
 	levelup: function() {
 		var diff_level = this.current.level - this.master.level;
 		this.master.level = this.current.level;
