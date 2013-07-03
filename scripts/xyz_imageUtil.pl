@@ -524,6 +524,12 @@ sub image_base {
 			width => 48,
 			height => 48,
 		},
+		+{
+			color => 'white',
+			size => '48x48',
+			width => 48,
+			height => 48,
+		},
 	];
 	for my $conf (@{$config}) {
 		my $outputPNG = "$conf->{color}.png";

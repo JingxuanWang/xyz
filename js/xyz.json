@@ -285,8 +285,10 @@
 	"UI" : {
 		"mov_base" : "img/menu/blue.png", 
 		"atk_base" : "img/menu/red.png", 
+		"route_base" : "img/menu/white.png",
 		"img_menu_atk" : "img/menu/atk.png",
 		"img_menu_mov" : "img/menu/mov.png",
+		"img_menu_ret" : "img/menu/ret.png",
 		"ar" : "img/menu/Mark_12-1.png"
 	},
 	"Menu": {
@@ -383,9 +385,11 @@
 		"img/menu/black.png",
 		"img/menu/blue.png",
 		"img/menu/green.png",
+		"img/menu/white.png",
 		"img/menu/red.png",
 		"img/menu/atk.png",
 		"img/menu/mov.png",
+		"img/menu/ret.png",
 		"img/menu/armor.png",
 		"img/menu/weapon.png",
 		"img/menu/stat_confuse.png",

@@ -478,9 +478,9 @@ var xyzMap = enchant.Class.create(enchant.Map, {
 			if (!self.isInMap(cur.i, cur.j)) {
 				return false;
 			}
-			if (cur.i == src.i && cur.j == src.j) {
-				return false;
-			}
+			//if (cur.i == src.i && cur.j == src.j) {
+			//	return false;
+			//}
 			if (cur.r < 0) {
 				return false;
 			}
@@ -1321,51 +1321,43 @@ var Chara = enchant.Class.create(enchant.Sprite, {
 
 
 
-var MoveShade = enchant.Class.create(enchant.Sprite, {
-	classname: "MoveShade",
-	initialize: function(grid, width, height, callback) {
-		enchant.Sprite.call(this, width, height);
+var Shade = enchant.Class.create(enchant.Sprite, {
+	classname: "Shade",
+	initialize: function(grid, type, cb_touch_end, cb_touch_move) {
+		this.width = CONFIG.get(["map", "tileWidth"]);
+		this.height = CONFIG.get(["map", "tileHeight"]);
+
+		enchant.Sprite.call(this, this.width, this. height);
+
+		this.route = grid.route;
 		this.i = grid.i;
 		this.j = grid.j;
-		this.image = GAME.assets[CONFIG.get(["UI", "mov_base"])];
-		this.addEventListener(enchant.Event.TOUCH_END, function() {
-			callback.call(this, grid);
-		});
-	},
-	i: {
-		get: function() {
-			return Math.round(this.x / this.width);
-		},
-		set: function(ti) {
-			this.x = ti * this.width;
-		}
-	},
-	j: {
-		get: function() {
-			return Math.round(this.y / this.height);
-		},
-		set: function(ty) {
-			this.y = ty * this.height;
-		}
-	},
 
-	_noop: function() {}	
-});
-
-var AttackShade = enchant.Class.create(enchant.Sprite, {
-	classname: "AttackShade",
-	initialize: function(grid, width, height, type, callback) {
-		enchant.Sprite.call(this, width, height);
-		this.i = grid.i;
-		this.j = grid.j;
-		if (type === "ATK") {
+		if (type == "ATK") {
+			this.type = "ATK";
 			this.image = GAME.assets[CONFIG.get(["UI", "atk_base"])];
-		} else {
+		} else if (type == "AR") {
+			this.type = "AR";
 			this.image = GAME.assets[CONFIG.get(["UI", "ar"])];
+		} else if (type == "ROUTE") {
+			this.type = "ROUTE";
+			this.image = GAME.assets[CONFIG.get(["UI", "route_base"])];
+		} else {
+			// default is 'mov'
+			this.type = "MOV";
+			this.image = GAME.assets[CONFIG.get(["UI", "mov_base"])];
 		}
-		this.addEventListener(enchant.Event.TOUCH_END, function() {
-			callback.call(this, grid);
-		});
+
+		if (cb_touch_end) { 
+			this.addEventListener(enchant.Event.TOUCH_END, function() {
+				cb_touch_end.call(this, grid);
+			});
+		}
+		if (cb_touch_move) {
+			this.addEventListener(enchant.Event.TOUCH_MOVE, function() {
+		//		cb_touch_move.call(this, grid);
+			});
+		}
 	},
 	i: {
 		get: function() {
@@ -1383,6 +1375,7 @@ var AttackShade = enchant.Class.create(enchant.Sprite, {
 			this.y = ty * this.height;
 		}
 	},
+
 	_noop: function() {}	
 });
 
@@ -1918,6 +1911,10 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 		this.addChild(this.unit_layer);
 		this.addChild(this.ui_layer);
 
+		this.effect_layer.addEventListener(enchant.Event.TOUCH_START, bind(this.effect_layer_onTouchStart, this));
+		this.effect_layer.addEventListener(enchant.Event.TOUCH_MOVE, bind(this.effect_layer_onTouchMove, this));
+		this.effect_layer.addEventListener(enchant.Event.TOUCH_END, bind(this.effect_layer_onTouchEnd,this));
+
 		this.addMap(CONFIG.get(["map"]));
 		this.addUnits(CONFIG.get(["player_unit"]), CONSTS.side.PLAYER);
 		this.addUnits(CONFIG.get(["allies_unit"]), CONSTS.side.ALLIES);
@@ -1930,6 +1927,34 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 		this.addEventListener(enchant.Event.ENTER, this.onEnter);
 		this.addEventListener(enchant.Event.EXIT, this.onExit);
 	},
+	effect_layer_onTouchStart: function(evt) {
+		var grid = this.getShadeByIndex(MAP.x2i(evt.x), MAP.y2j(evt.y), "MOV");
+		if (grid && (!this.route_dst || 
+			!(grid.i == this.route_dst.i && grid.j == this.route_dst.j))) {
+			this.updateRoute(grid);
+		}
+		// if already have route and touch on dst
+		// then move to there 
+		else if (grid && this.route_dst && 
+			grid.i == this.route_dst.i && grid.j == this.route_dst.j){
+			this.move(this.actor, this.route_dst);
+		}
+	},
+	effect_layer_onTouchMove: function(evt) {
+		var grid = this.getShadeByIndex(MAP.x2i(evt.x), MAP.y2j(evt.y), "MOV");
+		if (grid && (!this.route_dst || 
+			!(grid.i == this.route_dst.i && grid.j == this.route_dst.j))) {
+			this.updateRoute(grid);
+		}
+	},
+	effect_layer_onTouchEnd: function(evt) {
+		var grid = this.getShadeByIndex(MAP.x2i(evt.x), MAP.y2j(evt.y), "MOV");
+		if (grid && (!this.route_dst || 
+			!(grid.i == this.route_dst.i && grid.j == this.route_dst.j))) {
+			this.updateRoute(grid);
+		}
+	},
+
 	// scene methods
 	// these do not override default ones
 	onEnter: function() {
@@ -1947,10 +1972,22 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 			return; 
 		}
 
-		this._touch_origin_x = evt.x;
-		this._touch_origin_y = evt.y;
-		this._origin_x = this.x;
-		this._origin_y = this.y;
+		// if hit an valid unit
+		// unit drag
+		var unit = this.getUnitByLoc(evt.x, evt.y);
+		if (unit && unit.side == CONSTS.side.PLAYER && 
+			this._status == CONSTS.battle_status.NORMAL && unit.canMove()) {
+		//	this._drag_move = true;
+			//this.updateRoute(unit);
+			this.onUnitSelect(unit, CONSTS.side.PLAYER);
+		}
+		// map drag 
+		else {
+			this._touch_origin_x = evt.x;
+			this._touch_origin_y = evt.y;
+			this._origin_x = this.x;
+			this._origin_y = this.y;
+		}
 	},
 	onTouchMove: function(evt) {
 		// status check
@@ -1962,25 +1999,31 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 		shade = this.getShadeByLoc(evt.x, evt.y);
 		if (this._status == CONSTS.battle_status.ACTION_RNG && 
 			unit == this.actor || shade != null) {
-			return;
+			//return;
 		}
-	
 
-		this.x = ~~(this._origin_x + evt.x - this._touch_origin_x);
-		this.y = ~~(this._origin_y + evt.y - this._touch_origin_y);
-		
-		// border check
-		if (this.x < this.min_x){
-			this.x = this.min_x;
+		// map drag
+		if (this._status != CONSTS.battle_status.MOVE_RNG) {	
+			this.x = ~~(this._origin_x + evt.x - this._touch_origin_x);
+			this.y = ~~(this._origin_y + evt.y - this._touch_origin_y);
+			
+			// border check
+			if (this.x < this.min_x){
+				this.x = this.min_x;
+			}
+			if (this.x > this.max_x){
+				this.x = this.max_x;
+			}
+			if (this.y < this.min_y){
+				this.y = this.min_y;
+			}
+			if (this.y > this.max_y){
+				this.y = this.max_y;
+			}
 		}
-		if (this.x > this.max_x){
-			this.x = this.max_x;
-		}
-		if (this.y < this.min_y){
-			this.y = this.min_y;
-		}
-		if (this.y > this.max_y){
-			this.y = this.max_y;
+		// drag move
+		else {
+			this.effect_layer_onTouchMove(evt);
 		}
 	},
 	onTouchEnd: function(evt) {
@@ -2005,11 +2048,14 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 			}
 		}
 		else if (this._status == CONSTS.battle_status.MOVE_RNG) {
-			unit = this.getUnitByLoc(evt.x, evt.y);
-			if (unit == this.actor) {
-				this.removeShades();
-				this.showMenu(unit);
-			}
+			// if this is not a drag move
+			//if (!this._drag_move) {
+				unit = this.getUnitByLoc(evt.x, evt.y);
+				if (unit == this.actor) {
+					this.removeShades();
+					this.showMenu(unit);
+				}
+			//}
 		}
 		else if (this._status == CONSTS.battle_status.MOVE) {
 			// if there is a touch event at this phrase
@@ -2057,6 +2103,7 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 		else {
 			console.log("Status: " + this._status + " can not handle this click, skip");
 		}
+		//this._drag_move = false;
 	},
 
 	// battle control framework
@@ -2231,7 +2278,7 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 		this.actor.attr.backup();
 		// foucs current actor
 		if (unit.side == CONSTS.side.PLAYER) {
-			this.showMoveRng(unit, false);
+			this.showMoveRng(unit);
 		} else if (unit.side == CONSTS.side.ALLIES) {
 			this.actionEnd();
 		} else if (unit.side == CONSTS.side.ENEMY) {
@@ -2257,7 +2304,7 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 					this.tl.action({
 						time: 60,
 						onactionstart: function() {
-							this.showMoveRng(unit, false);
+							this.showMoveRng(unit);
 						},
 						onactionend: function() {
 							this.move(unit, action_script.move, action_script);
@@ -2388,8 +2435,104 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 			this.effect_layer.removeChild(this._mov_shade);
 			this._mov_shade = null;
 		}
+		this.removeRoute();
 	},
-	showMoveRng: function(unit, bind_callback) {
+	// same ones should not be removed
+	updateRoute: function(unit) {
+		var dst = this.getShadeByIndex(unit.i, unit.j, "MOV");
+		// if there is not current route
+		// then create
+		var self = this;
+		var cb_route_touch_end = function(grid) {
+			//self.move(self.actor, grid);
+		};
+		if (this.route == null && (dst && dst.route)) {
+			this.route = new Group();
+			// add route
+			for (var i = 0; i < dst.route.length; i++) {
+				var r = dst.route[i];
+				var routeShade = new Shade(
+					r,
+					"ROUTE",
+					cb_route_touch_end
+				);
+				this.route.addChild(routeShade);
+			}
+			// add dst
+			this.route_dst = new Shade(
+				dst,
+				"ROUTE"
+			);
+			this.route.addChild(this.route_dst);
+
+			this.effect_layer.addChild(this.route);
+		} else if (this.route && (dst == null || dst.route == null)) {
+			this.removeRoute();
+		} else if (this.route && (dst && dst.route)) {
+			// 0, remove old dst
+			this.route.removeChild(this.route_dst);
+
+			// 1, remove old route
+			// that are not in the new one
+			var a, b;
+			for (a = 0; a < this.route.childNodes.length; a++) {
+				var r = this.route.childNodes[a];
+				var hit = false;
+				for (b = 0 ; b < dst.route.length; b++) {
+					if (r.i == dst.route[b].i && r.j == dst.route[b].j) {
+						hit = true;
+						break;
+					}
+				}
+				if (hit == false) {
+					this.route.removeChild(r);
+					a--;
+				}
+			}
+
+			// 2, add new route 
+			// that are not in the old one
+			for (a = 0; a < dst.route.length; a++) {
+				var hit = false;
+				for (b = 0 ; b < this.route.childNodes.length; b++) {
+					var r = this.route.childNodes[b];
+					if (dst.route[a].i == r.i && dst.route[a].j == r.j) {
+						hit = true;
+						break;
+					}
+				}
+				if (hit == false) {
+					var routeShade = new Shade(
+						dst.route[a],
+						"ROUTE",
+						cb_route_touch_end
+					);
+					this.route.addChild(routeShade);	
+				}
+			}
+
+			// 3, add new dst
+			this.route_dst = new Shade(
+				dst,
+				"ROUTE",
+				cb_route_touch_end
+			);
+			this.route.addChild(this.route_dst);
+		} else {
+			// both null
+		}
+	},
+	removeRoute: function() {
+		if (this.route) {
+			this.effect_layer.removeChild(this.route);
+			this.route = null;
+			this.route_dst = null;
+		}
+	},
+	showMoveRng: function(unit) {
+		this.removeMenu();
+		this.removeShades();
+
 		this._status = CONSTS.battle_status.MOVE_RNG;
 
 		var self = this;
@@ -2401,22 +2544,23 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 		this._mov_shade = new Group();
 	
 		// TODO: this should be rewritten
-		var move_shade_cb = function(grid) {
-			self.move(unit, grid);
+		var cb_mov_touch_end = function(grid) {
+			//self.move(unit, grid);
+			//self.updateRoute(grid);
 		};
 
 		for (i = 0; i < this._move_grids.length; i++) {
-			shade = new MoveShade(
-				this._move_grids[i],
-				unit.width,
-				unit.height,
-				move_shade_cb
+			shade = new Shade(
+				this._move_grids[i], 
+				"MOV",
+				cb_mov_touch_end
 			);
 			this._mov_shade.addChild(shade);
 		}
 		this.effect_layer.addChild(this._mov_shade);
 		
-		var atk_shade_cb = function(grid) {
+		var cb_atk_touch_end = function(grid) {
+			return;
 			for (var i = 0; i < self._move_grids.length; i++) {
 				if (self._move_grids[i].i == grid.i && 
 					self._move_grids[i].j == grid.j) {
@@ -2427,33 +2571,38 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 		};
 
 		for (i = 0; i < this._atk_grids.length; i++) {
-			shade = new AttackShade(
+			shade = new Shade(
 				this._atk_grids[i],
-				unit.width,
-				unit.height,
-				"MOV",
-				atk_shade_cb
+				"AR",
+				cb_atk_touch_end
 			);
 			this._atk_shade.addChild(shade);
 		}
 		this.effect_layer.addChild(this._atk_shade);
+		/*
+		this.effect_layer.addEventListener('touchmove', function(evt) {
+			var grid = self.getShadeByIndex(MAP.x2i(evt.x), MAP.y2j(evt.y), "MOV");
+			if (grid && (!self.route_dst || 
+				!(grid.i == self.route_dst.i && grid.j == self.route_dst.j))) {
+				self.updateRoute(grid);
+			}
+		});
+		*/
 	},
 	showAtkRng: function(unit) {
 		this._status = CONSTS.battle_status.ACTION_RNG;
 		//console.log("show attack range" + this._atk_grids);
 		var self = this;
 		this._atk_grids = this.map.getAvailAtkGrids(unit, unit.attr.current.rng);
-		var atk_shade_cb = function(grid) {
+		var cb_atk_touch_end = function(grid) {
 			self.attack(unit, grid);
 		};
 		this._atk_shade = new Group();
 		for (var i = 0; i < this._atk_grids.length; i++) {
-			var shade = new AttackShade(
+			var shade = new Shade(
 				this._atk_grids[i],
-				unit.width,
-				unit.height,
 				"ATK",
-				atk_shade_cb
+				cb_atk_touch_end
 			);
 			this._atk_shade.addChild(shade);
 		}
@@ -2549,7 +2698,7 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 		// TODO: the coordinate and menu layout should be changed
 		var atk_btn = new Sprite(32, 32);
 		atk_btn.image = GAME.assets["img/menu/atk.png"]; 
-		atk_btn.moveBy(- 16 - 32, 0);
+		atk_btn.moveBy(- 24 - 32, 0);
 		atk_btn.addEventListener(enchant.Event.TOUCH_END, function(){
 			self.removeMenu();
 			self.removeShades();
@@ -2558,17 +2707,27 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 
 		var mov_btn = new Sprite(32, 32);
 		mov_btn.image = GAME.assets["img/menu/mov.png"];
-		mov_btn.moveBy(16, 0);
+		mov_btn.moveBy(24, 0);
 		mov_btn.addEventListener(enchant.Event.TOUCH_END, function(){
 			self.removeMenu();
 			self.removeShades();
 			self.actionEnd();
 		});
 
+		var ret_btn = new Sprite(32, 32);
+		ret_btn.image = GAME.assets["img/menu/ret.png"];
+		ret_btn.moveBy(-16, 48 + 24);
+		ret_btn.addEventListener(enchant.Event.TOUCH_END, function(){
+			self.removeMenu();
+			self.removeShades();
+			self.actionCancel();
+		});
+
 		this._menu.addChild(atk_btn);
 		this._menu.addChild(mov_btn);
+		this._menu.addChild(ret_btn);
 
-		this._menu.moveTo(~~(unit.x + unit.width / 4), ~~(unit.y - unit.height / 2));
+		this._menu.moveTo(~~(unit.x + unit.width / 2), ~~(unit.y - unit.height / 2));
 		this.ui_layer.addChild(this._menu);
 		this._status = CONSTS.battle_status.ACTION_SELECT;
 	},
@@ -2922,7 +3081,7 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 			for (var b = 0; b < child.childNodes.length; b++) {
 				var node = child.childNodes[b];
 				if (node.i == i && node.j == j && 
-					(!type || node.classname == type)) {
+					(!type || node.type == type)) {
 					return node;
 				}
 			}
