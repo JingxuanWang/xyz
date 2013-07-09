@@ -247,6 +247,7 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 		this.round = 0;
 		//this.turn = CONSTS.side.PLAYER;
 		//this._status = CONSTS.battle_status.NORMAL;
+		/*
 		var lb_battle_start = new LabelScene({
 			labels: [
 				{
@@ -256,9 +257,10 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 			]
 		});
 		GAME.pushScene(lb_battle_start);
-		this.tl.delay(60).then(function() {
+		*/
+		//this.tl.delay(60).then(function() {
 			this.roundStart();
-		});
+		//});
 	},
 	// battle end
 	battleEnd: function(result) {
@@ -915,7 +917,7 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 		var tl = this.tl;
 		//if (type === "ATTACK") {
 			tl = tl.action({
-				time: 60,
+				time: 40,
 				onactionstart: function() {
 					attacker.attack(d);
 				},
