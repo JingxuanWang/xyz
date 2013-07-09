@@ -1,48 +1,40 @@
-var MoveShade = enchant.Class.create(enchant.Sprite, {
-	classname: "MoveShade",
-	initialize: function(grid, width, height, callback) {
-		enchant.Sprite.call(this, width, height);
+var Shade = enchant.Class.create(enchant.Sprite, {
+	classname: "Shade",
+	initialize: function(grid, type, cb_touch_end, cb_touch_move) {
+		this.width = CONFIG.get(["map", "tileWidth"]);
+		this.height = CONFIG.get(["map", "tileHeight"]);
+
+		enchant.Sprite.call(this, this.width, this. height);
+
+		this.route = grid.route;
 		this.i = grid.i;
 		this.j = grid.j;
-		this.image = GAME.assets[CONFIG.get(["UI", "mov_base"])];
-		this.addEventListener(enchant.Event.TOUCH_END, function() {
-			callback.call(this, grid);
-		});
-	},
-	i: {
-		get: function() {
-			return Math.round(this.x / this.width);
-		},
-		set: function(ti) {
-			this.x = ti * this.width;
-		}
-	},
-	j: {
-		get: function() {
-			return Math.round(this.y / this.height);
-		},
-		set: function(ty) {
-			this.y = ty * this.height;
-		}
-	},
 
-	_noop: function() {}	
-});
-
-var AttackShade = enchant.Class.create(enchant.Sprite, {
-	classname: "AttackShade",
-	initialize: function(grid, width, height, type, callback) {
-		enchant.Sprite.call(this, width, height);
-		this.i = grid.i;
-		this.j = grid.j;
-		if (type === "ATK") {
+		if (type == "ATK") {
+			this.type = "ATK";
 			this.image = GAME.assets[CONFIG.get(["UI", "atk_base"])];
-		} else {
+		} else if (type == "AR") {
+			this.type = "AR";
 			this.image = GAME.assets[CONFIG.get(["UI", "ar"])];
+		} else if (type == "ROUTE") {
+			this.type = "ROUTE";
+			this.image = GAME.assets[CONFIG.get(["UI", "route_base"])];
+		} else {
+			// default is 'mov'
+			this.type = "MOV";
+			this.image = GAME.assets[CONFIG.get(["UI", "mov_base"])];
 		}
-		this.addEventListener(enchant.Event.TOUCH_END, function() {
-			callback.call(this, grid);
-		});
+
+		if (cb_touch_end) { 
+			this.addEventListener(enchant.Event.TOUCH_END, function() {
+				cb_touch_end.call(this, grid);
+			});
+		}
+		if (cb_touch_move) {
+			this.addEventListener(enchant.Event.TOUCH_MOVE, function() {
+		//		cb_touch_move.call(this, grid);
+			});
+		}
 	},
 	i: {
 		get: function() {
@@ -60,6 +52,7 @@ var AttackShade = enchant.Class.create(enchant.Sprite, {
 			this.y = ty * this.height;
 		}
 	},
+
 	_noop: function() {}	
 });
 

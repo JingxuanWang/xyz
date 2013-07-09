@@ -171,10 +171,12 @@ var Unit = enchant.Class.create(enchant.Group, {
 		this.label.text = damage;
 	},
 	levelUp: function() {
-		this.se['level_up'].play();
 		this.chara.setAnim("LEVEL_UP", this.d);
 		console.log("level up to " + this.attr.current.level);
 		this.attr.levelup();
+		this.tl.delay(70).then(function(){
+			this.se['level_up'].play();
+		});
 	},
 	die: function() {
 		this.se['die'].play();

@@ -54,6 +54,11 @@
 * MAP.focus bug
 	* 有时候shade表示位置不正确
 
+#### Note
+
+* touchend事件的坐标是以touchstart被触发时的坐标为准的
+
+
 #### 20130702
 
 * MAP.focus功能

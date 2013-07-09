@@ -162,9 +162,9 @@ var xyzMap = enchant.Class.create(enchant.Map, {
 			if (!self.isInMap(cur.i, cur.j)) {
 				return false;
 			}
-			if (cur.i == src.i && cur.j == src.j) {
-				return false;
-			}
+			//if (cur.i == src.i && cur.j == src.j) {
+			//	return false;
+			//}
 			if (cur.r < 0) {
 				return false;
 			}
