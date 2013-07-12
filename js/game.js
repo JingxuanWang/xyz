@@ -89,6 +89,12 @@ function getURLParameter(name) {
   return decodeURIComponent((new RegExp('[?|&]' + name + '=' + '([^&;]+?)(&|#|;|$)').exec(location.search)||[,""])[1].replace(/\+/g, '%20'))||null;
 }
 
+function isSmartPhone () {
+	return (navigator.userAgent.indexOf('iPhone') != -1 ||
+			navigator.userAgent.indexOf('Android') != -1);
+}
+
+
 var Consts = enchant.Class.create({
 	classname: "Consts",
 	initialize: function() {
