@@ -1041,14 +1041,14 @@ var Unit = enchant.Class.create(enchant.Group, {
 		return this.side == CONSTS.side.PLAYER && 
 			this.attr.current.exp >= this.attr.master.exp;
 	},
-	attack: function(d) {
+	attack: function(d, onComplete) {
 		// demo
 		if (this.side == CONSTS.side.PLAYER) {
 			this.se['atk_2'].play();
 		} else {
 			this.se['atk'].play();
 		}
-		this.chara.setAnim("ATTACK", d);
+		this.chara.setAnim("ATTACK", d, onComplete);
 	},
 	criticalAttack: function(d) {
 		this.se['atk_crit'].play();
@@ -1093,22 +1093,21 @@ var Unit = enchant.Class.create(enchant.Group, {
 		}
 		this.chara.setAnim("DEFEND", this.d);
 	},
-	hurt: function(damage, critical) {
+	hurt: function(damage, critical, onComplete) {
 		if (critical) {
 			this.se['hit_crit'].play();
 		} else {
 			this.se['hit'].play();
 		}
-		this.chara.setAnim("HURT", this.d);
+		this.chara.setAnim("HURT", this.d, onComplete);
 		this.label.text = damage;
 	},
 	levelUp: function() {
-		this.chara.setAnim("LEVEL_UP", this.d);
-		console.log("level up to " + this.attr.current.level);
-		this.attr.levelup();
-		this.tl.delay(70).then(function(){
+		this.chara.setAnim("LEVEL_UP", this.d, function() {
 			this.se['level_up'].play();
 		});
+		console.log("level up to " + this.attr.current.level);
+		this.attr.levelup();
 	},
 	die: function() {
 		this.se['die'].play();
@@ -1137,11 +1136,13 @@ var Chara = enchant.Class.create(enchant.Sprite, {
 		this.height = CONFIG.get(["map", "tileHeight"]);
 		//console.log("Chara.initialized:  x: " + this.x + " y: " + this.y + " width: " + this.width + " height: " + this.height);
 		this._status = CONSTS.unit_status.NORMAL;
-		
+		this._onAnimEnd = null;
+	
+	
 		this._anims = {
 			"ATTACK" : {
 				"asset" : conf.resource.img_atk,
-				"frames" : [0, 0, 0, 1, 2, 3, 3, 3, 3, 3],
+				"frames" : [0, 0, 0, 1, 2, 3, 3, 3],
 				// df stand for direction factor
 				"df" : 4,
 				"fps" : 10,
@@ -1187,9 +1188,9 @@ var Chara = enchant.Class.create(enchant.Sprite, {
 			},
 			"HURT" : {
 				"asset" : conf.resource.img_spc,
-				"frames" : [8],
+				"frames" : [8, 8, 8, 8],
 				"df" : 0,
-				"fps" : 0,
+				"fps" : 16,
 				"loop" : false,
 				"width" : 48,
 				"height" : 48
@@ -1205,7 +1206,7 @@ var Chara = enchant.Class.create(enchant.Sprite, {
 			},
 			"LEVEL_UP" : {
 				"asset" : conf.resource.img_spc,
-				"frames" : [4, 5, 6, 7, 4, 5, 6, 7, 4, 9, 9, 9],
+				"frames" : [4, 5, 6, 7, 4, 5, 6, 7, 9, 9, 9, 9],
 				"df" : 0,
 				"fps" : 10,
 				"loop" : false,
@@ -1265,13 +1266,20 @@ var Chara = enchant.Class.create(enchant.Sprite, {
 		//console.log("Chara._adjustNewSize: " + this.x + " : " + this.y + " : " + this.width + " : " + newWidth);
 	},
 	// status, asset, fps, frame num should be assigned
-	setAnim: function(anim, direction, frame_num){
+	setAnim: function(anim, direction, onAnimEnd){
 		if (anim == null || (direction == null && this.d == null)) {
 			console.log("Error Chara.setAnim: " + anim + " : " + direction);
 			return;
 		}
 		if (direction !== null) {
 			this.d = direction;
+		}
+		if (onAnimEnd) {
+			if (this._onAnimEnd) {
+				this.removeEventListener('onAnimEnd', this._onAnimEnd);
+			}
+			this._onAnimEnd = onAnimEnd;
+			this.addEventListener('onAnimEnd', this._onAnimEnd);
 		}
 
 		this.image = GAME.assets[this._anims[anim].asset];
@@ -1280,11 +1288,13 @@ var Chara = enchant.Class.create(enchant.Sprite, {
 		for (var i = 0; i < this._anims[anim].frames.length; i++) {
 			frames[i] = this._anims[anim].frames[i] + this._anims[anim].df * this.d;
 		}
+		var frame_num = 0;
+		/*
 		if (!frame_num) {
 			frame_num = 0;
 		} else {
 			frame_num = frame_num % frames.length;
-		}
+		}*/
 		// set first frame
 		this.frame = frames[frame_num];
 		this._adjustNewSize(this._anims[anim].width, this._anims[anim].height);
@@ -1292,6 +1302,7 @@ var Chara = enchant.Class.create(enchant.Sprite, {
 		this._cur_anim = this._anims[anim];
 		this._cur_frame = frame_num;
 		this._last_frame_update = this.age;
+		this._cur_anim_end_fired = false;
 		//console.log("Chara: setAnim: " + this._cur_frame + " : " + frames.length);
 	},
 	getCurAnimTotalFrameNum: function() {
@@ -1304,7 +1315,10 @@ var Chara = enchant.Class.create(enchant.Sprite, {
 		}
 		if (this._cur_anim.frames.length == num + 1) {
 			if (this._cur_anim.loop === false) {
-				this.dispatchEvent(new enchant.Event("onactionend"));
+				if (this._cur_anim_end_fired == false) {
+					this._cur_anim_end_fired = true;
+					this.dispatchEvent(new enchant.Event("onAnimEnd"));
+				}
 				return;
 			}
 		}
@@ -2789,20 +2803,12 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 		var d = this.calcDirection(attacker, defender);
 		var tl = this.tl;
 		//if (type === "ATTACK") {
-			tl = tl.action({
-				time: 40,
-				onactionstart: function() {
-					attacker.attack(d);
-				},
-				onactionend: function() {
-					defender.hurt(damage);
-				}
-			});
-				
-			tl = tl.delay(30).then(function() {
-				attacker.resume(d);
-				defender.resume();
-				self.animCharaAttack(attack_script);
+			attacker.attack(d, function() {
+				defender.hurt(damage, false, function() {
+					attacker.resume(d);
+					defender.resume();
+					self.animCharaAttack(attack_script);
+				});
 			});
 		//}
 	},

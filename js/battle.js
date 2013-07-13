@@ -916,20 +916,12 @@ var BattleScene = enchant.Class.create(enchant.Scene, {
 		var d = this.calcDirection(attacker, defender);
 		var tl = this.tl;
 		//if (type === "ATTACK") {
-			tl = tl.action({
-				time: 40,
-				onactionstart: function() {
-					attacker.attack(d);
-				},
-				onactionend: function() {
-					defender.hurt(damage);
-				}
-			});
-				
-			tl = tl.delay(30).then(function() {
-				attacker.resume(d);
-				defender.resume();
-				self.animCharaAttack(attack_script);
+			attacker.attack(d, function() {
+				defender.hurt(damage, false, function() {
+					attacker.resume(d);
+					defender.resume();
+					self.animCharaAttack(attack_script);
+				});
 			});
 		//}
 	},
