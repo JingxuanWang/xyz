@@ -585,11 +585,78 @@ sub batch_convert {
 	}
 }
 
+# pack all sprite into a single image
+sub unit_atlas {
+
+	my $ret;
+	my $width = 512;
+	my $height = 512;
+	my $img_num = 151;
+	my ($src, $dst);
+
+	for (my $i = 1; $i <= $img_num; ++$i) {
+
+		my $base = "$CONFIG->{DIR}/Unit_atk_".$i.".png";
+		$dst = Image::Magick->new;
+		$ret = $dst->Read($base);
+		warn "$ret\n" if $ret;
+		$ret = $dst->Crop(geometry=>"1x1+0+0");
+		warn "$ret\n" if $ret;
+		$ret = $dst->Resize(width=>$width, height=>$height);
+		warn "$ret\n" if $ret;
+
+		my $atk = "$CONFIG->{DIR}/Unit_atk_".$i.".png";
+		$src = Image::Magick->new;
+		$ret = $src->Read($atk);
+		warn "$ret\n" if $ret;
+		
+		$ret = $dst->Composite(
+			image => $src,
+			compose => 'Over',
+			x => 0,
+			y => 0
+		);
+
+		my $mov = "$CONFIG->{DIR}/Unit_mov_".$i.".png";
+		$src = Image::Magick->new;
+		$ret = $src->Read($mov);
+		warn "$ret\n" if $ret;
+		
+		$ret = $dst->Composite(
+			image => $src,
+			compose => 'Over',
+			x => 256,
+			y => 0
+		);
+
+		my $spc = "$CONFIG->{DIR}/Unit_spc_".$i.".png";
+		$src = Image::Magick->new;
+		$ret = $src->Read($spc);
+		warn "$ret\n" if $ret;
+		
+		$ret = $dst->Composite(
+			image => $src,
+			compose => 'Over',
+			x => 0,
+			y => 256
+		);
+
+		$ret = $dst->Transparent('#F700FF');
+		warn "$ret\n" if $ret;
+
+		my $outputPNG = "$CONFIG->{OUTPUT_DIR}/Unit_".$i.".png";
+		$ret = $dst->Write("$outputPNG");
+		warn "Write Failed $ret\n" if $ret;
+	}
+}
+
 #unit_atk($CONFIG->{UNIT_ATK});
 #unit_mov($CONFIG->{UNIT_MOV});
 #unit_spc($CONFIG->{UNIT_SPC});
 
-image_base();
+#image_base();
+
+unit_atlas();
 
 #batch_convert(@ARGV);
 
