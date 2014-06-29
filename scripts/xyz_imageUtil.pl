@@ -650,13 +650,114 @@ sub unit_atlas {
 	}
 }
 
+sub tile_slice {
+	my $tile_width = 48;
+	my $tile_height = 48;
+
+	my @files = `ls image/map/`;
+	my $tiles = +{};
+
+	for my $file (@files) {
+		$file = "image/map/${file}";
+		chomp($file);
+
+		print "Processing $file \n";
+
+		my $img = Image::Magick->new;
+		my $ret = $img->Read($file);
+		warn "$ret\n" if $ret;
+
+		my ($width, $height) = $img->Get("columns", "rows");
+
+		my ($x, $y) = (0, 0);
+
+		while ($x < $width && $y < $height) {
+			my $tile = Image::Magick->new;
+			my $ret = $tile->Read($file);
+			$ret = $tile->Crop(
+				width => $tile_width,
+				height => $tile_height,
+				x =>$x,
+				y =>$y,
+			);
+
+			# mean pixel
+			my $mp = _calc_tile_attr($tile);
+			
+			$x += $tile_width;
+			if ($x >= $width) {
+				$y += $tile_height;
+				$x = 0;
+			}
+
+			if (! exists $tiles->{$mp})
+			{
+				my $filename = "r:$mp->[0], g:$mp->[1], b:$mp->[2]";
+				my $outputPNG = "image/output/$filename.png";
+				$ret = $tile->Write("$outputPNG");
+				warn "Write Failed $ret\n" if $ret;
+			}
+		}
+	}
+}
+
+sub _calc_tile_attr {
+	my ($tile) = @_;
+
+	my $pixel_collection = +{};
+	my ($width, $height) = $tile->Get("columns", "rows");
+	my ($x, $y) = (0, 0);
+
+	my @pixels = $tile->GetPixels(
+		width => $width,
+		height => $height,
+		x =>0,
+		y =>0,
+		map => 'RGB',
+		#normalize => "true",
+	);
+
+	my ($mr, $mg, $mb) = (0, 0, 0);
+	my $count = 0;
+	while (scalar(@pixels) > 0) {
+		my $r = shift @pixels;
+		my $g = shift @pixels;
+		my $b = shift @pixels;
+
+		$mr += $r;
+		$mg += $g;
+		$mb += $b;
+		
+		my $pixel = "($r,$g,$b)";
+		if (!exists $pixel_collection->{$pixel})
+		{
+			$pixel_collection->{$pixel} = 1;
+		}
+		else
+		{
+			$pixel_collection->{$pixel}++;
+		}
+		$count++;
+	}
+	$mr = int($mr / $count);
+	$mg = int($mg / $count);
+	$mb = int($mb / $count);
+	my $mp = +[$mr, $mg, $mb];
+	
+	#print Dumper $pixel_collection;
+	#print Dumper $mp;
+	return $mp;
+}
+
 #unit_atk($CONFIG->{UNIT_ATK});
 #unit_mov($CONFIG->{UNIT_MOV});
 #unit_spc($CONFIG->{UNIT_SPC});
 
 #image_base();
 
-unit_atlas();
+#unit_atlas();
+
+tile_slice();
 
 #batch_convert(@ARGV);
 
